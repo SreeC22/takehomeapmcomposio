@@ -109,3 +109,12 @@ Final three items, 2026-10-31:
 - Category tags, including Business, are blue tint tags. Search card has a blue tint border and shadow, platform cards get a blue border and blue tint shadow on hover, and section headings get a short blue bar underneath.
 - Uniform white background and Inter font are unchanged.
 - Live deployment dpl_4jrDsiBTwyLhCLV6AJoiB5azpcLF, verified on the alias: blue buttons, blue category tags, and blue hero stat numbers are in the live style and script.
+
+## Quick guide view, 2026-10-31
+
+- Guide steps are now short numbered cards, not long bullets. Each step shows its title, one short action line, Who and Time as small chips, and a short Watch out line.
+- Long docs quotes are no longer in the main view. They sit behind a collapsed Evidence from docs tap on each step, so the evidence and citations are still there without making the guide hard to scan.
+- Raw URLs in steps are now a short official docs link instead of a long address wrapping across lines on mobile. The full source list is still at the bottom of the guide.
+- The difficulty explanation under the guide title is now small muted text, so the steps start sooner.
+- No guide content was deleted. Library guides were already short, so the main change is for generated guides like Miro, where evidence quotes made steps wordy.
+- Live deployment dpl_8Nwfsa7gvvX7Kmr23v2UYwejUWMK, verified on the alias: step cards, Evidence from docs, and official docs links are in the live script and style.

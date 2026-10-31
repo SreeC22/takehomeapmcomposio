@@ -99,8 +99,18 @@ function render() {
     el.addEventListener('keydown', e => { if (e.key === 'Enter') open(); });
   });
 }
+function linkify(text) {
+  const parts = String(text || '').split(/(https?:\/\/[^\s)]+)/g);
+  return parts.map(p => /^https?:\/\//.test(p) ? `<a href="${esc(safeUrl(p))}">official docs</a>` : esc(p)).join('');
+}
 function stepsHtml(g) {
-  return '<ul>' + g.steps.map((s, i) => `<li><strong>Step ${i + 1}: ${esc(s.title)}</strong> - ${esc(s.detail)}<br><span class="meta">Who: ${esc(s.who)} | Time: ${esc(s.time)} | Watch out: ${esc(s.blockerTip)}</span></li>`).join('') + '</ul>';
+  return '<ol class="steps">' + g.steps.map((s, i) => {
+    const split = String(s.detail || '').split(/Evidence from docs:/i);
+    const action = split[0].replace(/^Action:\s*/i, '').trim();
+    const evidence = split.slice(1).join('Evidence from docs:').trim();
+    const chips = [s.who ? `Who: ${s.who}` : '', s.time ? `Time: ${s.time}` : ''].filter(Boolean).map(c => `<span class="badge">${esc(c)}</span>`).join(' ');
+    return `<li class="step-card"><span class="step-num">${i + 1}</span><div class="step-body"><strong>${esc(s.title)}</strong><p>${linkify(action)}</p>${chips ? `<p>${chips}</p>` : ''}${s.blockerTip ? `<p class="small">Watch out: ${esc(s.blockerTip)}</p>` : ''}${evidence ? `<details><summary>Evidence from docs</summary><p class="small">${esc(evidence)}</p></details>` : ''}</div></li>`;
+  }).join('') + '</ol>';
 }
 function executionHtml(g) {
   const sources = (g.sources || []).map(s => `<li><a href="${esc(safeUrl(s))}">${esc(s)}</a></li>`).join('');
@@ -125,7 +135,7 @@ function showDetail(g, isGenerated) {
   el.innerHTML = `
     <p><a href="#grid">Back to all platforms</a> | <button id="shareBtn" type="button">Copy share link</button> | <button id="jsonBtn" type="button">Copy guide JSON</button>${(isGenerated || String(g.id || '').startsWith('generated-') || String(g.id || '').startsWith('draft-')) ? ' | <button id="refreshBtn" type="button">Refresh live research</button>' : ''}</p>
     <h2>${esc(g.name)} <span class="badge">${esc(g.difficulty)}</span> <span class="badge ${esc(g.guideType)}">${esc(g.guideType)}</span>${g.category ? ` <span class="badge category">${esc(g.category)}</span>` : ''}</h2>
-    <p>${esc(g.difficultyWhy)}</p>
+    <p class="small">${esc(g.difficultyWhy)}</p>
     <div class="step"><h3>At a glance</h3>
       <ul>
         <li><strong>Setup time:</strong> ${esc(g.setupTime)}</li>
@@ -138,6 +148,7 @@ function showDetail(g, isGenerated) {
     </div>
     <p class="small">Managed or custom? Check managed first. Go custom only for own branding, custom scopes, dedicated quota, or a custom instance.</p>
     <h3>Step by step guide</h3>
+    <p class="small">Quick view. Tap Evidence from docs on a step to see the docs quote behind it.</p>
     ${stepsHtml(g)}
     <h3>Review timeline card</h3>
     <ul>${g.timeline.map(t => `<li><strong>${esc(t.stage)}:</strong> ${esc(t.wait)} - ${esc(t.note)}</li>`).join('')}</ul>

@@ -49,6 +49,13 @@ button.secondary{background:#fff;color:var(--ink)}
 .detail{background:#fff;border:1px solid var(--line);border-radius:24px;padding:32px;margin-top:36px;box-shadow:0 12px 40px rgba(0,0,0,.06)}
 .detail h2{margin-top:0}
 .step{border-top:1px solid var(--line);padding:18px 0;margin:8px 0}
+.steps{list-style:none;padding:0;margin:0;display:grid;gap:14px}
+.step-card{display:flex;gap:14px;border:1px solid var(--line);border-radius:16px;padding:16px;background:#fff}
+.step-num{flex:0 0 32px;height:32px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+.step-body{min-width:0}
+.step-body p{margin:8px 0}
+.step-body details{margin-top:10px}
+.step-body summary{cursor:pointer;color:var(--blue);font-size:14px;font-weight:600}
 .step h3{margin:0 0 6px}
 .checklist label{font-weight:400;display:flex;gap:10px;align-items:flex-start}
 .checklist input{width:auto;margin-top:4px}
