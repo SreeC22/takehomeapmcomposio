@@ -29,6 +29,20 @@ function loadStoredGuides() {
     return Array.isArray(arr) ? arr : [];
   } catch (e) { return []; }
 }
+function findGuideForInput(raw) {
+  const input = String(raw || '').trim().toLowerCase();
+  if (!input) return null;
+  let host = input.replace(/^https?:\/\//, '').split('/')[0].split('?')[0].replace(/^www\./, '');
+  const parts = host.split('.');
+  const main = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+  const slug = main.replace(/[^a-z0-9]+/g, '-');
+  const nameSlug = input.replace(/[^a-z0-9]+/g, '-');
+  return guides.find(g => {
+    const gn = String(g.name || '').toLowerCase();
+    const gid = String(g.id || '').toLowerCase();
+    return gn === input || gn === main || gid === slug || gid === nameSlug || gid === 'generated-' + slug || gid === 'generated-' + nameSlug;
+  }) || null;
+}
 function saveStoredGuide(g) {
   try {
     const arr = loadStoredGuides().filter(x => x.id !== g.id);
@@ -81,6 +95,16 @@ function render() {
   });
   document.getElementById('grid').innerHTML = list.map(card).join('');
   document.getElementById('empty').classList.toggle('hidden', list.length > 0);
+  const emptyBtn = document.getElementById('emptyResearch');
+  if (emptyBtn) {
+    emptyBtn.onclick = () => {
+      const q = document.getElementById('search').value.trim();
+      document.getElementById('liveApp').value = q;
+      document.getElementById('liveForm').scrollIntoView({behavior: 'smooth'});
+      document.getElementById('liveApp').focus();
+      updateLiveMatch();
+    };
+  }
   document.querySelectorAll('.card').forEach(el => {
     const open = () => {
       const g = guides.find(x => x.id === el.dataset.id);
@@ -170,10 +194,36 @@ document.getElementById('copyJson').addEventListener('click', async () => {
   const url = location.origin + location.pathname.replace(/index\.html$/, '') + 'guides.json';
   try { await navigator.clipboard.writeText(url); document.getElementById('copyMsg').textContent = 'Copied: ' + url; } catch (e) { document.getElementById('copyMsg').textContent = url; }
 });
+function updateLiveMatch() {
+  const el = document.getElementById('liveMatch');
+  if (!el) return;
+  const name = document.getElementById('liveApp').value.trim();
+  if (!name) { el.innerHTML = ''; return; }
+  const match = findGuideForInput(name);
+  if (match) {
+    const kind = String(match.id || '').startsWith('generated-') ? 'saved generated guide' : 'library guide';
+    el.innerHTML = 'Found in library: <strong>' + esc(match.name) + '</strong> (' + kind + '). <button id="openMatch" type="button">Open it, no generation needed</button>';
+    const btn = document.getElementById('openMatch');
+    if (btn) btn.onclick = () => showDetail(match, String(match.id || '').startsWith('generated-'));
+  } else {
+    el.innerHTML = 'Not in the library yet. Research live will generate a draft for this app, once.';
+  }
+}
+document.getElementById('liveApp').addEventListener('input', updateLiveMatch);
 document.getElementById('liveForm').addEventListener('submit', async e => {
   e.preventDefault();
   const name = document.getElementById('liveApp').value.trim();
   const resultEl = document.getElementById('liveResult');
+  const cached = findGuideForInput(name);
+  if (cached && !window.__forceResearch) {
+    const kind = String(cached.id || '').startsWith('generated-') ? 'saved generated guide' : 'library guide';
+    resultEl.innerHTML = '<p><strong>Already in the library, no generation needed.</strong> Showing the existing ' + kind + ' for ' + esc(cached.name) + ' instead of researching again. <button id="forceResearch" type="button">Generate fresh anyway</button></p>';
+    const fb = document.getElementById('forceResearch');
+    if (fb) fb.onclick = () => { window.__forceResearch = true; document.getElementById('liveForm').requestSubmit(); };
+    showDetail(cached, String(cached.id || '').startsWith('generated-'));
+    return;
+  }
+  window.__forceResearch = false;
   resultEl.innerHTML = '<p>Researching ' + esc(name) + ' now. The research endpoint searches for official developer and OAuth docs, fetches candidate pages, and extracts registration, scope, and review claims with sources. This takes a few seconds.</p>';
   try {
     const res = await fetch('/api/research?app=' + encodeURIComponent(name));

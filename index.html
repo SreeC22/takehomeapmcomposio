@@ -52,7 +52,7 @@
 <section>
 <h2>Most common platforms</h2>
 <div id="grid" class="grid" aria-live="polite"></div>
-<p id="empty" class="hidden">No guide matches that search yet. Try the live generation form below to create a draft for that app.</p>
+<p id="empty" class="hidden">No guide matches that search yet. <button id="emptyResearch" type="button">Research this app live</button></p>
 </section>
 
 <section id="detail" class="detail hidden"></section>
@@ -63,6 +63,7 @@
 <form id="liveForm">
 <label for="liveApp">App name or website</label>
 <input id="liveApp" type="text" placeholder="Example: Airtable, Figma, or figma.com" required>
+<p id="liveMatch" class="small"></p>
 <button type="submit">Research and generate guide</button>
 </form>
 <p class="small">How it works: search, fetch candidate pages, check for OAuth, client ID, redirect, and scope mentions, extract scope-like tokens, build steps from what was actually fetched, and log every attempt, success, and failure with a timestamp. Generated guides get a shareable link that survives refresh, because the guide data is encoded in the link and also saved in this browser.</p>

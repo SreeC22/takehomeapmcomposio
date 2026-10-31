@@ -12,6 +12,14 @@ function snippet(text, keyword) {
   if (idx < 0) return '';
   return text.slice(Math.max(0, idx - 80), idx + 180).trim();
 }
+function isProviderHost(host, slug, domainGuess) {
+  const h = String(host || '').toLowerCase();
+  if (domainGuess && (h === domainGuess || h.endsWith('.' + domainGuess))) return true;
+  const parts = h.split('.');
+  if (parts.length >= 2 && parts[parts.length - 2] === slug) return true;
+  if (parts[0] === slug) return true;
+  return false;
+}
 function parseInput(raw) {
   const input = String(raw || '').trim();
   let hostname = '';
@@ -26,16 +34,20 @@ function parseInput(raw) {
   } catch (e) {}
   if (hostname) {
     const parts = hostname.split('.');
-    const main = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+    // Preserve the full hostname, including its TLD, for example tally.so, not tally.com.
+    // The main name is the second last part, unless the hostname is a docs subdomain.
+    const clean = hostname.replace(/^(developers|docs|developer|api|help)\./, '');
+    const cleanParts = clean.split('.');
+    const main = cleanParts.length >= 2 ? cleanParts[cleanParts.length - 2] : cleanParts[0];
     const display = main.charAt(0).toUpperCase() + main.slice(1);
-    return { input, hostname, app: display, slug: main.toLowerCase(), domain: main.toLowerCase() };
+    return { input, hostname, baseDomain: clean, app: display, slug: main.toLowerCase(), domain: clean.toLowerCase() };
   }
   const slug = input.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'app';
-  return { input, hostname: '', app: input, slug, domain: slug.replace(/-/g, '') };
+  return { input, hostname: '', baseDomain: '', app: input, slug, domain: slug.replace(/-/g, '') };
 }
 function extractScopes(text) {
   const found = new Set();
-  const blocked = new Set(['client', 'client_id', 'client_secret', 'access_token', 'refresh_token', 'token', 'secret', 'id', 'code', 'authorization', 'grant', 'redirect_uri', 'urn', 'params', 'type', 'response', 'grant_type', 'device_code']);
+  const blocked = new Set(['client', 'client_id', 'client_secret', 'access_token', 'refresh_token', 'token', 'secret', 'id', 'code', 'authorization', 'grant', 'redirect_uri', 'urn', 'params', 'type', 'response', 'grant_type', 'device_code', 'twitter', 'og', 'fb', 'eip155']);
   const patterns = [
     /\b[a-z][a-z0-9_]*:[a-z][a-z0-9_]*\b/g,
     /\b[a-z][a-z0-9_]*\.[a-z][a-z0-9_]+(?:\.[a-z][a-z0-9_]+)?\b/g
@@ -75,13 +87,19 @@ function snippetFor(text, keywords) {
   for (const kw of keywords) {
     const idx = lower.indexOf(kw.toLowerCase());
     if (idx >= 0) {
-      const s = text.slice(Math.max(0, idx - 60), idx + 200).trim();
+      let start = Math.max(0, idx - 60);
+      const nextSpace = text.indexOf(' ', start);
+      if (nextSpace >= 0 && nextSpace < idx) start = nextSpace + 1;
+      let end = Math.min(text.length, idx + 200);
+      const prevSpace = text.lastIndexOf(' ', end);
+      if (prevSpace > idx) end = prevSpace;
+      const s = text.slice(start, end).trim();
       if (s.length > 20) return s;
     }
   }
   return '';
 }
-async function fetchText(url, timeoutMs) {
+async function fetchOnce(url, timeoutMs) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -91,6 +109,22 @@ async function fetchText(url, timeoutMs) {
   } catch (e) {
     return { status: 0, body: '', ok: false, error: String(e && e.message ? e.message : e) };
   } finally { clearTimeout(timer); }
+}
+async function fetchText(url, timeoutMs) {
+  const direct = await fetchOnce(url, timeoutMs);
+  if (direct.ok && direct.body && direct.body.length > 200) return direct;
+  // Proxy retry: search engines and some docs sites block datacenter IPs with 403 or 429.
+  // AllOrigins is a public proxy whose IP is not the Vercel server IP, so it can
+  // fetch pages that direct fetch cannot. The source URL is still the original URL,
+  // the proxy is only transport, and the retry is logged by the caller via status.
+  try {
+    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+    const proxy = await fetchOnce(proxyUrl, Math.max(timeoutMs, 8000));
+    if (proxy.ok && proxy.body && proxy.body.length > 200) {
+      return { status: 200, body: proxy.body, ok: true, viaProxy: true, directStatus: direct.status };
+    }
+  } catch (e) {}
+  return direct;
 }
 module.exports = async (req, res) => {
   const rawApp = String((req.query && req.query.app) || '').trim();
@@ -105,6 +139,7 @@ module.exports = async (req, res) => {
   // Step 1: try public search pages, with candidate URL fallbacks.
   // DuckDuckGo lite works from some IPs and is blocked with 403 from others,
   // including Vercel datacenter IPs in live testing, so Brave search is tried next.
+  const domainGuessForSearch = parsed.baseDomain || (slug + '.com');
   const searchSources = [
     { name: 'ecosia', url: 'https://www.ecosia.org/search?q=' + encodeURIComponent(app + ' OAuth developer docs register app scopes') },
     { name: 'duckduckgo_lite', url: 'https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(app + ' OAuth developer docs register app scopes') },
@@ -113,11 +148,20 @@ module.exports = async (req, res) => {
   let candidateUrls = [];
   for (const src of searchSources) {
     log.push({ time: now(), action: 'search', url: src.url, status: 'attempted', detail: 'Searching ' + src.name + ' for official developer and OAuth docs.' });
-    const search = await fetchText(src.url, 9000);
+    const search = await fetchText(src.url, 4000);
     if (search.ok && search.body) {
       const wrapped = Array.from(search.body.matchAll(/uddg=([^&"']+)/g)).map(m => { try { return decodeURIComponent(m[1]); } catch (e) { return ''; } }).filter(u => u && u.startsWith('http'));
       const direct = Array.from(search.body.matchAll(/href="([^"]+)"/g)).map(m => m[1]).filter(u => u && u.startsWith('http') && !u.includes('brave.com') && !u.includes('duckduckgo.com') && !u.includes('ecosia.org') && !u.includes('s3.amazonaws.com'));
-      const found = wrapped.concat(direct).filter((u, i, a) => a.indexOf(u) === i).slice(0, 8);
+      const foundAll = wrapped.concat(direct).filter((u, i, a) => a.indexOf(u) === i);
+      const found = foundAll.filter(u => {
+        try {
+          const host = new URL(u).hostname.toLowerCase();
+          return isProviderHost(host, slug, domainGuessForSearch);
+        } catch (e) { return false; }
+      }).slice(0, 8);
+      if (found.length < foundAll.length) {
+        log.push({ time: now(), action: 'search', url: src.url, status: 'filtered_' + (foundAll.length - found.length), detail: 'Filtered out ' + (foundAll.length - found.length) + ' generic OAuth pages that are not specific to ' + app + '.' });
+      }
       candidateUrls = candidateUrls.concat(found.filter(u => !candidateUrls.includes(u)));
       log.push({ time: now(), action: 'search', url: src.url, status: 'found_' + found.length, detail: 'Search ' + src.name + ' returned ' + found.length + ' direct candidate links.' });
       if (candidateUrls.length >= 4) break;
@@ -127,7 +171,63 @@ module.exports = async (req, res) => {
   }
   const mdCandidates = candidateUrls.filter(u => u.includes('/developers/') || u.includes('/docs/')).map(u => u.endsWith('.md') ? u : u + '.md');
   candidateUrls = candidateUrls.concat(mdCandidates.filter(u => !candidateUrls.includes(u))).slice(0, 10);
-  const domainGuess = parsed.domain || slug.replace(/-/g, '');
+  const domainGuess = parsed.baseDomain || (parsed.domain + '.com');
+  // Site navigation discovery, for genuinely unfamiliar providers.
+  // This does not use a hardcoded provider directory. It goes to the provider's
+  // own site, follows developer and docs links from the homepage, and reads
+  // sitemap and robots files, then filters for OAuth, developer, and API pages.
+  // This is the step that must work when search engines block the server.
+  const siteHosts = [];
+  if (domainGuess) {
+    siteHosts.push(domainGuess);
+    if (!domainGuess.startsWith('developers.') && !domainGuess.startsWith('docs.')) {
+      siteHosts.push('developers.' + domainGuess);
+      siteHosts.push('docs.' + domainGuess);
+    }
+  }
+  const navUrls = [];
+  for (const host of siteHosts.slice(0, 3)) {
+    const homeUrl = 'https://' + host + '/';
+    const home = await fetchText(homeUrl, 4000);
+    if (home.ok && home.body) {
+      const hrefs = Array.from(home.body.matchAll(/href=["']([^"']+)["']/g)).map(m => m[1]);
+      const links = [];
+      for (const href of hrefs) {
+        try {
+          const abs = new URL(href, homeUrl).toString();
+          if (abs.startsWith('https://') && (abs.includes(host) || abs.includes(domainGuess))) {
+            const low = abs.toLowerCase();
+            if (low.includes('developer') || low.includes('docs') || low.includes('api') || low.includes('oauth')) {
+              if (!links.includes(abs)) links.push(abs);
+            }
+          }
+        } catch (e) {}
+      }
+      log.push({ time: now(), action: 'site_navigation', url: homeUrl, status: 'found_' + links.length, detail: 'Homepage navigation found ' + links.length + ' developer, docs, or API links.' });
+      navUrls.push(...links.slice(0, 6));
+    } else {
+      log.push({ time: now(), action: 'site_navigation', url: homeUrl, status: 'failed_' + home.status, detail: 'Homepage could not be fetched. ' + (home.error || '') });
+    }
+    // Sitemap and robots, for each host, limited to one sitemap per host to save time.
+    for (const path of ['/sitemap.xml']) {
+      const smUrl = 'https://' + host + path;
+      const sm = await fetchText(smUrl, 4000);
+      if (sm.ok && sm.body) {
+        const locs = Array.from(sm.body.matchAll(/<loc>([^<]+)<\/loc>/g)).map(m => m[1].trim());
+        const filtered = locs.filter(u => {
+          const low = u.toLowerCase();
+          return low.includes('oauth') || low.includes('developer') || (low.includes('api') && (low.includes('auth') || low.includes('app')));
+        });
+        if (filtered.length) {
+          log.push({ time: now(), action: 'sitemap', url: smUrl, status: 'found_' + filtered.length, detail: 'Sitemap or robots file listed ' + filtered.length + ' OAuth, developer, or API pages.' });
+          navUrls.push(...filtered.slice(0, 6));
+        }
+      }
+    }
+    if (navUrls.length >= 4) break;
+  }
+  candidateUrls = navUrls.concat(candidateUrls.filter(u => !navUrls.includes(u)));
+
   // Verified docs directory, checked via search on 2026-10-31. This is not a guess:
   // these URLs were found in official docs search results for each provider.
   // It is tried first, because search engines block datacenter IPs with 403 and 429,
@@ -166,15 +266,23 @@ module.exports = async (req, res) => {
   candidateUrls = candidateUrls.concat(fallbackExpanded.filter(u => !candidateUrls.includes(u))).slice(0, 12);
   const sources = [];
   const pages = [];
-  for (const url of candidateUrls.slice(0, 12)) {
-    const page = await fetchText(url, 8000);
+  const directorySet = new Set(Object.values(docsDirectory).flat());
+  for (const url of candidateUrls.slice(0, 10)) {
+    if (!directorySet.has(url)) {
+      try {
+        const host = new URL(url).hostname.toLowerCase();
+        const isProvider = isProviderHost(host, slug, domainGuess);
+        if (!isProvider) { log.push({ time: now(), action: 'fetch_page', url: url, status: 'skipped_not_provider', detail: 'Skipped generic page, not specific to ' + app + '.' }); continue; }
+      } catch (e) {}
+    }
+    const page = await fetchText(url, 5000);
     if (page.ok && page.body) {
       const text = stripHtml(page.body);
       const hasOAuth = /oauth/i.test(text);
       const hasClient = /client[ _-]id/i.test(text);
       const hasRedirect = /redirect/i.test(text);
       const hasScope = /scope/i.test(text);
-      log.push({ time: now(), action: 'fetch_page', url: url, status: 'ok_' + page.status, detail: 'Fetched. OAuth mention: ' + hasOAuth + ', client ID mention: ' + hasClient + ', redirect mention: ' + hasRedirect + ', scope mention: ' + hasScope + '. Text length: ' + text.length + '.' });
+      log.push({ time: now(), action: 'fetch_page', url: url, status: 'ok_' + page.status + (page.viaProxy ? '_via_proxy' : ''), detail: 'Fetched' + (page.viaProxy ? ' via AllOrigins proxy after direct fetch failed with ' + page.directStatus : '') + '. OAuth mention: ' + hasOAuth + ', client ID mention: ' + hasClient + ', redirect mention: ' + hasRedirect + ', scope mention: ' + hasScope + '. Text length: ' + text.length + '.' });
       if (hasOAuth || hasClient || hasScope) {
         sources.push(url);
         pages.push({ url, text });
@@ -189,11 +297,11 @@ module.exports = async (req, res) => {
   const allText = pages.map(p => p.text).join(' ');
   const scopes = extractScopes(allText);
   const endpoints = extractEndpoints(allText);
-  const hasApproval = /approval|review|verification/i.test(allText);
+  const hasApproval = /app review|app approval|submit for review|review process|approval process|publish.*app|public app|distribution/i.test(allText);
   const hasRedirect = /redirect/i.test(allText);
   const hasClient = /client[ _-]id/i.test(allText);
   const hasBusiness = /business verification|company verification/i.test(allText);
-  const hasSensitive = /sensitive|restricted/i.test(allText);
+  const hasSensitive = /sensitive scope|restricted scope/i.test(allText);
   const hasWrite = scopes.some(s => s.endsWith(':write') || s.includes('.write') || s.includes(':write'));
   const registerSnippet = snippetFor(allText, ['register an oauth', 'register a new oauth', 'create an oauth app', 'create a new app', 'register your app']);
   const redirectSnippet = snippetFor(allText, ['redirect uri', 'redirect url', 'callback url']);
@@ -218,7 +326,7 @@ module.exports = async (req, res) => {
   }
   let setupTime = 'Unknown';
   if (sources.length && hasClient && scopes.length) {
-    setupTime = '1 to 2 hours for registration and first authorize test, plus review time if required';
+    setupTime = 'Estimate: 1 to 2 hours for a first test (not a published provider time, based on registration, redirect, and scope steps found in sources, plus review time if required)';
   } else if (sources.length) {
     setupTime = 'Unknown, registration steps were not fully found in fetched pages';
   }
@@ -270,6 +378,10 @@ module.exports = async (req, res) => {
     notVerified: ['All provider-specific details not extracted from a fetched official page', 'Exact console layout', 'Exact scope list for your feature', 'Approval timeline', 'Distribution requirements'],
     executionLog: log
   };
+  if (/api key/i.test(allText) && scopes.length === 0) {
+    guide.blockers.push({ blocker: 'Platform may use API keys instead of OAuth', fix: 'Fetched docs mention API keys and no valid OAuth scopes were found. Confirm OAuth support on official docs before building an OAuth flow, and do not present API key access as OAuth.' });
+    guide.nextStep = 'Confirm whether ' + app + ' supports OAuth at all. Fetched docs mention API keys, and no valid OAuth scopes were found in this run.';
+  }
   log.push({ time: now(), action: 'generate_guide', url: '', status: 'complete', detail: 'Generated guide with ' + sources.length + ' sources, ' + scopes.length + ' scope-like tokens, confidence ' + confidence + '.' });
   guide.executionLog = log;
   res.status(200).json({ guide: guide, log: log });
