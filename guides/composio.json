@@ -1,0 +1,155 @@
+{
+ "id": "composio",
+ "name": "Composio",
+ "category": "Developer tools",
+ "difficulty": "Medium",
+ "difficultyWhy": "Not a provider OAuth app. This guide is for a Composio auth config. Managed auth is easy, custom auth is medium because it needs a provider OAuth app and an exact Composio callback URL.",
+ "setupTime": "30 to 60 minutes for managed auth, 1 to 2 hours for a custom auth config with a provider app",
+ "approvalWait": "None in Composio itself. Provider approval, where required, is separate and varies by provider.",
+ "accountNeeded": "Composio project account, plus a provider account if you create a custom auth config",
+ "cost": "Check current Composio pricing in the dashboard. Provider costs are separate.",
+ "consoleName": "Composio dashboard, Auth Configs",
+ "consoleUrl": "https://docs.composio.dev/docs/auth-configuration/custom-auth-configs",
+ "steps": [
+  {
+   "title": "Start with managed auth",
+   "detail": "Use Composio managed auth for the toolkit first and test one connection. Go custom only for your own branding, custom scopes, dedicated quota, a custom instance, or a toolkit with no managed auth.",
+   "who": "human",
+   "time": "15 minutes",
+   "blockerTip": "Custom auth adds a provider app to maintain. Do not start there if managed already covers the toolkit."
+  },
+  {
+   "title": "Get a project API key, server side only",
+   "detail": "In the dashboard, go to Settings, Project Settings, API Keys, copy the key, and store it as COMPOSIO_API_KEY in server secrets.",
+   "who": "human",
+   "time": "10 minutes",
+   "blockerTip": "Never put the project API key in browser code, chat, or a public repo. A CLI login alone does not export it for an app."
+  },
+  {
+   "title": "Create a custom auth config",
+   "detail": "In the dashboard, click Create Auth Config, choose the toolkit, then go to Authentication management and Manage authentication with custom credentials.",
+   "who": "human",
+   "time": "10 minutes",
+   "blockerTip": "Check the toolkit auth scheme first. Some toolkits use API keys, not OAuth2."
+  },
+  {
+   "title": "Register the provider app with the Composio callback",
+   "detail": "In the provider portal, set the authorized redirect URI exactly to https://backend.composio.dev/api/v3/toolkits/auth/callback, then copy the provider client ID and client secret back.",
+   "who": "human",
+   "time": "30 minutes",
+   "blockerTip": "A mismatch here is the most common failure. The legacy URL https://backend.composio.dev/api/v1/auth-apps/add is still supported, but set the URL explicitly in both places."
+  },
+  {
+   "title": "Finish the auth config and copy its ID",
+   "detail": "Select the OAuth2 scheme, toggle Use your own developer credentials, enter the provider client ID and secret, set Redirect URI to the registered URL, click Create, and copy the auth config ID, starting with ac_.",
+   "who": "human",
+   "time": "10 minutes",
+   "blockerTip": "Do not share the client secret. Store it in the auth config, not in code."
+  },
+  {
+   "title": "Use the auth config in a session",
+   "detail": "Pass the auth config ID in authConfigs, keyed by toolkit, when you create a session. Toolkits you leave out keep managed auth. Store the connected account ID on your server and verify the connection before showing success.",
+   "who": "agent",
+   "time": "20 minutes",
+   "blockerTip": "Creating an auth config alone does not change a session. If you do not pass its ID, the session still uses managed auth. For managed OAuth, use link or session authorize, not the retired managed initiate path."
+  }
+ ],
+ "timeline": [
+  {
+   "stage": "Managed auth test",
+   "wait": "30 to 60 minutes",
+   "note": "Fastest path, no provider app needed."
+  },
+  {
+   "stage": "Provider app, for custom only",
+   "wait": "30 minutes plus provider review",
+   "note": "Provider approval is separate from Composio."
+  },
+  {
+   "stage": "Custom auth config",
+   "wait": "15 minutes",
+   "note": "Create, copy the ac_ ID, and pass it to a session."
+  },
+  {
+   "stage": "Connection test",
+   "wait": "15 minutes",
+   "note": "Verify one real connection before showing success."
+  }
+ ],
+ "checklist": [
+  {
+   "item": "Managed auth tested first, custom only if needed",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "Project API key stored server side as COMPOSIO_API_KEY",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "Provider redirect URI exactly matches the Composio callback",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "Auth config created, with ac_ ID copied",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "Auth config ID passed to the session, keyed by toolkit",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "One real connection verified",
+   "status": "required",
+   "who": "agent"
+  }
+ ],
+ "blockers": [
+  {
+   "blocker": "redirect_uri_mismatch",
+   "fix": "Set https://backend.composio.dev/api/v3/toolkits/auth/callback exactly in the provider app and in the auth config. Do not guess a different URL."
+  },
+  {
+   "blocker": "Custom config ignored in a session",
+   "fix": "Pass its ID in authConfigs for that toolkit. Creating it alone does not switch a session to custom."
+  },
+  {
+   "blocker": "Managed initiate path retired",
+   "fix": "For managed OAuth, use link or session authorize. Initiate remains for custom auth configs."
+  },
+  {
+   "blocker": "Provider approval still pending",
+   "fix": "Composio approval is not provider approval. Complete the provider review separately."
+  }
+ ],
+ "agentCan": [
+  "Draft the session code with authConfigs",
+  "Draft a connection test plan",
+  "List when managed vs custom applies"
+ ],
+ "humanMust": [
+  "Create the Composio project and API key",
+  "Register the provider app, if custom",
+  "Create the auth config",
+  "Test one real connection"
+ ],
+ "sources": [
+  "https://docs.composio.dev/docs/auth-configuration/custom-auth-configs",
+  "https://docs.composio.dev/docs/authentication/programmatic-auth-configs",
+  "https://docs.composio.dev/docs/authentication/white-labeling-authentication"
+ ],
+ "tested": "Official Composio auth config docs checked on 2026-10-31. No Composio account, project, or auth config was created for this guide.",
+ "notVerified": [
+  "Exact current dashboard layout, which can change",
+  "Current Composio pricing",
+  "A specific toolkit auth scheme, which varies by toolkit"
+ ],
+ "confidence": "Medium",
+ "managedAppNote": "Managed auth is the default in this guide. Custom auth is the exception, for branding, custom scopes, dedicated quota, a custom instance, or no managed auth.",
+ "nextStep": "Test managed auth for one toolkit first, then create one custom auth config only if you have a clear reason, and test one real connection.",
+ "guideType": "full"
+}

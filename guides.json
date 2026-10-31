@@ -1,1403 +1,1859 @@
 {
-  "guides": [
+ "guides": [
+  {
+   "accountNeeded": "Free GitHub account",
+   "agentCan": [
+    "Draft the app name and description",
+    "List minimum scopes for a feature",
+    "Draft the authorize URL and token exchange code",
+    "Draft a test plan"
+   ],
+   "approvalWait": "None for standard OAuth app registration. Approval is not a separate stage for basic scopes.",
+   "blockers": [
     {
-      "accountNeeded": "Free GitHub account",
-      "agentCan": [
-        "Draft the app name and description",
-        "List minimum scopes for a feature",
-        "Draft the authorize URL and token exchange code",
-        "Draft a test plan"
-      ],
-      "approvalWait": "None for standard OAuth app registration. Approval is not a separate stage for basic scopes.",
-      "blockers": [
-        {
-          "blocker": "Callback URL mismatch",
-          "fix": "Copy the exact callback URL from the app settings into your authorize request, including host and port, and check path prefix rules."
-        },
-        {
-          "blocker": "Token has fewer scopes than expected",
-          "fix": "Users can edit scopes on consent. Check the token scopes returned and handle a reduced scope gracefully."
-        },
-        {
-          "blocker": "Confusing GitHub App vs OAuth app",
-          "fix": "GitHub Apps use fine-grained permissions, not scopes in the authorize request. Pick OAuth app only if you specifically need the OAuth app model."
-        }
-      ],
-      "category": "Developer tools",
-      "checklist": [
-        {
-          "item": "Application name, homepage URL, and callback URL are correct",
-          "status": "required",
-          "who": "human"
-        },
-        {
-          "item": "Client secret stored securely, not in code or a public repo",
-          "status": "required",
-          "who": "human"
-        },
-        {
-          "item": "Scopes are the minimum needed for the agent feature",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "State check on the OAuth return",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Privacy policy URL",
-          "status": "optional",
-          "who": "human"
-        },
-        {
-          "item": "Business verification",
-          "status": "not_applicable",
-          "who": "human"
-        }
-      ],
-      "confidence": "Medium",
-      "consoleName": "GitHub Developer settings",
-      "consoleUrl": "https://github.com/settings/developers",
-      "cost": "Free to register",
-      "difficulty": "Easy",
-      "difficultyWhy": "Registering an OAuth app is free and immediate for basic use, with no separate approval wait for standard scopes.",
-      "guideType": "full",
-      "humanMust": [
-        "Sign in to GitHub and create the app",
-        "Generate and store the client secret",
-        "Test consent with a real account",
-        "Respond if GitHub flags the app"
-      ],
-      "id": "github",
-      "managedAppNote": "If you use a managed OAuth directory that already covers GitHub, you may not need your own app. Register your own app when you need your own client ID, scopes, or branding.",
-      "name": "GitHub",
-      "nextStep": "Create the OAuth app in GitHub Developer settings and add your exact callback URL, then test consent with your own account.",
-      "notVerified": [
-        "Exact current GitHub settings page layout, which can change",
-        "Any GitHub App review path, which is a different product from OAuth apps"
-      ],
-      "setupTime": "30 to 60 minutes",
-      "sources": [
-        "https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps",
-        "https://docs.github.com/enterprise/2.16/developer/apps/building-oauth-apps/understanding-scopes-for-oauth-apps/"
-      ],
-      "steps": [
-        {
-          "blockerTip": "The callback URL must match exactly, including host, port, and path prefix rules. A mismatch is the most common first failure.",
-          "detail": "In Developer settings, choose OAuth Apps, then New OAuth App. Add an application name, homepage URL, and authorization callback URL.",
-          "time": "10 minutes",
-          "title": "Create the OAuth app",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Treat a leaked secret as compromised. Regenerate it and rotate any tokens made with it.",
-          "detail": "Copy the client ID and generate a client secret. Store the secret securely, never in client code or in a public repo.",
-          "time": "5 minutes",
-          "title": "Save the client ID and client secret",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Asking for repo when you only need public data will scare users and reviewers, even if no formal approval is required.",
-          "detail": "Request only the scopes your agent actually uses, for example read:user for profile data or repo only if private repo access is truly needed. Scopes limit access, they do not grant more than the user already has.",
-          "time": "10 minutes",
-          "title": "Choose the minimum scopes",
-          "who": "agent"
-        },
-        {
-          "blockerTip": "Always check the state value on return. Skipping it leaves the flow open to forgery.",
-          "detail": "Redirect the user to github.com/login/oauth/authorize with client_id, redirect_uri, scope, and a random state value. Exchange the returned code for an access token, then call the API with that token.",
-          "time": "20 minutes",
-          "title": "Build the authorization flow",
-          "who": "agent"
-        },
-        {
-          "blockerTip": "If the consent screen shows extra scopes, fix the authorize URL, not the app settings alone.",
-          "detail": "Authorize the app with a test account, confirm the consent screen shows only the scopes you requested, and confirm a token works for one real API call.",
-          "time": "10 minutes",
-          "title": "Test with your own account",
-          "who": "human"
-        }
-      ],
-      "tested": "Docs read on 2026-10-31 from GitHub Docs search results. No account sign-in or app creation was completed for this guide.",
-      "timeline": [
-        {
-          "note": "App is created as soon as you submit the form.",
-          "stage": "Create app",
-          "wait": "Immediate"
-        },
-        {
-          "note": "No separate approval stage for standard OAuth app use.",
-          "stage": "Test with users",
-          "wait": "Immediate"
-        },
-        {
-          "note": "This is not a normal approval wait. It only happens after reported abuse or misuse.",
-          "stage": "If GitHub suspends the app for abuse",
-          "wait": "Unknown, case by case"
-        }
-      ]
+     "blocker": "Callback URL mismatch",
+     "fix": "Copy the exact callback URL from the app settings into your authorize request, including host and port, and check path prefix rules."
     },
     {
-      "accountNeeded": "Slack workspace where you can create and install apps",
-      "agentCan": [
-        "Draft scope lists for a feature",
-        "Draft redirect URLs and install links",
-        "Draft token exchange code",
-        "Draft a test plan"
-      ],
-      "approvalWait": "None for installing in your own workspace. Public distribution and Slack Marketplace listing can add review time, which varies and is not published as a single fixed number.",
-      "blockers": [
-        {
-          "blocker": "Redirect URL mismatch on install",
-          "fix": "Compare the URL in the install link, the app settings, and your server route character by character."
-        },
-        {
-          "blocker": "Scope conflict with Sign in with Slack",
-          "fix": "Split the flows. Do not combine Sign in with Slack user scopes with other scopes in one authorize request."
-        },
-        {
-          "blocker": "App works in your workspace but not in another",
-          "fix": "Check distribution settings and whether the other workspace admin approved the install. A private test install does not prove public distribution works."
-        }
-      ],
-      "category": "Communication",
-      "checklist": [
-        {
-          "item": "App name and workspace are correct",
-          "status": "required",
-          "who": "human"
-        },
-        {
-          "item": "Redirect URL saved and matches the code exactly",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Bot scopes and user scopes are separate and minimal",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Client ID, client secret, and signing secret stored securely",
-          "status": "required",
-          "who": "human"
-        },
-        {
-          "item": "Test install completed in a real workspace",
-          "status": "required",
-          "who": "human"
-        },
-        {
-          "item": "Distribution description and support contact, for public use",
-          "status": "optional",
-          "who": "human"
-        }
-      ],
-      "confidence": "Medium",
-      "consoleName": "Slack API apps dashboard",
-      "consoleUrl": "https://api.slack.com/apps",
-      "cost": "Free to register",
-      "difficulty": "Medium",
-      "difficultyWhy": "Setup is quick, but distribution, workspace install rules, and scope choices make the full launch harder than a single workspace test.",
-      "guideType": "full",
-      "humanMust": [
-        "Create the app and pick the workspace",
-        "Copy and store secrets",
-        "Install and approve scopes in Slack",
-        "Submit for public distribution if needed"
-      ],
-      "id": "slack",
-      "managedAppNote": "If a managed directory already covers Slack, use it for a first version. Register your own app when you need your own scopes, bot identity, or distribution.",
-      "name": "Slack",
-      "nextStep": "Create a blank Slack app in your development workspace, add your exact redirect URL, then install it and test one API call.",
-      "notVerified": [
-        "Current Slack Marketplace review time, which is not published as a single fixed number",
-        "Exact current Slack dashboard layout"
-      ],
-      "setupTime": "1 to 2 hours",
-      "sources": [
-        "https://docs.slack.dev/authentication/installing-with-oauth/",
-        "https://docs.slack.dev/authentication/authorizing-with-postman/",
-        "https://docs.slack.dev/tools/bolt-js/concepts/authenticating-oauth/"
-      ],
-      "steps": [
-        {
-          "blockerTip": "Pick the right workspace first. Installing later in a different workspace is a separate install.",
-          "detail": "Create a blank app, give it a name, and pick a development workspace.",
-          "time": "10 minutes",
-          "title": "Create the Slack app",
-          "who": "human"
-        },
-        {
-          "blockerTip": "The signing secret is separate from the client secret. Do not swap them.",
-          "detail": "Find these under Basic Information, App Credentials. Store them securely.",
-          "time": "5 minutes",
-          "title": "Copy client ID, client secret, and signing secret",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Redirect URLs must match exactly. A trailing slash difference can break the install.",
-          "detail": "Under OAuth and Permissions, add your exact redirect URL, for example https://example.com/slack/oauth_redirect, and save it.",
-          "time": "10 minutes",
-          "title": "Add redirect URLs",
-          "who": "agent"
-        },
-        {
-          "blockerTip": "Do not mix Sign in with Slack scopes with other scopes in the same flow. They need separate flows.",
-          "detail": "Add bot scopes under Scopes, for example channels:read and chat:write, and user scopes separately if the agent acts as a user. Keep the list minimal.",
-          "time": "20 minutes",
-          "title": "Choose bot scopes and user scopes separately",
-          "who": "agent"
-        },
-        {
-          "blockerTip": "Bot tokens start with xoxb. If you expected a user token, check whether you requested user scopes.",
-          "detail": "Install the app, approve the scopes shown, exchange the code at slack.com/api/oauth.v2.access for a token, and make one real API call.",
-          "time": "20 minutes",
-          "title": "Install and test in your workspace",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Requesting broad scopes with no clear use in the app description is a common reason installs and listings get questioned.",
-          "detail": "If other workspaces will install it, prepare distribution settings, a clear app description, and a support contact. Public listing review is a separate step from a private install.",
-          "time": "30 minutes or more",
-          "title": "Prepare for distribution if you go public",
-          "who": "human"
-        }
-      ],
-      "tested": "Docs read on 2026-10-31 from Slack Developer Docs search results. No Slack workspace sign-in or app creation was completed for this guide.",
-      "timeline": [
-        {
-          "note": "No approval wait for your own workspace install.",
-          "stage": "Create app and install in your workspace",
-          "wait": "Immediate"
-        },
-        {
-          "note": "Treat this as unknown until Slack gives a review response. Do not promise a date to users.",
-          "stage": "Public distribution or Marketplace review",
-          "wait": "Varies, not published as one fixed number"
-        }
-      ]
+     "blocker": "Token has fewer scopes than expected",
+     "fix": "Users can edit scopes on consent. Check the token scopes returned and handle a reduced scope gracefully."
     },
     {
-      "accountNeeded": "Google Cloud account with a Cloud project",
-      "agentCan": [
-        "Classify scopes and draft justifications",
-        "Draft consent screen text and privacy policy outline",
-        "Draft a verification submission checklist",
-        "Draft a demo video script"
-      ],
-      "approvalWait": "Brand verification typically 2 to 3 business days if branding changed, sensitive scope verification can take up to around 10 days after a complete submission in some Google guidance, and restricted scope verification can take several weeks, plus a security assessment. Treat all of these as ranges, not guarantees.",
-      "blockers": [
-        {
-          "blocker": "Unverified app warning and 100 user cap",
-          "fix": "Complete verification for production use. The warning and cap are expected in Testing mode for sensitive or restricted scopes."
-        },
-        {
-          "blocker": "Scope list in code does not match the consent screen declaration",
-          "fix": "List every scope from code, then make the declaration match exactly. Trimming a scope from the declaration that code still requests will fail review."
-        },
-        {
-          "blocker": "Demo video does not show a scope in use",
-          "fix": "Re-record with that exact feature, with the same app name and branding as the submission."
-        },
-        {
-          "blocker": "Restricted scope needs a security assessment",
-          "fix": "Budget for assessment time and cost separately, and consider whether a narrower sensitive scope can ship first."
-        }
-      ],
-      "category": "Productivity",
-      "checklist": [
-        {
-          "item": "Cloud project and only the APIs you need are enabled",
-          "status": "required",
-          "who": "human"
-        },
-        {
-          "item": "Consent screen branding matches the real app exactly",
-          "status": "required",
-          "who": "human"
-        },
-        {
-          "item": "Privacy policy and homepage URLs are live and accurate",
-          "status": "required",
-          "who": "human"
-        },
-        {
-          "item": "Redirect URIs match the code exactly",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Every scope classified as non-sensitive, sensitive, or restricted",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Scope justifications written for each sensitive or restricted scope",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Demo video shows the full consent flow and each scope in use",
-          "status": "required",
-          "who": "human"
-        },
-        {
-          "item": "Test users added and full flow tested in Testing mode",
-          "status": "required",
-          "who": "human"
-        },
-        {
-          "item": "Third party security assessment planned, for restricted scopes with server access",
-          "status": "required",
-          "who": "human"
-        }
-      ],
-      "confidence": "Medium",
-      "consoleName": "Google Cloud Console, APIs and Services, OAuth consent screen",
-      "consoleUrl": "https://console.cloud.google.com/apis/credentials",
-      "cost": "Free to register. A third party security assessment for restricted scopes can be paid, amount varies by assessor and is not stated here.",
-      "difficulty": "Medium to Hard",
-      "difficultyWhy": "Basic setup is fast, but sensitive and restricted scopes trigger verification, a demo video, and in restricted cases a third party security assessment.",
-      "guideType": "full",
-      "humanMust": [
-        "Create the Cloud project and consent screen",
-        "Record the demo video",
-        "Submit for verification",
-        "Book and complete a security assessment if required",
-        "Reply to reviewer questions"
-      ],
-      "id": "google",
-      "managedAppNote": "If a managed directory already covers the Google scopes you need, use it for a first version. Register your own app when you need your own branding, client ID, or restricted scopes.",
-      "name": "Google",
-      "nextStep": "Classify your Google scopes first, then configure the consent screen with matching branding, and test in Testing mode before you submit for verification.",
-      "notVerified": [
-        "Exact current Google Cloud Console layout",
-        "Exact assessment cost, which varies by assessor",
-        "Exact review time for a specific app, which varies by submission quality"
-      ],
-      "setupTime": "2 to 4 hours for basic setup, plus 1 to 3 days to prepare a clean verification submission",
-      "sources": [
-        "https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification"
-      ],
-      "steps": [
-        {
-          "blockerTip": "Enabling every Google API at once makes scope review harder later. Enable only what the feature uses.",
-          "detail": "Create a project, enable only the APIs your agent will call, for example Gmail, Drive, or Calendar APIs.",
-          "time": "20 minutes",
-          "title": "Create a Cloud project and enable the APIs you need",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Branding mismatches are a common verification failure. The name, logo, and URLs on screen must match the real app.",
-          "detail": "Choose External for outside users or Internal for your own organization only. Add app name, support email, homepage, and privacy policy URLs that match the real app.",
-          "time": "30 minutes",
-          "title": "Configure the OAuth consent screen",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Redirect URIs must match exactly. Test with the exact URI your code uses.",
-          "detail": "Create a Web application client, add your exact authorized redirect URIs, and store the client ID and secret securely.",
-          "time": "15 minutes",
-          "title": "Create OAuth client credentials and redirect URIs",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Adding a new sensitive or restricted scope later requires a new verification request. Get the scope list right before you submit.",
-          "detail": "List every scope your code requests, then check Google's classification: non-sensitive, sensitive, or restricted. For example, full Gmail or Drive content is restricted, while some narrower scopes are sensitive. Do not request a broad scope if a narrower one works.",
-          "time": "30 minutes",
-          "title": "Classify every scope before you request it",
-          "who": "agent"
-        },
-        {
-          "blockerTip": "Unverified apps show a warning and are capped at about 100 new users for sensitive or restricted scopes. That cap is a signal you still need verification for production.",
-          "detail": "In Testing mode, add test users, run the full consent flow, and confirm the consent screen shows the correct app name, scopes, and client ID in the browser address bar.",
-          "time": "30 minutes",
-          "title": "Test in Testing mode with test users",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Record the video with the same app name and branding as the submission, and show each scope actually being used. A generic demo is a common rejection reason.",
-          "detail": "For sensitive scopes, prepare scope justifications, a demo video in English showing the full consent flow and the feature using each scope, and accurate branding. For restricted scopes, plan for a third party security assessment as well.",
-          "time": "1 to 3 days",
-          "title": "Prepare the verification submission",
-          "who": "agent"
-        },
-        {
-          "blockerTip": "Changing scopes or consent screen branding after submission can require a new verification request. Freeze the scope list during review.",
-          "detail": "Submit for brand verification first if needed, then for scope verification. Answer reviewer questions quickly and with the exact scope list from your code.",
-          "time": "Ongoing during review",
-          "title": "Submit and respond to reviewer questions",
-          "who": "human"
-        }
-      ],
-      "tested": "Docs read on 2026-10-31 from Google Developers search results. No Google Cloud sign-in, project creation, or verification submission was completed for this guide.",
-      "timeline": [
-        {
-          "note": "Source: Google restricted scope verification guidance, summarized in search results on 2026-10-31.",
-          "stage": "Brand verification, if branding changed",
-          "wait": "Typically 2 to 3 business days"
-        },
-        {
-          "note": "Treat as a range. Clean submissions move faster, questions add rounds.",
-          "stage": "Sensitive scope verification, after a complete submission",
-          "wait": "Up to around 10 days in some Google guidance, varies with back and forth"
-        },
-        {
-          "note": "Source: Google guidance that restricted verification can potentially take several weeks. Assessment time is separate and assessor dependent.",
-          "stage": "Restricted scope verification, plus security assessment",
-          "wait": "Several weeks, plus assessment scheduling"
-        },
-        {
-          "note": "Fix the exact issue named by the reviewer, do not resubmit unchanged.",
-          "stage": "If rejected",
-          "wait": "Additional round, timeline resets in practice"
-        }
-      ]
-    },
-    {
-      "accountNeeded": "Meta developer account and, for Advanced Access, a Meta Business account",
-      "agentCan": [
-        "Draft permission lists from code",
-        "Draft use case descriptions",
-        "Draft screen recording scripts",
-        "Draft an App Review submission checklist"
-      ],
-      "approvalWait": "Varies by permission and by review round. No single published fixed timeline was confirmed for this guide. Treat any timeline you see elsewhere as unverified unless Meta publishes it for that permission.",
-      "blockers": [
-        {
-          "blocker": "Reviewers cannot get into the app",
-          "fix": "Provide a working test account, clear login steps, and a feature that works without extra setup."
-        },
-        {
-          "blocker": "Permission requested but not shown in use",
-          "fix": "Re-record showing that exact permission in that exact feature, and make a real API call with it before resubmission."
-        },
-        {
-          "blocker": "Business Verification blocked",
-          "fix": "Check legal name, address, phone, and document type against Meta's current Business Verification requirements, and resubmit with a matching document."
-        },
-        {
-          "blocker": "Team can use it but outside users cannot",
-          "fix": "That is Standard Access. You still need Advanced Access and App Review for outside users."
-        }
-      ],
-      "category": "Social",
-      "checklist": [
-        {
-          "item": "1024 by 1024 icon, privacy policy URL, terms URL, category, and contact are complete",
-          "status": "required",
-          "who": "human"
-        },
-        {
-          "item": "App connected to a verified business, for Advanced Access",
-          "status": "required",
-          "who": "human"
-        },
-        {
-          "item": "Every permission listed is actually called by the code",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "At least one successful API call per permission, recent",
-          "status": "required",
-          "who": "human"
-        },
-        {
-          "item": "Use case description written per permission",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Screen recording per permission, showing it in use",
-          "status": "required",
-          "who": "human"
-        },
-        {
-          "item": "Test account reviewers can use, with access to the feature",
-          "status": "required",
-          "who": "human"
-        },
-        {
-          "item": "Data handling answers prepared, if Meta asks them",
-          "status": "optional",
-          "who": "human"
-        }
-      ],
-      "confidence": "Low to Medium",
-      "consoleName": "Meta for Developers, My Apps",
-      "consoleUrl": "https://developers.facebook.com/apps",
-      "cost": "Free to register. Business documents and any legal costs are separate and vary.",
-      "difficulty": "Hard",
-      "difficultyWhy": "Public use requires Advanced Access for each permission, plus Business Verification, use case descriptions, and screen recordings that reviewers actually test.",
-      "guideType": "full",
-      "humanMust": [
-        "Create the app and Business account",
-        "Complete Business Verification",
-        "Make real API calls",
-        "Record screen recordings",
-        "Submit for App Review and reply to reviewers"
-      ],
-      "id": "meta",
-      "managedAppNote": "If a managed directory already covers the Meta permissions you need, use it first. Register your own app when you need your own permissions, Pages, or Instagram business access.",
-      "name": "Meta",
-      "nextStep": "Complete Basic settings and start Business Verification early, then list only the permissions your code actually calls.",
-      "notVerified": [
-        "Exact current Meta App Review timeline, which was not confirmed from an official Meta page in this check",
-        "Exact current Meta dashboard layout and document list",
-        "Whether a specific permission requires Business Verification in your case"
-      ],
-      "setupTime": "3 to 6 hours for basic setup, plus 1 to 5 days to prepare a clean App Review submission",
-      "sources": [
-        "https://socialift.uz/en/blog/meta-app-review",
-        "https://www.loginradius.com/docs/authentication/identity-providers/social-login/app-reviews/facebook-app-review"
-      ],
-      "steps": [
-        {
-          "blockerTip": "Meta shows the privacy policy URL to users in login dialogs. A dead or mismatched policy URL is an easy rejection.",
-          "detail": "Create an app, add a 1024 by 1024 icon, privacy policy URL, terms URL, category, app purpose, and a primary contact.",
-          "time": "30 minutes",
-          "title": "Create the app and complete Basic settings",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Start Business Verification early. It can block Advanced Access even if your code is ready.",
-          "detail": "Connect the app to a verified business. Business Verification checks legal name, address or phone, and supporting documents, depending on the path Meta shows you.",
-          "time": "1 to 5 days, varies",
-          "title": "Connect a Business account and complete Business Verification",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Every permission requested from an outside user needs Advanced Access and App Review. Do not request a permission you do not actually call.",
-          "detail": "Add only the products you need, for example Facebook Login or Instagram, and list the exact permissions your code calls, for example pages_show_list or instagram_basic, depending on your feature.",
-          "time": "30 minutes",
-          "title": "Add products and permissions, one permission at a time",
-          "who": "agent"
-        },
-        {
-          "blockerTip": "Reviewers test the app itself. If they cannot get in, or cannot see a permission in use, that permission can be rejected.",
-          "detail": "Before submission, make at least one successful API call with each permission you will request, within the recent window Meta requires. Keep a record of what you called.",
-          "time": "30 minutes",
-          "title": "Make a real API call with each permission",
-          "who": "human"
-        },
-        {
-          "blockerTip": "A generic app tour is not enough. Show the specific permission, in the specific feature, end to end.",
-          "detail": "For each permission, write a clear use case: why you need it and how it is used in the app. Record a screen recording showing that permission in use, with a test account reviewers can use.",
-          "time": "1 to 3 days",
-          "title": "Prepare use case descriptions and screen recordings",
-          "who": "agent"
-        },
-        {
-          "blockerTip": "Standard Access is automatic for your own team, but it does not allow requesting permissions from outside users. Do not mistake team access for public approval.",
-          "detail": "Submit Permissions and Features for review. If one permission is rejected, fix only that permission and resubmit it. Do not resubmit unchanged.",
-          "time": "Ongoing during review",
-          "title": "Submit for App Review and respond per permission",
-          "who": "human"
-        }
-      ],
-      "tested": "Docs read on 2026-10-31 from third party guides summarizing Meta App Review, not from Meta official docs directly in this check. No Meta developer sign-in, app creation, or App Review submission was completed for this guide.",
-      "timeline": [
-        {
-          "note": "App creation itself is immediate.",
-          "stage": "Create app and Basic settings",
-          "wait": "Immediate"
-        },
-        {
-          "note": "Start early. Document and contact checks can add rounds.",
-          "stage": "Business Verification",
-          "wait": "Varies, days in many cases, not confirmed as a fixed number here"
-        },
-        {
-          "note": "Treat as unknown until Meta responds. A clean submission with real calls and recordings moves faster.",
-          "stage": "App Review, per permission",
-          "wait": "Varies by permission and review round, not confirmed as a fixed number here"
-        },
-        {
-          "note": "Fix the exact issue, re-record if needed, and resubmit that permission.",
-          "stage": "If a permission is rejected",
-          "wait": "Additional round for that permission"
-        }
-      ]
-    },
-    {
-      "accountNeeded": "Microsoft Entra account with app registration access",
-      "agentCan": [
-        "Draft permission lists",
-        "Draft redirect URIs"
-      ],
-      "approvalWait": "Varies. Admin consent can add days in managed tenants. No fixed timeline confirmed here.",
-      "blockers": [
-        {
-          "blocker": "Admin consent required",
-          "fix": "Ask the tenant admin for consent for the exact permissions, with a clear use description."
-        }
-      ],
-      "category": "Productivity",
-      "checklist": [
-        {
-          "item": "Redirect URIs match the code",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Minimum API permissions only",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Admin consent obtained, if required",
-          "status": "required",
-          "who": "human"
-        }
-      ],
-      "confidence": "Low",
-      "consoleName": "Microsoft Entra admin center, App registrations",
-      "consoleUrl": "https://entra.microsoft.com/",
-      "cost": "Free to register",
-      "difficulty": "Medium",
-      "difficultyWhy": "Summary card only. Full guide can be generated live. Microsoft Entra app registration, redirect URIs, and API permissions vary by tenant and admin consent.",
-      "guideType": "summary",
-      "humanMust": [
-        "Register the app",
-        "Get admin consent if required"
-      ],
-      "id": "microsoft",
-      "managedAppNote": "Use a managed app first if it covers your Microsoft scopes. Register your own app for your own branding or tenant-specific permissions.",
-      "name": "Microsoft",
-      "nextStep": "Use live generation to expand this summary into a full step by step guide from official Microsoft docs.",
-      "notVerified": [
-        "All details in this summary card"
-      ],
-      "setupTime": "1 to 3 hours, plus admin consent time if required",
-      "sources": [],
-      "steps": [
-        {
-          "blockerTip": "Redirect URIs and account type, single tenant vs multi tenant, must match your agent use.",
-          "detail": "Create an app registration, add redirect URIs, and note the client ID and tenant ID.",
-          "time": "20 minutes",
-          "title": "Register the app in Entra",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Admin consent is a common blocker in managed tenants. Ask the tenant admin early.",
-          "detail": "Add delegated permissions for the APIs you call, then get admin consent if your tenant requires it.",
-          "time": "30 minutes or more",
-          "title": "Add API permissions and admin consent",
-          "who": "human"
-        }
-      ],
-      "tested": "Summary card only, not verified against official docs in this build.",
-      "timeline": [
-        {
-          "note": "Summary only.",
-          "stage": "Register and test",
-          "wait": "Immediate to hours"
-        },
-        {
-          "note": "Not confirmed as a fixed number here.",
-          "stage": "Admin consent, if required",
-          "wait": "Varies by tenant"
-        }
-      ]
-    },
-    {
-      "accountNeeded": "Notion account with a workspace",
-      "agentCan": [
-        "Draft capabilities list"
-      ],
-      "approvalWait": "None for private testing in your workspace. Public distribution review varies and is not confirmed here.",
-      "blockers": [
-        {
-          "blocker": "Integration cannot see a page",
-          "fix": "Share that page with the integration from the page menu."
-        }
-      ],
-      "category": "Productivity",
-      "checklist": [
-        {
-          "item": "Redirect URI matches the code",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Capabilities are minimum needed",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Test page shared with the integration",
-          "status": "required",
-          "who": "human"
-        }
-      ],
-      "confidence": "Low",
-      "consoleName": "Notion integrations dashboard",
-      "consoleUrl": "https://www.notion.so/my-account/integrations",
-      "cost": "Free to register",
-      "difficulty": "Easy to Medium",
-      "difficultyWhy": "Summary card only. Notion public integrations use OAuth, with workspace sharing and capability choices that affect what an agent can read or write.",
-      "guideType": "summary",
-      "humanMust": [
-        "Create the integration",
-        "Share test pages"
-      ],
-      "id": "notion",
-      "managedAppNote": "Use a managed app first if it covers Notion. Register your own integration for your own branding or capabilities.",
-      "name": "Notion",
-      "nextStep": "Use live generation to expand this summary into a full step by step guide from official Notion docs.",
-      "notVerified": [
-        "All details in this summary card"
-      ],
-      "setupTime": "30 to 90 minutes",
-      "sources": [],
-      "steps": [
-        {
-          "blockerTip": "Capabilities decide read vs write access. Choose the minimum.",
-          "detail": "Create an integration, set redirect URI, and choose capabilities.",
-          "time": "20 minutes",
-          "title": "Create a public integration",
-          "who": "human"
-        },
-        {
-          "blockerTip": "An integration cannot see a page until that page is shared with it.",
-          "detail": "Share a test page with the integration, complete OAuth, and test one read or write call.",
-          "time": "20 minutes",
-          "title": "Share pages with the integration and test",
-          "who": "human"
-        }
-      ],
-      "tested": "Summary card only, not verified against official docs in this build.",
-      "timeline": [
-        {
-          "note": "Summary only.",
-          "stage": "Create and test in your workspace",
-          "wait": "Immediate"
-        },
-        {
-          "note": "Not confirmed here.",
-          "stage": "Public distribution, if needed",
-          "wait": "Varies"
-        }
-      ]
-    },
-    {
-      "accountNeeded": "Salesforce org with Connected App access",
-      "agentCan": [
-        "Draft scope lists"
-      ],
-      "approvalWait": "Varies. AppExchange security review can take weeks and is not confirmed here.",
-      "blockers": [
-        {
-          "blocker": "Org admin blocks the Connected App",
-          "fix": "Ask the org admin to allow the Connected App and scopes for that org."
-        }
-      ],
-      "category": "Business",
-      "checklist": [
-        {
-          "item": "Callback URL matches the code",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Scopes are minimum needed",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Test org used before production",
-          "status": "required",
-          "who": "human"
-        }
-      ],
-      "confidence": "Low",
-      "consoleName": "Salesforce Setup, App Manager, Connected Apps",
-      "consoleUrl": "https://login.salesforce.com/",
-      "cost": "Free to register",
-      "difficulty": "Medium to Hard",
-      "difficultyWhy": "Summary card only. Salesforce Connected Apps, org settings, and security review for AppExchange can make this harder than a single org test.",
-      "guideType": "summary",
-      "humanMust": [
-        "Create the Connected App",
-        "Submit for security review if listing"
-      ],
-      "id": "salesforce",
-      "managedAppNote": "Use a managed app first if it covers Salesforce. Register your own Connected App for your own org or listing.",
-      "name": "Salesforce",
-      "nextStep": "Use live generation to expand this summary into a full step by step guide from official Salesforce docs.",
-      "notVerified": [
-        "All details in this summary card"
-      ],
-      "setupTime": "2 to 4 hours, plus security review time if listing publicly",
-      "sources": [],
-      "steps": [
-        {
-          "blockerTip": "Callback URL must match exactly.",
-          "detail": "Create a Connected App, add callback URL, and choose OAuth scopes.",
-          "time": "30 minutes",
-          "title": "Create a Connected App",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Test in a sandbox first, not production.",
-          "detail": "Complete OAuth in a test org and make one API call.",
-          "time": "30 minutes",
-          "title": "Test OAuth in a sandbox or dev org",
-          "who": "human"
-        }
-      ],
-      "tested": "Summary card only, not verified against official docs in this build.",
-      "timeline": [
-        {
-          "note": "Summary only.",
-          "stage": "Create and test in an org",
-          "wait": "Immediate to hours"
-        },
-        {
-          "note": "Summary only.",
-          "stage": "AppExchange security review, if listing",
-          "wait": "Varies, weeks in many cases, not confirmed here"
-        }
-      ]
-    },
-    {
-      "accountNeeded": "HubSpot developer account and a test account",
-      "agentCan": [
-        "Draft scope lists"
-      ],
-      "approvalWait": "None for private app testing. Public listing review varies and is not confirmed here.",
-      "blockers": [
-        {
-          "blocker": "Wrong app type for OAuth",
-          "fix": "Use a public app for OAuth user connections, not a private app token flow."
-        }
-      ],
-      "category": "Business",
-      "checklist": [
-        {
-          "item": "Redirect URL matches the code",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Scopes are minimum needed",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Test account used",
-          "status": "required",
-          "who": "human"
-        }
-      ],
-      "confidence": "Low",
-      "consoleName": "HubSpot developer account, Apps",
-      "consoleUrl": "https://developers.hubspot.com/",
-      "cost": "Free to register",
-      "difficulty": "Medium",
-      "difficultyWhy": "Summary card only. HubSpot private vs public apps, scopes, and redirect URLs affect setup, and public app listing adds review.",
-      "guideType": "summary",
-      "humanMust": [
-        "Create the app",
-        "Install in a test account"
-      ],
-      "id": "hubspot",
-      "managedAppNote": "Use a managed app first if it covers HubSpot. Register your own app for your own scopes or listing.",
-      "name": "HubSpot",
-      "nextStep": "Use live generation to expand this summary into a full step by step guide from official HubSpot docs.",
-      "notVerified": [
-        "All details in this summary card"
-      ],
-      "setupTime": "1 to 3 hours",
-      "sources": [],
-      "steps": [
-        {
-          "blockerTip": "Private apps use a different auth model. Use a public app for OAuth user connections.",
-          "detail": "Create an app, add redirect URL, and choose scopes.",
-          "time": "20 minutes",
-          "title": "Create a public app",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Test with a test account, not a production CRM.",
-          "detail": "Install the app in a test account, complete OAuth, and test one API call.",
-          "time": "20 minutes",
-          "title": "Install in a test account and test",
-          "who": "human"
-        }
-      ],
-      "tested": "Summary card only, not verified against official docs in this build.",
-      "timeline": [
-        {
-          "note": "Summary only.",
-          "stage": "Create and test",
-          "wait": "Immediate"
-        },
-        {
-          "note": "Not confirmed here.",
-          "stage": "Public listing, if needed",
-          "wait": "Varies"
-        }
-      ]
-    },
-    {
-      "accountNeeded": "Shopify Partner account and a dev store",
-      "agentCan": [
-        "Draft scope lists"
-      ],
-      "approvalWait": "None for a custom app in your own store. App Store review varies and is not confirmed here.",
-      "blockers": [
-        {
-          "blocker": "App cannot access store data",
-          "fix": "Check access scopes and whether the app is installed in that store."
-        }
-      ],
-      "category": "Business",
-      "checklist": [
-        {
-          "item": "Redirect URL matches the code",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Access scopes are minimum needed",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Dev store used for testing",
-          "status": "required",
-          "who": "human"
-        }
-      ],
-      "confidence": "Low",
-      "consoleName": "Shopify Partners dashboard, Apps",
-      "consoleUrl": "https://partners.shopify.com/",
-      "cost": "Free to register",
-      "difficulty": "Medium",
-      "difficultyWhy": "Summary card only. Shopify custom vs public apps, access scopes, and App Store review affect setup.",
-      "guideType": "summary",
-      "humanMust": [
-        "Create the app",
-        "Install in a dev store"
-      ],
-      "id": "shopify",
-      "managedAppNote": "Use a managed app first if it covers Shopify. Register your own app for your own scopes or listing.",
-      "name": "Shopify",
-      "nextStep": "Use live generation to expand this summary into a full step by step guide from official Shopify docs.",
-      "notVerified": [
-        "All details in this summary card"
-      ],
-      "setupTime": "1 to 3 hours, plus App Store review if listing",
-      "sources": [],
-      "steps": [
-        {
-          "blockerTip": "Scopes decide what store data the app can read or write.",
-          "detail": "Create an app, add redirect URL, and choose access scopes.",
-          "time": "20 minutes",
-          "title": "Create an app in Partners",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Test in a dev store, not a live merchant store.",
-          "detail": "Install in a dev store, complete OAuth, and test one API call.",
-          "time": "20 minutes",
-          "title": "Install in a dev store and test",
-          "who": "human"
-        }
-      ],
-      "tested": "Summary card only, not verified against official docs in this build.",
-      "timeline": [
-        {
-          "note": "Summary only.",
-          "stage": "Create and test in a dev store",
-          "wait": "Immediate"
-        },
-        {
-          "note": "Not confirmed here.",
-          "stage": "App Store review, if listing",
-          "wait": "Varies"
-        }
-      ]
-    },
-    {
-      "accountNeeded": "Zoom account with Marketplace access",
-      "agentCan": [
-        "Draft scope lists"
-      ],
-      "approvalWait": "None for private testing. Publish review varies and is not confirmed here.",
-      "blockers": [
-        {
-          "blocker": "Wrong app type",
-          "fix": "Use an OAuth Marketplace app for user connections."
-        }
-      ],
-      "category": "Communication",
-      "checklist": [
-        {
-          "item": "Redirect URL matches the code",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Scopes are minimum needed",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Test account used",
-          "status": "required",
-          "who": "human"
-        }
-      ],
-      "confidence": "Low",
-      "consoleName": "Zoom Marketplace, Build App",
-      "consoleUrl": "https://marketplace.zoom.us/",
-      "cost": "Free to register",
-      "difficulty": "Medium",
-      "difficultyWhy": "Summary card only. Zoom Marketplace apps, scopes, and publish review affect setup.",
-      "guideType": "summary",
-      "humanMust": [
-        "Create the app",
-        "Submit for publish if listing"
-      ],
-      "id": "zoom",
-      "managedAppNote": "Use a managed app first if it covers Zoom. Register your own app for your own scopes or listing.",
-      "name": "Zoom",
-      "nextStep": "Use live generation to expand this summary into a full step by step guide from official Zoom docs.",
-      "notVerified": [
-        "All details in this summary card"
-      ],
-      "setupTime": "1 to 3 hours, plus publish review if listing",
-      "sources": [],
-      "steps": [
-        {
-          "blockerTip": "Choose General vs Server-to-Server correctly. OAuth user connections need the OAuth app type.",
-          "detail": "Create an OAuth app, add redirect URL, and choose scopes.",
-          "time": "20 minutes",
-          "title": "Create a Marketplace app",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Test with a test Zoom account.",
-          "detail": "Complete OAuth in a test account and test one API call.",
-          "time": "20 minutes",
-          "title": "Test OAuth and one API call",
-          "who": "human"
-        }
-      ],
-      "tested": "Summary card only, not verified against official docs in this build.",
-      "timeline": [
-        {
-          "note": "Summary only.",
-          "stage": "Create and test",
-          "wait": "Immediate"
-        },
-        {
-          "note": "Not confirmed here.",
-          "stage": "Publish review, if listing",
-          "wait": "Varies"
-        }
-      ]
-    },
-    {
-      "accountNeeded": "Discord account",
-      "agentCan": [
-        "Draft scope lists"
-      ],
-      "approvalWait": "None for basic OAuth app testing. Verification for bots in many servers is separate and not confirmed here.",
-      "blockers": [
-        {
-          "blocker": "Redirect URI mismatch",
-          "fix": "Copy the exact redirect URI from the Developer Portal into your code."
-        }
-      ],
-      "category": "Communication",
-      "checklist": [
-        {
-          "item": "Redirect URIs match the code",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Scopes are minimum needed",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Client secret stored securely",
-          "status": "required",
-          "who": "human"
-        }
-      ],
-      "confidence": "Low",
-      "consoleName": "Discord Developer Portal",
-      "consoleUrl": "https://discord.com/developers/applications",
-      "cost": "Free to register",
-      "difficulty": "Easy to Medium",
-      "difficultyWhy": "Summary card only. Discord developer applications, OAuth2 redirect URIs, and scopes are straightforward for basic use, with bot permissions adding complexity.",
-      "guideType": "summary",
-      "humanMust": [
-        "Create the application",
-        "Test OAuth"
-      ],
-      "id": "discord",
-      "managedAppNote": "Use a managed app first if it covers Discord. Register your own application for your own bot or OAuth scopes.",
-      "name": "Discord",
-      "nextStep": "Use live generation to expand this summary into a full step by step guide from official Discord docs.",
-      "notVerified": [
-        "All details in this summary card"
-      ],
-      "setupTime": "30 to 90 minutes",
-      "sources": [],
-      "steps": [
-        {
-          "blockerTip": "Redirect URIs must match exactly.",
-          "detail": "Create an application, copy client ID and secret, and add redirect URIs under OAuth2.",
-          "time": "15 minutes",
-          "title": "Create an application",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Bot scope and permissions are separate from user OAuth scopes.",
-          "detail": "Choose scopes, for example identify, and test the OAuth flow with a test account.",
-          "time": "20 minutes",
-          "title": "Choose scopes and test OAuth",
-          "who": "human"
-        }
-      ],
-      "tested": "Summary card only, not verified against official docs in this build.",
-      "timeline": [
-        {
-          "note": "Summary only.",
-          "stage": "Create and test",
-          "wait": "Immediate"
-        }
-      ]
-    },
-    {
-      "accountNeeded": "LinkedIn developer account and a Company Page if required",
-      "agentCan": [
-        "Draft product and scope lists"
-      ],
-      "approvalWait": "Varies by product. Some products require access requests and review, not confirmed as a fixed number here.",
-      "blockers": [
-        {
-          "blocker": "Product not available",
-          "fix": "Check product access in the developer portal and request access with a clear use case."
-        }
-      ],
-      "category": "Social",
-      "checklist": [
-        {
-          "item": "Redirect URLs match the code",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Products and scopes match the feature",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Company Page linked, if required",
-          "status": "required",
-          "who": "human"
-        }
-      ],
-      "confidence": "Low",
-      "consoleName": "LinkedIn Developers, My Apps",
-      "consoleUrl": "https://www.linkedin.com/developers/apps",
-      "cost": "Free to register",
-      "difficulty": "Medium to Hard",
-      "difficultyWhy": "Summary card only. LinkedIn developer apps, products, and verification for some APIs can make access harder than basic sign in.",
-      "guideType": "summary",
-      "humanMust": [
-        "Create the app",
-        "Request product access"
-      ],
-      "id": "linkedin",
-      "managedAppNote": "Use a managed app first if it covers LinkedIn. Register your own app for your own products or Company Page access.",
-      "name": "LinkedIn",
-      "nextStep": "Use live generation to expand this summary into a full step by step guide from official LinkedIn docs.",
-      "notVerified": [
-        "All details in this summary card"
-      ],
-      "setupTime": "1 to 3 hours, plus product access time if required",
-      "sources": [],
-      "steps": [
-        {
-          "blockerTip": "Redirect URLs must match exactly.",
-          "detail": "Create an app, add redirect URLs, and note client ID and secret.",
-          "time": "20 minutes",
-          "title": "Create an app and add redirect URLs",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Some products are not available by default. Check product access before building on that API.",
-          "detail": "Request the products your feature needs, for example Sign In with LinkedIn, and check which products need extra access.",
-          "time": "30 minutes or more",
-          "title": "Request products and scopes",
-          "who": "human"
-        }
-      ],
-      "tested": "Summary card only, not verified against official docs in this build.",
-      "timeline": [
-        {
-          "note": "Summary only.",
-          "stage": "Create app and test sign in",
-          "wait": "Immediate to hours"
-        },
-        {
-          "note": "Not confirmed here.",
-          "stage": "Product access, if required",
-          "wait": "Varies"
-        }
-      ]
-    },
-    {
-      "accountNeeded": "Free Airtable account",
-      "agentCan": [
-        "Draft scope lists",
-        "Draft redirect URLs",
-        "Draft authorize and token exchange code",
-        "Draft a test plan"
-      ],
-      "approvalWait": "Unknown, no fixed approval timeline was confirmed in this check. Registration gives a Client ID and Client Secret for development use. Public distribution requirements were not confirmed from official Airtable pages in this check.",
-      "blockers": [
-        {
-          "blocker": "Redirect URL mismatch",
-          "fix": "Copy the exact redirect URL from the integration settings into your authorize request. Redirect URLs must be HTTPS unless using localhost, according to secondary guides."
-        },
-        {
-          "blocker": "Scope not granted for the feature",
-          "fix": "Check the scope checkboxes for the exact feature. Records, comments, schema, webhooks, and user email are separate scopes."
-        },
-        {
-          "blocker": "Client secret shown only once",
-          "fix": "Store the secret securely at generation time. If it is lost, generate a new secret and update your app."
-        },
-        {
-          "blocker": "Rate limit per base",
-          "fix": "Airtable rate limits are reported as 5 requests per second per base in secondary guides. Add backoff and retry handling for 429 responses."
-        }
-      ],
-      "category": "Productivity",
-      "checklist": [
-        {
-          "item": "Integration name and redirect URL are correct",
-          "status": "required",
-          "who": "human"
-        },
-        {
-          "item": "Scopes match the feature exactly",
-          "status": "required",
-          "who": "agent"
-        },
-        {
-          "item": "Client ID and Client Secret stored securely, not in code or a public repo",
-          "status": "required",
-          "who": "human"
-        },
-        {
-          "item": "Authorize flow tested with a real account",
-          "status": "required",
-          "who": "human"
-        },
-        {
-          "item": "Support email, privacy policy URL, and terms of service URL, for public use",
-          "status": "optional",
-          "who": "human"
-        }
-      ],
-      "confidence": "Medium",
-      "consoleName": "Airtable Developer hub, OAuth integrations",
-      "consoleUrl": "https://airtable.com/create/oauth",
-      "cost": "Free to register",
-      "difficulty": "Medium",
-      "difficultyWhy": "Registration is straightforward, but scope selection, redirect URL rules, and public distribution details make the full launch harder than a first test. Official Airtable pages are JavaScript rendered and were not fully extracted in this check, so secondary guides were used and are cited.",
-      "guideType": "full",
-      "humanMust": [
-        "Create the OAuth integration",
-        "Generate and store the client secret",
-        "Test consent with a real account",
-        "Add public details if distributing publicly"
-      ],
-      "id": "airtable",
-      "managedAppNote": "Check first whether a managed app already covers Airtable. Register your own app when you need your own client ID, scopes, or branding.",
-      "name": "Airtable",
-      "nextStep": "Register an OAuth integration at airtable.com/create/oauth, add your exact redirect URL, select only the scopes your feature needs, generate the client secret once, then test the authorize flow.",
-      "notVerified": [
-        "Exact current Airtable portal layout, which is JavaScript rendered",
-        "Public distribution approval timeline, not confirmed from official Airtable pages in this check",
-        "Exact webhook scope availability for your plan"
-      ],
-      "setupTime": "1 to 2 hours",
-      "sources": [
-        "https://nango.dev/docs/api-integrations/airtable/how-to-register-your-own-airtable-api-oauth-app",
-        "https://Formbricks.com/docs/self-hosting/configuration/integrations/airtable",
-        "https://airtable.com/developers/web/api/authentication"
-      ],
-      "steps": [
-        {
-          "blockerTip": "Redirect URLs must be HTTPS unless using localhost, according to secondary guides.",
-          "detail": "Go to the Airtable Developer hub, OAuth integrations, and click Register an OAuth integration. Add a name and your exact redirect URL.",
-          "time": "15 minutes",
-          "title": "Register an OAuth integration",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Client secret is shown only once. Store it securely at generation time.",
-          "detail": "Note the Client ID, then generate the client secret and store it securely, never in client code or a public repo.",
-          "time": "5 minutes",
-          "title": "Save the Client ID and Client Secret",
-          "who": "human"
-        },
-        {
-          "blockerTip": "Records, comments, schema, webhooks, and user email are separate scopes. Request only what the feature uses.",
-          "detail": "Select scopes for your feature, for example data.records:read and data.records:write for records, schema.bases:read for base structure, and user.email:read for user identity. Add webhook:manage only if webhooks are needed.",
-          "time": "20 minutes",
-          "title": "Choose minimum scopes",
-          "who": "agent"
-        },
-        {
-          "blockerTip": "Authorize endpoint is airtable.com/oauth2/v1/authorize and token endpoint is airtable.com/oauth2/v1/token, according to secondary guides. Confirm both on official docs before shipping.",
-          "detail": "Redirect the user to the authorize endpoint with client_id, redirect_uri, scope, and state. Exchange the returned code for an access token at the token endpoint, then call the API with that token.",
-          "time": "30 minutes",
-          "title": "Build the authorization flow",
-          "who": "agent"
-        },
-        {
-          "blockerTip": "If consent shows extra scopes, fix the authorize URL and scope checkboxes, not just the app settings alone.",
-          "detail": "Authorize with a test account, confirm the consent screen shows only the scopes you requested, and confirm a token works for one real API call, for example reading a record.",
-          "time": "20 minutes",
-          "title": "Test with your own account",
-          "who": "human"
-        }
-      ],
-      "tested": "Docs research on 2026-10-31 from Nango, Formbricks, and Pipedream scope lists, plus Airtable developer pages. Official Airtable pages are JavaScript rendered and were not fully extracted, so approval and distribution claims are marked Unknown. No account sign-in, app creation, or provider approval was completed for this guide.",
-      "timeline": [
-        {
-          "note": "Registration gives Client ID and Client Secret for development use, according to secondary guides.",
-          "stage": "Register integration",
-          "wait": "Immediate"
-        },
-        {
-          "note": "Test consent with your own account before distributing.",
-          "stage": "Test with users",
-          "wait": "Immediate to hours"
-        },
-        {
-          "note": "Not confirmed from official Airtable pages in this check. Do not promise a date.",
-          "stage": "Public distribution, if required",
-          "wait": "Unknown"
-        }
-      ]
+     "blocker": "Confusing GitHub App vs OAuth app",
+     "fix": "GitHub Apps use fine-grained permissions, not scopes in the authorize request. Pick OAuth app only if you specifically need the OAuth app model."
     }
-  ],
-  "schema": "guides-v1",
-  "updated": "2026-10-31"
+   ],
+   "category": "Developer tools",
+   "checklist": [
+    {
+     "item": "Application name, homepage URL, and callback URL are correct",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Client secret stored securely, not in code or a public repo",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Scopes are the minimum needed for the agent feature",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "State check on the OAuth return",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Privacy policy URL",
+     "status": "optional",
+     "who": "human"
+    },
+    {
+     "item": "Business verification",
+     "status": "not_applicable",
+     "who": "human"
+    }
+   ],
+   "confidence": "Medium",
+   "consoleName": "GitHub Developer settings",
+   "consoleUrl": "https://github.com/settings/developers",
+   "cost": "Free to register",
+   "difficulty": "Easy",
+   "difficultyWhy": "Registering an OAuth app is free and immediate for basic use, with no separate approval wait for standard scopes.",
+   "guideType": "full",
+   "humanMust": [
+    "Sign in to GitHub and create the app",
+    "Generate and store the client secret",
+    "Test consent with a real account",
+    "Respond if GitHub flags the app"
+   ],
+   "id": "github",
+   "managedAppNote": "If you use a managed OAuth directory that already covers GitHub, you may not need your own app. Register your own app when you need your own client ID, scopes, or branding.",
+   "name": "GitHub",
+   "nextStep": "Create the OAuth app in GitHub Developer settings and add your exact callback URL, then test consent with your own account.",
+   "notVerified": [
+    "Exact current GitHub settings page layout, which can change",
+    "Any GitHub App review path, which is a different product from OAuth apps"
+   ],
+   "setupTime": "30 to 60 minutes",
+   "sources": [
+    "https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps",
+    "https://docs.github.com/enterprise/2.16/developer/apps/building-oauth-apps/understanding-scopes-for-oauth-apps/"
+   ],
+   "steps": [
+    {
+     "blockerTip": "The callback URL must match exactly, including host, port, and path prefix rules. A mismatch is the most common first failure.",
+     "detail": "In Developer settings, choose OAuth Apps, then New OAuth App. Add an application name, homepage URL, and authorization callback URL.",
+     "time": "10 minutes",
+     "title": "Create the OAuth app",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Treat a leaked secret as compromised. Regenerate it and rotate any tokens made with it.",
+     "detail": "Copy the client ID and generate a client secret. Store the secret securely, never in client code or in a public repo.",
+     "time": "5 minutes",
+     "title": "Save the client ID and client secret",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Asking for repo when you only need public data will scare users and reviewers, even if no formal approval is required.",
+     "detail": "Request only the scopes your agent actually uses, for example read:user for profile data or repo only if private repo access is truly needed. Scopes limit access, they do not grant more than the user already has.",
+     "time": "10 minutes",
+     "title": "Choose the minimum scopes",
+     "who": "agent"
+    },
+    {
+     "blockerTip": "Always check the state value on return. Skipping it leaves the flow open to forgery.",
+     "detail": "Redirect the user to github.com/login/oauth/authorize with client_id, redirect_uri, scope, and a random state value. Exchange the returned code for an access token, then call the API with that token.",
+     "time": "20 minutes",
+     "title": "Build the authorization flow",
+     "who": "agent"
+    },
+    {
+     "blockerTip": "If the consent screen shows extra scopes, fix the authorize URL, not the app settings alone.",
+     "detail": "Authorize the app with a test account, confirm the consent screen shows only the scopes you requested, and confirm a token works for one real API call.",
+     "time": "10 minutes",
+     "title": "Test with your own account",
+     "who": "human"
+    }
+   ],
+   "tested": "Docs read on 2026-10-31 from GitHub Docs search results. No account sign-in or app creation was completed for this guide.",
+   "timeline": [
+    {
+     "note": "App is created as soon as you submit the form.",
+     "stage": "Create app",
+     "wait": "Immediate"
+    },
+    {
+     "note": "No separate approval stage for standard OAuth app use.",
+     "stage": "Test with users",
+     "wait": "Immediate"
+    },
+    {
+     "note": "This is not a normal approval wait. It only happens after reported abuse or misuse.",
+     "stage": "If GitHub suspends the app for abuse",
+     "wait": "Unknown, case by case"
+    }
+   ]
+  },
+  {
+   "accountNeeded": "Slack workspace where you can create and install apps",
+   "agentCan": [
+    "Draft scope lists for a feature",
+    "Draft redirect URLs and install links",
+    "Draft token exchange code",
+    "Draft a test plan"
+   ],
+   "approvalWait": "None for installing in your own workspace. Public distribution and Slack Marketplace listing can add review time, which varies and is not published as a single fixed number.",
+   "blockers": [
+    {
+     "blocker": "Redirect URL mismatch on install",
+     "fix": "Compare the URL in the install link, the app settings, and your server route character by character."
+    },
+    {
+     "blocker": "Scope conflict with Sign in with Slack",
+     "fix": "Split the flows. Do not combine Sign in with Slack user scopes with other scopes in one authorize request."
+    },
+    {
+     "blocker": "App works in your workspace but not in another",
+     "fix": "Check distribution settings and whether the other workspace admin approved the install. A private test install does not prove public distribution works."
+    }
+   ],
+   "category": "Communication",
+   "checklist": [
+    {
+     "item": "App name and workspace are correct",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Redirect URL saved and matches the code exactly",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Bot scopes and user scopes are separate and minimal",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Client ID, client secret, and signing secret stored securely",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Test install completed in a real workspace",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Distribution description and support contact, for public use",
+     "status": "optional",
+     "who": "human"
+    }
+   ],
+   "confidence": "Medium",
+   "consoleName": "Slack API apps dashboard",
+   "consoleUrl": "https://api.slack.com/apps",
+   "cost": "Free to register",
+   "difficulty": "Medium",
+   "difficultyWhy": "Setup is quick, but distribution, workspace install rules, and scope choices make the full launch harder than a single workspace test.",
+   "guideType": "full",
+   "humanMust": [
+    "Create the app and pick the workspace",
+    "Copy and store secrets",
+    "Install and approve scopes in Slack",
+    "Submit for public distribution if needed"
+   ],
+   "id": "slack",
+   "managedAppNote": "If a managed directory already covers Slack, use it for a first version. Register your own app when you need your own scopes, bot identity, or distribution.",
+   "name": "Slack",
+   "nextStep": "Create a blank Slack app in your development workspace, add your exact redirect URL, then install it and test one API call.",
+   "notVerified": [
+    "Current Slack Marketplace review time, which is not published as a single fixed number",
+    "Exact current Slack dashboard layout"
+   ],
+   "setupTime": "1 to 2 hours",
+   "sources": [
+    "https://docs.slack.dev/authentication/installing-with-oauth/",
+    "https://docs.slack.dev/authentication/authorizing-with-postman/",
+    "https://docs.slack.dev/tools/bolt-js/concepts/authenticating-oauth/"
+   ],
+   "steps": [
+    {
+     "blockerTip": "Pick the right workspace first. Installing later in a different workspace is a separate install.",
+     "detail": "Create a blank app, give it a name, and pick a development workspace.",
+     "time": "10 minutes",
+     "title": "Create the Slack app",
+     "who": "human"
+    },
+    {
+     "blockerTip": "The signing secret is separate from the client secret. Do not swap them.",
+     "detail": "Find these under Basic Information, App Credentials. Store them securely.",
+     "time": "5 minutes",
+     "title": "Copy client ID, client secret, and signing secret",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Redirect URLs must match exactly. A trailing slash difference can break the install.",
+     "detail": "Under OAuth and Permissions, add your exact redirect URL, for example https://example.com/slack/oauth_redirect, and save it.",
+     "time": "10 minutes",
+     "title": "Add redirect URLs",
+     "who": "agent"
+    },
+    {
+     "blockerTip": "Do not mix Sign in with Slack scopes with other scopes in the same flow. They need separate flows.",
+     "detail": "Add bot scopes under Scopes, for example channels:read and chat:write, and user scopes separately if the agent acts as a user. Keep the list minimal.",
+     "time": "20 minutes",
+     "title": "Choose bot scopes and user scopes separately",
+     "who": "agent"
+    },
+    {
+     "blockerTip": "Bot tokens start with xoxb. If you expected a user token, check whether you requested user scopes.",
+     "detail": "Install the app, approve the scopes shown, exchange the code at slack.com/api/oauth.v2.access for a token, and make one real API call.",
+     "time": "20 minutes",
+     "title": "Install and test in your workspace",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Requesting broad scopes with no clear use in the app description is a common reason installs and listings get questioned.",
+     "detail": "If other workspaces will install it, prepare distribution settings, a clear app description, and a support contact. Public listing review is a separate step from a private install.",
+     "time": "30 minutes or more",
+     "title": "Prepare for distribution if you go public",
+     "who": "human"
+    }
+   ],
+   "tested": "Docs read on 2026-10-31 from Slack Developer Docs search results. No Slack workspace sign-in or app creation was completed for this guide.",
+   "timeline": [
+    {
+     "note": "No approval wait for your own workspace install.",
+     "stage": "Create app and install in your workspace",
+     "wait": "Immediate"
+    },
+    {
+     "note": "Treat this as unknown until Slack gives a review response. Do not promise a date to users.",
+     "stage": "Public distribution or Marketplace review",
+     "wait": "Varies, not published as one fixed number"
+    }
+   ]
+  },
+  {
+   "accountNeeded": "Google Cloud account with a Cloud project",
+   "agentCan": [
+    "Classify scopes and draft justifications",
+    "Draft consent screen text and privacy policy outline",
+    "Draft a verification submission checklist",
+    "Draft a demo video script"
+   ],
+   "approvalWait": "Brand verification typically 2 to 3 business days if branding changed, sensitive scope verification can take up to around 10 days after a complete submission in some Google guidance, and restricted scope verification can take several weeks, plus a security assessment. Treat all of these as ranges, not guarantees.",
+   "blockers": [
+    {
+     "blocker": "Unverified app warning and 100 user cap",
+     "fix": "Complete verification for production use. The warning and cap are expected in Testing mode for sensitive or restricted scopes."
+    },
+    {
+     "blocker": "Scope list in code does not match the consent screen declaration",
+     "fix": "List every scope from code, then make the declaration match exactly. Trimming a scope from the declaration that code still requests will fail review."
+    },
+    {
+     "blocker": "Demo video does not show a scope in use",
+     "fix": "Re-record with that exact feature, with the same app name and branding as the submission."
+    },
+    {
+     "blocker": "Restricted scope needs a security assessment",
+     "fix": "Budget for assessment time and cost separately, and consider whether a narrower sensitive scope can ship first."
+    }
+   ],
+   "category": "Productivity",
+   "checklist": [
+    {
+     "item": "Cloud project and only the APIs you need are enabled",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Consent screen branding matches the real app exactly",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Privacy policy and homepage URLs are live and accurate",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Redirect URIs match the code exactly",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Every scope classified as non-sensitive, sensitive, or restricted",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Scope justifications written for each sensitive or restricted scope",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Demo video shows the full consent flow and each scope in use",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Test users added and full flow tested in Testing mode",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Third party security assessment planned, for restricted scopes with server access",
+     "status": "required",
+     "who": "human"
+    }
+   ],
+   "confidence": "Medium",
+   "consoleName": "Google Cloud Console, APIs and Services, OAuth consent screen",
+   "consoleUrl": "https://console.cloud.google.com/apis/credentials",
+   "cost": "Free to register. A third party security assessment for restricted scopes can be paid, amount varies by assessor and is not stated here.",
+   "difficulty": "Medium to Hard",
+   "difficultyWhy": "Basic setup is fast, but sensitive and restricted scopes trigger verification, a demo video, and in restricted cases a third party security assessment.",
+   "guideType": "full",
+   "humanMust": [
+    "Create the Cloud project and consent screen",
+    "Record the demo video",
+    "Submit for verification",
+    "Book and complete a security assessment if required",
+    "Reply to reviewer questions"
+   ],
+   "id": "google",
+   "managedAppNote": "If a managed directory already covers the Google scopes you need, use it for a first version. Register your own app when you need your own branding, client ID, or restricted scopes.",
+   "name": "Google",
+   "nextStep": "Classify your Google scopes first, then configure the consent screen with matching branding, and test in Testing mode before you submit for verification.",
+   "notVerified": [
+    "Exact current Google Cloud Console layout",
+    "Exact assessment cost, which varies by assessor",
+    "Exact review time for a specific app, which varies by submission quality"
+   ],
+   "setupTime": "2 to 4 hours for basic setup, plus 1 to 3 days to prepare a clean verification submission",
+   "sources": [
+    "https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification"
+   ],
+   "steps": [
+    {
+     "blockerTip": "Enabling every Google API at once makes scope review harder later. Enable only what the feature uses.",
+     "detail": "Create a project, enable only the APIs your agent will call, for example Gmail, Drive, or Calendar APIs.",
+     "time": "20 minutes",
+     "title": "Create a Cloud project and enable the APIs you need",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Branding mismatches are a common verification failure. The name, logo, and URLs on screen must match the real app.",
+     "detail": "Choose External for outside users or Internal for your own organization only. Add app name, support email, homepage, and privacy policy URLs that match the real app.",
+     "time": "30 minutes",
+     "title": "Configure the OAuth consent screen",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Redirect URIs must match exactly. Test with the exact URI your code uses.",
+     "detail": "Create a Web application client, add your exact authorized redirect URIs, and store the client ID and secret securely.",
+     "time": "15 minutes",
+     "title": "Create OAuth client credentials and redirect URIs",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Adding a new sensitive or restricted scope later requires a new verification request. Get the scope list right before you submit.",
+     "detail": "List every scope your code requests, then check Google's classification: non-sensitive, sensitive, or restricted. For example, full Gmail or Drive content is restricted, while some narrower scopes are sensitive. Do not request a broad scope if a narrower one works.",
+     "time": "30 minutes",
+     "title": "Classify every scope before you request it",
+     "who": "agent"
+    },
+    {
+     "blockerTip": "Unverified apps show a warning and are capped at about 100 new users for sensitive or restricted scopes. That cap is a signal you still need verification for production.",
+     "detail": "In Testing mode, add test users, run the full consent flow, and confirm the consent screen shows the correct app name, scopes, and client ID in the browser address bar.",
+     "time": "30 minutes",
+     "title": "Test in Testing mode with test users",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Record the video with the same app name and branding as the submission, and show each scope actually being used. A generic demo is a common rejection reason.",
+     "detail": "For sensitive scopes, prepare scope justifications, a demo video in English showing the full consent flow and the feature using each scope, and accurate branding. For restricted scopes, plan for a third party security assessment as well.",
+     "time": "1 to 3 days",
+     "title": "Prepare the verification submission",
+     "who": "agent"
+    },
+    {
+     "blockerTip": "Changing scopes or consent screen branding after submission can require a new verification request. Freeze the scope list during review.",
+     "detail": "Submit for brand verification first if needed, then for scope verification. Answer reviewer questions quickly and with the exact scope list from your code.",
+     "time": "Ongoing during review",
+     "title": "Submit and respond to reviewer questions",
+     "who": "human"
+    }
+   ],
+   "tested": "Docs read on 2026-10-31 from Google Developers search results. No Google Cloud sign-in, project creation, or verification submission was completed for this guide.",
+   "timeline": [
+    {
+     "note": "Source: Google restricted scope verification guidance, summarized in search results on 2026-10-31.",
+     "stage": "Brand verification, if branding changed",
+     "wait": "Typically 2 to 3 business days"
+    },
+    {
+     "note": "Treat as a range. Clean submissions move faster, questions add rounds.",
+     "stage": "Sensitive scope verification, after a complete submission",
+     "wait": "Up to around 10 days in some Google guidance, varies with back and forth"
+    },
+    {
+     "note": "Source: Google guidance that restricted verification can potentially take several weeks. Assessment time is separate and assessor dependent.",
+     "stage": "Restricted scope verification, plus security assessment",
+     "wait": "Several weeks, plus assessment scheduling"
+    },
+    {
+     "note": "Fix the exact issue named by the reviewer, do not resubmit unchanged.",
+     "stage": "If rejected",
+     "wait": "Additional round, timeline resets in practice"
+    }
+   ]
+  },
+  {
+   "accountNeeded": "Meta developer account and, for Advanced Access, a Meta Business account",
+   "agentCan": [
+    "Draft permission lists from code",
+    "Draft use case descriptions",
+    "Draft screen recording scripts",
+    "Draft an App Review submission checklist"
+   ],
+   "approvalWait": "Varies by permission and by review round. No single published fixed timeline was confirmed for this guide. Treat any timeline you see elsewhere as unverified unless Meta publishes it for that permission.",
+   "blockers": [
+    {
+     "blocker": "Reviewers cannot get into the app",
+     "fix": "Provide a working test account, clear login steps, and a feature that works without extra setup."
+    },
+    {
+     "blocker": "Permission requested but not shown in use",
+     "fix": "Re-record showing that exact permission in that exact feature, and make a real API call with it before resubmission."
+    },
+    {
+     "blocker": "Business Verification blocked",
+     "fix": "Check legal name, address, phone, and document type against Meta's current Business Verification requirements, and resubmit with a matching document."
+    },
+    {
+     "blocker": "Team can use it but outside users cannot",
+     "fix": "That is Standard Access. You still need Advanced Access and App Review for outside users."
+    }
+   ],
+   "category": "Social",
+   "checklist": [
+    {
+     "item": "1024 by 1024 icon, privacy policy URL, terms URL, category, and contact are complete",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "App connected to a verified business, for Advanced Access",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Every permission listed is actually called by the code",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "At least one successful API call per permission, recent",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Use case description written per permission",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Screen recording per permission, showing it in use",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Test account reviewers can use, with access to the feature",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Data handling answers prepared, if Meta asks them",
+     "status": "optional",
+     "who": "human"
+    }
+   ],
+   "confidence": "Low to Medium",
+   "consoleName": "Meta for Developers, My Apps",
+   "consoleUrl": "https://developers.facebook.com/apps",
+   "cost": "Free to register. Business documents and any legal costs are separate and vary.",
+   "difficulty": "Hard",
+   "difficultyWhy": "Public use requires Advanced Access for each permission, plus Business Verification, use case descriptions, and screen recordings that reviewers actually test.",
+   "guideType": "full",
+   "humanMust": [
+    "Create the app and Business account",
+    "Complete Business Verification",
+    "Make real API calls",
+    "Record screen recordings",
+    "Submit for App Review and reply to reviewers"
+   ],
+   "id": "meta",
+   "managedAppNote": "If a managed directory already covers the Meta permissions you need, use it first. Register your own app when you need your own permissions, Pages, or Instagram business access.",
+   "name": "Meta",
+   "nextStep": "Complete Basic settings and start Business Verification early, then list only the permissions your code actually calls.",
+   "notVerified": [
+    "Exact current Meta App Review timeline, which was not confirmed from an official Meta page in this check",
+    "Exact current Meta dashboard layout and document list",
+    "Whether a specific permission requires Business Verification in your case"
+   ],
+   "setupTime": "3 to 6 hours for basic setup, plus 1 to 5 days to prepare a clean App Review submission",
+   "sources": [
+    "https://socialift.uz/en/blog/meta-app-review",
+    "https://www.loginradius.com/docs/authentication/identity-providers/social-login/app-reviews/facebook-app-review"
+   ],
+   "steps": [
+    {
+     "blockerTip": "Meta shows the privacy policy URL to users in login dialogs. A dead or mismatched policy URL is an easy rejection.",
+     "detail": "Create an app, add a 1024 by 1024 icon, privacy policy URL, terms URL, category, app purpose, and a primary contact.",
+     "time": "30 minutes",
+     "title": "Create the app and complete Basic settings",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Start Business Verification early. It can block Advanced Access even if your code is ready.",
+     "detail": "Connect the app to a verified business. Business Verification checks legal name, address or phone, and supporting documents, depending on the path Meta shows you.",
+     "time": "1 to 5 days, varies",
+     "title": "Connect a Business account and complete Business Verification",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Every permission requested from an outside user needs Advanced Access and App Review. Do not request a permission you do not actually call.",
+     "detail": "Add only the products you need, for example Facebook Login or Instagram, and list the exact permissions your code calls, for example pages_show_list or instagram_basic, depending on your feature.",
+     "time": "30 minutes",
+     "title": "Add products and permissions, one permission at a time",
+     "who": "agent"
+    },
+    {
+     "blockerTip": "Reviewers test the app itself. If they cannot get in, or cannot see a permission in use, that permission can be rejected.",
+     "detail": "Before submission, make at least one successful API call with each permission you will request, within the recent window Meta requires. Keep a record of what you called.",
+     "time": "30 minutes",
+     "title": "Make a real API call with each permission",
+     "who": "human"
+    },
+    {
+     "blockerTip": "A generic app tour is not enough. Show the specific permission, in the specific feature, end to end.",
+     "detail": "For each permission, write a clear use case: why you need it and how it is used in the app. Record a screen recording showing that permission in use, with a test account reviewers can use.",
+     "time": "1 to 3 days",
+     "title": "Prepare use case descriptions and screen recordings",
+     "who": "agent"
+    },
+    {
+     "blockerTip": "Standard Access is automatic for your own team, but it does not allow requesting permissions from outside users. Do not mistake team access for public approval.",
+     "detail": "Submit Permissions and Features for review. If one permission is rejected, fix only that permission and resubmit it. Do not resubmit unchanged.",
+     "time": "Ongoing during review",
+     "title": "Submit for App Review and respond per permission",
+     "who": "human"
+    }
+   ],
+   "tested": "Docs read on 2026-10-31 from third party guides summarizing Meta App Review, not from Meta official docs directly in this check. No Meta developer sign-in, app creation, or App Review submission was completed for this guide.",
+   "timeline": [
+    {
+     "note": "App creation itself is immediate.",
+     "stage": "Create app and Basic settings",
+     "wait": "Immediate"
+    },
+    {
+     "note": "Start early. Document and contact checks can add rounds.",
+     "stage": "Business Verification",
+     "wait": "Varies, days in many cases, not confirmed as a fixed number here"
+    },
+    {
+     "note": "Treat as unknown until Meta responds. A clean submission with real calls and recordings moves faster.",
+     "stage": "App Review, per permission",
+     "wait": "Varies by permission and review round, not confirmed as a fixed number here"
+    },
+    {
+     "note": "Fix the exact issue, re-record if needed, and resubmit that permission.",
+     "stage": "If a permission is rejected",
+     "wait": "Additional round for that permission"
+    }
+   ]
+  },
+  {
+   "accountNeeded": "Microsoft Entra account with app registration access",
+   "agentCan": [
+    "Draft permission lists",
+    "Draft redirect URIs"
+   ],
+   "approvalWait": "Varies. Admin consent can add days in managed tenants. No fixed timeline confirmed here.",
+   "blockers": [
+    {
+     "blocker": "Admin consent required",
+     "fix": "Ask the tenant admin for consent for the exact permissions, with a clear use description."
+    }
+   ],
+   "category": "Productivity",
+   "checklist": [
+    {
+     "item": "Redirect URIs match the code",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Minimum API permissions only",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Admin consent obtained, if required",
+     "status": "required",
+     "who": "human"
+    }
+   ],
+   "confidence": "Low",
+   "consoleName": "Microsoft Entra admin center, App registrations",
+   "consoleUrl": "https://entra.microsoft.com/",
+   "cost": "Free to register",
+   "difficulty": "Medium",
+   "difficultyWhy": "Summary card only. Full guide can be generated live. Microsoft Entra app registration, redirect URIs, and API permissions vary by tenant and admin consent.",
+   "guideType": "summary",
+   "humanMust": [
+    "Register the app",
+    "Get admin consent if required"
+   ],
+   "id": "microsoft",
+   "managedAppNote": "Use a managed app first if it covers your Microsoft scopes. Register your own app for your own branding or tenant-specific permissions.",
+   "name": "Microsoft",
+   "nextStep": "Use live generation to expand this summary into a full step by step guide from official Microsoft docs.",
+   "notVerified": [
+    "All details in this summary card"
+   ],
+   "setupTime": "1 to 3 hours, plus admin consent time if required",
+   "sources": [],
+   "steps": [
+    {
+     "blockerTip": "Redirect URIs and account type, single tenant vs multi tenant, must match your agent use.",
+     "detail": "Create an app registration, add redirect URIs, and note the client ID and tenant ID.",
+     "time": "20 minutes",
+     "title": "Register the app in Entra",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Admin consent is a common blocker in managed tenants. Ask the tenant admin early.",
+     "detail": "Add delegated permissions for the APIs you call, then get admin consent if your tenant requires it.",
+     "time": "30 minutes or more",
+     "title": "Add API permissions and admin consent",
+     "who": "human"
+    }
+   ],
+   "tested": "Summary card only, not verified against official docs in this build.",
+   "timeline": [
+    {
+     "note": "Summary only.",
+     "stage": "Register and test",
+     "wait": "Immediate to hours"
+    },
+    {
+     "note": "Not confirmed as a fixed number here.",
+     "stage": "Admin consent, if required",
+     "wait": "Varies by tenant"
+    }
+   ]
+  },
+  {
+   "accountNeeded": "Notion account with a workspace",
+   "agentCan": [
+    "Draft capabilities list"
+   ],
+   "approvalWait": "None for private testing in your workspace. Public distribution review varies and is not confirmed here.",
+   "blockers": [
+    {
+     "blocker": "Integration cannot see a page",
+     "fix": "Share that page with the integration from the page menu."
+    }
+   ],
+   "category": "Productivity",
+   "checklist": [
+    {
+     "item": "Redirect URI matches the code",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Capabilities are minimum needed",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Test page shared with the integration",
+     "status": "required",
+     "who": "human"
+    }
+   ],
+   "confidence": "Low",
+   "consoleName": "Notion integrations dashboard",
+   "consoleUrl": "https://www.notion.so/my-account/integrations",
+   "cost": "Free to register",
+   "difficulty": "Easy to Medium",
+   "difficultyWhy": "Summary card only. Notion public integrations use OAuth, with workspace sharing and capability choices that affect what an agent can read or write.",
+   "guideType": "summary",
+   "humanMust": [
+    "Create the integration",
+    "Share test pages"
+   ],
+   "id": "notion",
+   "managedAppNote": "Use a managed app first if it covers Notion. Register your own integration for your own branding or capabilities.",
+   "name": "Notion",
+   "nextStep": "Use live generation to expand this summary into a full step by step guide from official Notion docs.",
+   "notVerified": [
+    "All details in this summary card"
+   ],
+   "setupTime": "30 to 90 minutes",
+   "sources": [],
+   "steps": [
+    {
+     "blockerTip": "Capabilities decide read vs write access. Choose the minimum.",
+     "detail": "Create an integration, set redirect URI, and choose capabilities.",
+     "time": "20 minutes",
+     "title": "Create a public integration",
+     "who": "human"
+    },
+    {
+     "blockerTip": "An integration cannot see a page until that page is shared with it.",
+     "detail": "Share a test page with the integration, complete OAuth, and test one read or write call.",
+     "time": "20 minutes",
+     "title": "Share pages with the integration and test",
+     "who": "human"
+    }
+   ],
+   "tested": "Summary card only, not verified against official docs in this build.",
+   "timeline": [
+    {
+     "note": "Summary only.",
+     "stage": "Create and test in your workspace",
+     "wait": "Immediate"
+    },
+    {
+     "note": "Not confirmed here.",
+     "stage": "Public distribution, if needed",
+     "wait": "Varies"
+    }
+   ]
+  },
+  {
+   "accountNeeded": "Salesforce org with Connected App access",
+   "agentCan": [
+    "Draft scope lists"
+   ],
+   "approvalWait": "Varies. AppExchange security review can take weeks and is not confirmed here.",
+   "blockers": [
+    {
+     "blocker": "Org admin blocks the Connected App",
+     "fix": "Ask the org admin to allow the Connected App and scopes for that org."
+    }
+   ],
+   "category": "Business",
+   "checklist": [
+    {
+     "item": "Callback URL matches the code",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Scopes are minimum needed",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Test org used before production",
+     "status": "required",
+     "who": "human"
+    }
+   ],
+   "confidence": "Low",
+   "consoleName": "Salesforce Setup, App Manager, Connected Apps",
+   "consoleUrl": "https://login.salesforce.com/",
+   "cost": "Free to register",
+   "difficulty": "Medium to Hard",
+   "difficultyWhy": "Summary card only. Salesforce Connected Apps, org settings, and security review for AppExchange can make this harder than a single org test.",
+   "guideType": "summary",
+   "humanMust": [
+    "Create the Connected App",
+    "Submit for security review if listing"
+   ],
+   "id": "salesforce",
+   "managedAppNote": "Use a managed app first if it covers Salesforce. Register your own Connected App for your own org or listing.",
+   "name": "Salesforce",
+   "nextStep": "Use live generation to expand this summary into a full step by step guide from official Salesforce docs.",
+   "notVerified": [
+    "All details in this summary card"
+   ],
+   "setupTime": "2 to 4 hours, plus security review time if listing publicly",
+   "sources": [],
+   "steps": [
+    {
+     "blockerTip": "Callback URL must match exactly.",
+     "detail": "Create a Connected App, add callback URL, and choose OAuth scopes.",
+     "time": "30 minutes",
+     "title": "Create a Connected App",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Test in a sandbox first, not production.",
+     "detail": "Complete OAuth in a test org and make one API call.",
+     "time": "30 minutes",
+     "title": "Test OAuth in a sandbox or dev org",
+     "who": "human"
+    }
+   ],
+   "tested": "Summary card only, not verified against official docs in this build.",
+   "timeline": [
+    {
+     "note": "Summary only.",
+     "stage": "Create and test in an org",
+     "wait": "Immediate to hours"
+    },
+    {
+     "note": "Summary only.",
+     "stage": "AppExchange security review, if listing",
+     "wait": "Varies, weeks in many cases, not confirmed here"
+    }
+   ]
+  },
+  {
+   "accountNeeded": "HubSpot developer account and a test account",
+   "agentCan": [
+    "Draft scope lists"
+   ],
+   "approvalWait": "None for private app testing. Public listing review varies and is not confirmed here.",
+   "blockers": [
+    {
+     "blocker": "Wrong app type for OAuth",
+     "fix": "Use a public app for OAuth user connections, not a private app token flow."
+    }
+   ],
+   "category": "Business",
+   "checklist": [
+    {
+     "item": "Redirect URL matches the code",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Scopes are minimum needed",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Test account used",
+     "status": "required",
+     "who": "human"
+    }
+   ],
+   "confidence": "Low",
+   "consoleName": "HubSpot developer account, Apps",
+   "consoleUrl": "https://developers.hubspot.com/",
+   "cost": "Free to register",
+   "difficulty": "Medium",
+   "difficultyWhy": "Summary card only. HubSpot private vs public apps, scopes, and redirect URLs affect setup, and public app listing adds review.",
+   "guideType": "summary",
+   "humanMust": [
+    "Create the app",
+    "Install in a test account"
+   ],
+   "id": "hubspot",
+   "managedAppNote": "Use a managed app first if it covers HubSpot. Register your own app for your own scopes or listing.",
+   "name": "HubSpot",
+   "nextStep": "Use live generation to expand this summary into a full step by step guide from official HubSpot docs.",
+   "notVerified": [
+    "All details in this summary card"
+   ],
+   "setupTime": "1 to 3 hours",
+   "sources": [],
+   "steps": [
+    {
+     "blockerTip": "Private apps use a different auth model. Use a public app for OAuth user connections.",
+     "detail": "Create an app, add redirect URL, and choose scopes.",
+     "time": "20 minutes",
+     "title": "Create a public app",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Test with a test account, not a production CRM.",
+     "detail": "Install the app in a test account, complete OAuth, and test one API call.",
+     "time": "20 minutes",
+     "title": "Install in a test account and test",
+     "who": "human"
+    }
+   ],
+   "tested": "Summary card only, not verified against official docs in this build.",
+   "timeline": [
+    {
+     "note": "Summary only.",
+     "stage": "Create and test",
+     "wait": "Immediate"
+    },
+    {
+     "note": "Not confirmed here.",
+     "stage": "Public listing, if needed",
+     "wait": "Varies"
+    }
+   ]
+  },
+  {
+   "accountNeeded": "Shopify Partner account and a dev store",
+   "agentCan": [
+    "Draft scope lists"
+   ],
+   "approvalWait": "None for a custom app in your own store. App Store review varies and is not confirmed here.",
+   "blockers": [
+    {
+     "blocker": "App cannot access store data",
+     "fix": "Check access scopes and whether the app is installed in that store."
+    }
+   ],
+   "category": "Business",
+   "checklist": [
+    {
+     "item": "Redirect URL matches the code",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Access scopes are minimum needed",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Dev store used for testing",
+     "status": "required",
+     "who": "human"
+    }
+   ],
+   "confidence": "Low",
+   "consoleName": "Shopify Partners dashboard, Apps",
+   "consoleUrl": "https://partners.shopify.com/",
+   "cost": "Free to register",
+   "difficulty": "Medium",
+   "difficultyWhy": "Summary card only. Shopify custom vs public apps, access scopes, and App Store review affect setup.",
+   "guideType": "summary",
+   "humanMust": [
+    "Create the app",
+    "Install in a dev store"
+   ],
+   "id": "shopify",
+   "managedAppNote": "Use a managed app first if it covers Shopify. Register your own app for your own scopes or listing.",
+   "name": "Shopify",
+   "nextStep": "Use live generation to expand this summary into a full step by step guide from official Shopify docs.",
+   "notVerified": [
+    "All details in this summary card"
+   ],
+   "setupTime": "1 to 3 hours, plus App Store review if listing",
+   "sources": [],
+   "steps": [
+    {
+     "blockerTip": "Scopes decide what store data the app can read or write.",
+     "detail": "Create an app, add redirect URL, and choose access scopes.",
+     "time": "20 minutes",
+     "title": "Create an app in Partners",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Test in a dev store, not a live merchant store.",
+     "detail": "Install in a dev store, complete OAuth, and test one API call.",
+     "time": "20 minutes",
+     "title": "Install in a dev store and test",
+     "who": "human"
+    }
+   ],
+   "tested": "Summary card only, not verified against official docs in this build.",
+   "timeline": [
+    {
+     "note": "Summary only.",
+     "stage": "Create and test in a dev store",
+     "wait": "Immediate"
+    },
+    {
+     "note": "Not confirmed here.",
+     "stage": "App Store review, if listing",
+     "wait": "Varies"
+    }
+   ]
+  },
+  {
+   "accountNeeded": "Zoom account with Marketplace access",
+   "agentCan": [
+    "Draft scope lists"
+   ],
+   "approvalWait": "None for private testing. Publish review varies and is not confirmed here.",
+   "blockers": [
+    {
+     "blocker": "Wrong app type",
+     "fix": "Use an OAuth Marketplace app for user connections."
+    }
+   ],
+   "category": "Communication",
+   "checklist": [
+    {
+     "item": "Redirect URL matches the code",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Scopes are minimum needed",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Test account used",
+     "status": "required",
+     "who": "human"
+    }
+   ],
+   "confidence": "Low",
+   "consoleName": "Zoom Marketplace, Build App",
+   "consoleUrl": "https://marketplace.zoom.us/",
+   "cost": "Free to register",
+   "difficulty": "Medium",
+   "difficultyWhy": "Summary card only. Zoom Marketplace apps, scopes, and publish review affect setup.",
+   "guideType": "summary",
+   "humanMust": [
+    "Create the app",
+    "Submit for publish if listing"
+   ],
+   "id": "zoom",
+   "managedAppNote": "Use a managed app first if it covers Zoom. Register your own app for your own scopes or listing.",
+   "name": "Zoom",
+   "nextStep": "Use live generation to expand this summary into a full step by step guide from official Zoom docs.",
+   "notVerified": [
+    "All details in this summary card"
+   ],
+   "setupTime": "1 to 3 hours, plus publish review if listing",
+   "sources": [],
+   "steps": [
+    {
+     "blockerTip": "Choose General vs Server-to-Server correctly. OAuth user connections need the OAuth app type.",
+     "detail": "Create an OAuth app, add redirect URL, and choose scopes.",
+     "time": "20 minutes",
+     "title": "Create a Marketplace app",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Test with a test Zoom account.",
+     "detail": "Complete OAuth in a test account and test one API call.",
+     "time": "20 minutes",
+     "title": "Test OAuth and one API call",
+     "who": "human"
+    }
+   ],
+   "tested": "Summary card only, not verified against official docs in this build.",
+   "timeline": [
+    {
+     "note": "Summary only.",
+     "stage": "Create and test",
+     "wait": "Immediate"
+    },
+    {
+     "note": "Not confirmed here.",
+     "stage": "Publish review, if listing",
+     "wait": "Varies"
+    }
+   ]
+  },
+  {
+   "accountNeeded": "Discord account",
+   "agentCan": [
+    "Draft scope lists"
+   ],
+   "approvalWait": "None for basic OAuth app testing. Verification for bots in many servers is separate and not confirmed here.",
+   "blockers": [
+    {
+     "blocker": "Redirect URI mismatch",
+     "fix": "Copy the exact redirect URI from the Developer Portal into your code."
+    }
+   ],
+   "category": "Communication",
+   "checklist": [
+    {
+     "item": "Redirect URIs match the code",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Scopes are minimum needed",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Client secret stored securely",
+     "status": "required",
+     "who": "human"
+    }
+   ],
+   "confidence": "Low",
+   "consoleName": "Discord Developer Portal",
+   "consoleUrl": "https://discord.com/developers/applications",
+   "cost": "Free to register",
+   "difficulty": "Easy to Medium",
+   "difficultyWhy": "Summary card only. Discord developer applications, OAuth2 redirect URIs, and scopes are straightforward for basic use, with bot permissions adding complexity.",
+   "guideType": "summary",
+   "humanMust": [
+    "Create the application",
+    "Test OAuth"
+   ],
+   "id": "discord",
+   "managedAppNote": "Use a managed app first if it covers Discord. Register your own application for your own bot or OAuth scopes.",
+   "name": "Discord",
+   "nextStep": "Use live generation to expand this summary into a full step by step guide from official Discord docs.",
+   "notVerified": [
+    "All details in this summary card"
+   ],
+   "setupTime": "30 to 90 minutes",
+   "sources": [],
+   "steps": [
+    {
+     "blockerTip": "Redirect URIs must match exactly.",
+     "detail": "Create an application, copy client ID and secret, and add redirect URIs under OAuth2.",
+     "time": "15 minutes",
+     "title": "Create an application",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Bot scope and permissions are separate from user OAuth scopes.",
+     "detail": "Choose scopes, for example identify, and test the OAuth flow with a test account.",
+     "time": "20 minutes",
+     "title": "Choose scopes and test OAuth",
+     "who": "human"
+    }
+   ],
+   "tested": "Summary card only, not verified against official docs in this build.",
+   "timeline": [
+    {
+     "note": "Summary only.",
+     "stage": "Create and test",
+     "wait": "Immediate"
+    }
+   ]
+  },
+  {
+   "accountNeeded": "LinkedIn developer account and a Company Page if required",
+   "agentCan": [
+    "Draft product and scope lists"
+   ],
+   "approvalWait": "Varies by product. Some products require access requests and review, not confirmed as a fixed number here.",
+   "blockers": [
+    {
+     "blocker": "Product not available",
+     "fix": "Check product access in the developer portal and request access with a clear use case."
+    }
+   ],
+   "category": "Social",
+   "checklist": [
+    {
+     "item": "Redirect URLs match the code",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Products and scopes match the feature",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Company Page linked, if required",
+     "status": "required",
+     "who": "human"
+    }
+   ],
+   "confidence": "Low",
+   "consoleName": "LinkedIn Developers, My Apps",
+   "consoleUrl": "https://www.linkedin.com/developers/apps",
+   "cost": "Free to register",
+   "difficulty": "Medium to Hard",
+   "difficultyWhy": "Summary card only. LinkedIn developer apps, products, and verification for some APIs can make access harder than basic sign in.",
+   "guideType": "summary",
+   "humanMust": [
+    "Create the app",
+    "Request product access"
+   ],
+   "id": "linkedin",
+   "managedAppNote": "Use a managed app first if it covers LinkedIn. Register your own app for your own products or Company Page access.",
+   "name": "LinkedIn",
+   "nextStep": "Use live generation to expand this summary into a full step by step guide from official LinkedIn docs.",
+   "notVerified": [
+    "All details in this summary card"
+   ],
+   "setupTime": "1 to 3 hours, plus product access time if required",
+   "sources": [],
+   "steps": [
+    {
+     "blockerTip": "Redirect URLs must match exactly.",
+     "detail": "Create an app, add redirect URLs, and note client ID and secret.",
+     "time": "20 minutes",
+     "title": "Create an app and add redirect URLs",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Some products are not available by default. Check product access before building on that API.",
+     "detail": "Request the products your feature needs, for example Sign In with LinkedIn, and check which products need extra access.",
+     "time": "30 minutes or more",
+     "title": "Request products and scopes",
+     "who": "human"
+    }
+   ],
+   "tested": "Summary card only, not verified against official docs in this build.",
+   "timeline": [
+    {
+     "note": "Summary only.",
+     "stage": "Create app and test sign in",
+     "wait": "Immediate to hours"
+    },
+    {
+     "note": "Not confirmed here.",
+     "stage": "Product access, if required",
+     "wait": "Varies"
+    }
+   ]
+  },
+  {
+   "accountNeeded": "Free Airtable account",
+   "agentCan": [
+    "Draft scope lists",
+    "Draft redirect URLs",
+    "Draft authorize and token exchange code",
+    "Draft a test plan"
+   ],
+   "approvalWait": "Unknown, no fixed approval timeline was confirmed in this check. Registration gives a Client ID and Client Secret for development use. Public distribution requirements were not confirmed from official Airtable pages in this check.",
+   "blockers": [
+    {
+     "blocker": "Redirect URL mismatch",
+     "fix": "Copy the exact redirect URL from the integration settings into your authorize request. Redirect URLs must be HTTPS unless using localhost, according to secondary guides."
+    },
+    {
+     "blocker": "Scope not granted for the feature",
+     "fix": "Check the scope checkboxes for the exact feature. Records, comments, schema, webhooks, and user email are separate scopes."
+    },
+    {
+     "blocker": "Client secret shown only once",
+     "fix": "Store the secret securely at generation time. If it is lost, generate a new secret and update your app."
+    },
+    {
+     "blocker": "Rate limit per base",
+     "fix": "Airtable rate limits are reported as 5 requests per second per base in secondary guides. Add backoff and retry handling for 429 responses."
+    }
+   ],
+   "category": "Productivity",
+   "checklist": [
+    {
+     "item": "Integration name and redirect URL are correct",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Scopes match the feature exactly",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Client ID and Client Secret stored securely, not in code or a public repo",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Authorize flow tested with a real account",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Support email, privacy policy URL, and terms of service URL, for public use",
+     "status": "optional",
+     "who": "human"
+    }
+   ],
+   "confidence": "Medium",
+   "consoleName": "Airtable Developer hub, OAuth integrations",
+   "consoleUrl": "https://airtable.com/create/oauth",
+   "cost": "Free to register",
+   "difficulty": "Medium",
+   "difficultyWhy": "Registration is straightforward, but scope selection, redirect URL rules, and public distribution details make the full launch harder than a first test. Official Airtable pages are JavaScript rendered and were not fully extracted in this check, so secondary guides were used and are cited.",
+   "guideType": "full",
+   "humanMust": [
+    "Create the OAuth integration",
+    "Generate and store the client secret",
+    "Test consent with a real account",
+    "Add public details if distributing publicly"
+   ],
+   "id": "airtable",
+   "managedAppNote": "Check first whether a managed app already covers Airtable. Register your own app when you need your own client ID, scopes, or branding.",
+   "name": "Airtable",
+   "nextStep": "Register an OAuth integration at airtable.com/create/oauth, add your exact redirect URL, select only the scopes your feature needs, generate the client secret once, then test the authorize flow.",
+   "notVerified": [
+    "Exact current Airtable portal layout, which is JavaScript rendered",
+    "Public distribution approval timeline, not confirmed from official Airtable pages in this check",
+    "Exact webhook scope availability for your plan"
+   ],
+   "setupTime": "1 to 2 hours",
+   "sources": [
+    "https://nango.dev/docs/api-integrations/airtable/how-to-register-your-own-airtable-api-oauth-app",
+    "https://Formbricks.com/docs/self-hosting/configuration/integrations/airtable",
+    "https://airtable.com/developers/web/api/authentication"
+   ],
+   "steps": [
+    {
+     "blockerTip": "Redirect URLs must be HTTPS unless using localhost, according to secondary guides.",
+     "detail": "Go to the Airtable Developer hub, OAuth integrations, and click Register an OAuth integration. Add a name and your exact redirect URL.",
+     "time": "15 minutes",
+     "title": "Register an OAuth integration",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Client secret is shown only once. Store it securely at generation time.",
+     "detail": "Note the Client ID, then generate the client secret and store it securely, never in client code or a public repo.",
+     "time": "5 minutes",
+     "title": "Save the Client ID and Client Secret",
+     "who": "human"
+    },
+    {
+     "blockerTip": "Records, comments, schema, webhooks, and user email are separate scopes. Request only what the feature uses.",
+     "detail": "Select scopes for your feature, for example data.records:read and data.records:write for records, schema.bases:read for base structure, and user.email:read for user identity. Add webhook:manage only if webhooks are needed.",
+     "time": "20 minutes",
+     "title": "Choose minimum scopes",
+     "who": "agent"
+    },
+    {
+     "blockerTip": "Authorize endpoint is airtable.com/oauth2/v1/authorize and token endpoint is airtable.com/oauth2/v1/token, according to secondary guides. Confirm both on official docs before shipping.",
+     "detail": "Redirect the user to the authorize endpoint with client_id, redirect_uri, scope, and state. Exchange the returned code for an access token at the token endpoint, then call the API with that token.",
+     "time": "30 minutes",
+     "title": "Build the authorization flow",
+     "who": "agent"
+    },
+    {
+     "blockerTip": "If consent shows extra scopes, fix the authorize URL and scope checkboxes, not just the app settings alone.",
+     "detail": "Authorize with a test account, confirm the consent screen shows only the scopes you requested, and confirm a token works for one real API call, for example reading a record.",
+     "time": "20 minutes",
+     "title": "Test with your own account",
+     "who": "human"
+    }
+   ],
+   "tested": "Docs research on 2026-10-31 from Nango, Formbricks, and Pipedream scope lists, plus Airtable developer pages. Official Airtable pages are JavaScript rendered and were not fully extracted, so approval and distribution claims are marked Unknown. No account sign-in, app creation, or provider approval was completed for this guide.",
+   "timeline": [
+    {
+     "note": "Registration gives Client ID and Client Secret for development use, according to secondary guides.",
+     "stage": "Register integration",
+     "wait": "Immediate"
+    },
+    {
+     "note": "Test consent with your own account before distributing.",
+     "stage": "Test with users",
+     "wait": "Immediate to hours"
+    },
+    {
+     "note": "Not confirmed from official Airtable pages in this check. Do not promise a date.",
+     "stage": "Public distribution, if required",
+     "wait": "Unknown"
+    }
+   ]
+  },
+  {
+   "id": "claude",
+   "name": "Claude",
+   "category": "AI",
+   "difficulty": "Easy",
+   "difficultyWhy": "Not an OAuth app. Do not try to register an OAuth app for Claude. Third party access is an API key from the Claude Console, with no OAuth approval queue.",
+   "setupTime": "15 to 30 minutes",
+   "approvalWait": "None. There is no OAuth approval stage for a Claude API key.",
+   "accountNeeded": "Claude Console account at platform.claude.com, separate from a claude.ai chat account, plus a payment method for API credits",
+   "cost": "Free to create a key. API use is billed per token from prepaid Console credits, separate from a Claude chat subscription.",
+   "consoleName": "Claude Console, API keys",
+   "consoleUrl": "https://platform.claude.com/settings/keys",
+   "steps": [
+    {
+     "title": "Create a Claude Console account",
+     "detail": "Sign in at platform.claude.com, or create an account. This is separate from claude.ai chat, with separate billing.",
+     "who": "human",
+     "time": "5 minutes",
+     "blockerTip": "A claude.ai chat login alone does not give you API access. Use the Console account."
+    },
+    {
+     "title": "Add credits before testing",
+     "detail": "Open Settings, Billing, and check your balance before your first call. API billing is separate from a Claude subscription.",
+     "who": "human",
+     "time": "5 minutes",
+     "blockerTip": "At a zero balance, API calls will not work. Add credits first."
+    },
+    {
+     "title": "Create one named API key",
+     "detail": "Open API keys, click Create key, name it after the app, choose an expiration, and choose a linked account. Use a service account key for a shared app, CI, or production service.",
+     "who": "human",
+     "time": "5 minutes",
+     "blockerTip": "If Create key is greyed out, your role cannot create keys. Ask an organization admin."
+    },
+    {
+     "title": "Store the key safely, once",
+     "detail": "Copy the full key, starting with sk-ant-, straight into a secrets manager and set ANTHROPIC_API_KEY. The Console shows it only once.",
+     "who": "human",
+     "time": "5 minutes",
+     "blockerTip": "Never put the key in client code, a public repo, logs, or agent output. If you lose it, create a new key and delete the old one."
+    },
+    {
+     "title": "Test one call, then stop",
+     "detail": "Send one test request with the key as a Bearer token. A 401 means a wrong, expired, or revoked key, or trailing whitespace. A multi workspace key must also send the workspace header.",
+     "who": "agent",
+     "time": "10 minutes",
+     "blockerTip": "Do not reuse Claude Code or claude.ai OAuth tokens in another product. Those OAuth tokens are locked to Claude Code and Claude.ai."
+    }
+   ],
+   "timeline": [
+    {
+     "stage": "Console account",
+     "wait": "Immediate",
+     "note": "Self serve, no approval queue for a key."
+    },
+    {
+     "stage": "Billing credits",
+     "wait": "Immediate",
+     "note": "Add credits before testing."
+    },
+    {
+     "stage": "API key",
+     "wait": "Immediate",
+     "note": "Shown only once at creation."
+    },
+    {
+     "stage": "OAuth approval",
+     "wait": "Not applicable",
+     "note": "There is no third party OAuth app to approve."
+    }
+   ],
+   "checklist": [
+    {
+     "item": "Claude Console account created, separate from claude.ai",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Billing credits checked",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "API key named after the app, with a service account for shared use",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Key stored in a secrets manager, never in client code",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "One test call works",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "OAuth app registration",
+     "status": "not_applicable",
+     "who": "human"
+    }
+   ],
+   "blockers": [
+    {
+     "blocker": "Create key is greyed out",
+     "fix": "Your role cannot create keys. Ask an organization admin, or ask for a service account key."
+    },
+    {
+     "blocker": "Key lost after closing the dialog",
+     "fix": "There is no reveal button. Create a new key, store it at once, and delete the old one."
+    },
+    {
+     "blocker": "401 on first call",
+     "fix": "Check for a wrong or expired key and trailing whitespace, and send the workspace header if the key is not scoped to one workspace."
+    },
+    {
+     "blocker": "Personal key stops working",
+     "fix": "A personal key acts as you and stops if you leave the organization. Use a service account key for shared workloads."
+    }
+   ],
+   "agentCan": [
+    "Draft a key naming plan",
+    "Draft a test request",
+    "Draft env setup for ANTHROPIC_API_KEY"
+   ],
+   "humanMust": [
+    "Create the Console account",
+    "Add a payment method and credits",
+    "Create and copy the key",
+    "Set a billing limit"
+   ],
+   "sources": [
+    "https://platform.claude.com/docs/en/get-api-key",
+    "https://platform.claude.com/settings/keys"
+   ],
+   "tested": "Official Anthropic API key docs checked on 2026-10-31. No Console sign-in, key creation, or API call was completed for this guide.",
+   "notVerified": [
+    "Exact current Console layout, which can change",
+    "Current pricing and credit amounts",
+    "Current model list"
+   ],
+   "confidence": "Medium",
+   "managedAppNote": "There is no managed OAuth app for Claude. If you use Composio, its Claude toolkit still uses your API key, not an OAuth app.",
+   "nextStep": "Create a Console account, add credits, create one named key, store it in a secrets manager, and test one call.",
+   "guideType": "full"
+  },
+  {
+   "id": "chatgpt",
+   "name": "ChatGPT",
+   "category": "AI",
+   "difficulty": "Hard",
+   "difficultyWhy": "OAuth, but limited trial for commercial apps. Sign in with ChatGPT is a real OAuth 2.0 and OpenID Connect flow, but commercial access is currently a limited trial, so approval is the blocker, not the code.",
+   "setupTime": "2 to 4 hours for the sign-in code, plus unknown wait for commercial trial access",
+   "approvalWait": "Unknown. Commercial Sign in with ChatGPT is a limited trial. Contact an OpenAI representative. Do not promise a date.",
+   "accountNeeded": "OpenAI developer account, plus an approved OAuth client, typically beginning with oaiapp_, for commercial sign-in",
+   "cost": "Free to build. API use is billed separately. ChatGPT plan usage, where offered, has its own caps and is a separate flow from identity sign-in.",
+   "consoleName": "OpenAI Developers, Sign in with ChatGPT",
+   "consoleUrl": "https://developers.openai.com/siwc/website",
+   "steps": [
+    {
+     "title": "Pick the right ChatGPT path first",
+     "detail": "Use Sign in with ChatGPT for user identity. Use an API key for your own OpenAI API calls. Use the Apps SDK with your own authorization server for a ChatGPT app. Do not mix these three.",
+     "who": "human",
+     "time": "20 minutes",
+     "blockerTip": "If you need user identity, the API key path will not give it. If you need API calls, sign-in alone will not give it."
+    },
+    {
+     "title": "Request an OAuth client, do not guess one",
+     "detail": "For a commercial app, join the limited trial through an OpenAI representative and get a client ID, an exact callback URL for each environment, and a token endpoint auth method. If you are not approved, stop here.",
+     "who": "human",
+     "time": "Unknown, trial wait",
+     "blockerTip": "A guessed client ID or callback URL will fail. The example client oaiapp_example is not a real client."
+    },
+    {
+     "title": "Load OpenID discovery, do not hardcode endpoints",
+     "detail": "Load https://auth.openai.com/.well-known/openid-configuration and use the issuer, authorization endpoint, token endpoint, and JWKS URI from that document.",
+     "who": "agent",
+     "time": "20 minutes",
+     "blockerTip": "If OpenAI changes an endpoint, hardcoded values break. Discovery is the source of truth."
+    },
+    {
+     "title": "Build sign-in with PKCE on your backend",
+     "detail": "Create a fresh state, PKCE verifier and S256 challenge, and nonce on your backend, store them server side, and expire the transaction. Bind it to a server session cookie.",
+     "who": "agent",
+     "time": "1 to 2 hours",
+     "blockerTip": "Never create PKCE values or store the verifier in browser code. A reused or expired transaction must end sign-in."
+    },
+    {
+     "title": "Add the Continue with ChatGPT button",
+     "detail": "Use approved OpenAI branding and the label Continue with ChatGPT, and add the data-oai-siwc-button attribute to the button so OpenAI can verify and troubleshoot it.",
+     "who": "human",
+     "time": "20 minutes",
+     "blockerTip": "Use the exact registered callback URL. A mismatch is a common first failure."
+    },
+    {
+     "title": "Exchange the code and verify the ID token",
+     "detail": "On your backend, exchange the code at the token endpoint with the original redirect URI and PKCE verifier, then verify the ID token signature against the JWKS, and check issuer, audience, expiration, nonce, and subject. Then create your own session.",
+     "who": "agent",
+     "time": "30 minutes",
+     "blockerTip": "For identity-only sign-in, do not require an access or refresh token. They are not part of the standard identity contract. Never put a client secret in client code."
+    }
+   ],
+   "timeline": [
+    {
+     "stage": "OAuth client request",
+     "wait": "Unknown, limited trial",
+     "note": "Commercial access is a limited trial, not open self serve."
+    },
+    {
+     "stage": "Sign-in code",
+     "wait": "2 to 4 hours",
+     "note": "PKCE, state, nonce, and ID token verification on the backend."
+    },
+    {
+     "stage": "Test with a real account",
+     "wait": "30 minutes",
+     "note": "Test one sign-in end to end, including a failed and expired transaction."
+    },
+    {
+     "stage": "Approval",
+     "wait": "Unknown",
+     "note": "No fixed date is published for a specific app in this guide."
+    }
+   ],
+   "checklist": [
+    {
+     "item": "Correct ChatGPT path chosen: identity, API key, or Apps SDK",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "OAuth client approved, with exact callback URL per environment",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "OpenID discovery loaded, not hardcoded",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "PKCE, state, and nonce created and verified on the backend",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "ID token verified against JWKS, with issuer, audience, and nonce checked",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "Client secret stored server side only, if a confidential client",
+     "status": "required",
+     "who": "human"
+    }
+   ],
+   "blockers": [
+    {
+     "blocker": "Commercial access not open",
+     "fix": "Join the limited trial through an OpenAI representative. Do not ship with a guessed client."
+    },
+    {
+     "blocker": "Callback URL mismatch",
+     "fix": "Use the exact registered callback URL for that environment, including host, path, and https."
+    },
+    {
+     "blocker": "Reused, expired, or mismatched transaction",
+     "fix": "Transactions are one time. Check state and nonce, expire them, and never redeem a code from an unverified callback."
+    },
+    {
+     "blocker": "ID token not trusted",
+     "fix": "Verify the signature against the JWKS, and check issuer, audience, expiration, and nonce before creating a session."
+    }
+   ],
+   "agentCan": [
+    "Draft the PKCE and token exchange code",
+    "Draft the sign-in button markup",
+    "Draft a test plan for success, mismatch, and expiry"
+   ],
+   "humanMust": [
+    "Request the OAuth client through the trial",
+    "Register exact callback URLs",
+    "Test sign-in with a real account",
+    "Respond if OpenAI flags the integration"
+   ],
+   "sources": [
+    "https://developers.openai.com/siwc/website",
+    "https://auth.openai.com/.well-known/openid-configuration"
+   ],
+   "tested": "Official OpenAI Sign in with ChatGPT docs checked on 2026-10-31, including endpoints and scopes. No OAuth client was requested, and no sign-in was completed for this guide.",
+   "notVerified": [
+    "Trial availability for a specific commercial app",
+    "ChatGPT plan usage flow, which is separate from identity sign-in",
+    "Apps SDK submission, which is a separate path"
+   ],
+   "confidence": "Medium",
+   "managedAppNote": "If you use Composio, managed auth does not replace an OpenAI OAuth client for Sign in with ChatGPT. Register your own client for this flow.",
+   "nextStep": "Confirm you have a path to an approved OAuth client, then build backend PKCE sign-in and verify one real ID token.",
+   "guideType": "full"
+  },
+  {
+   "id": "composio",
+   "name": "Composio",
+   "category": "Developer tools",
+   "difficulty": "Medium",
+   "difficultyWhy": "Not a provider OAuth app. This guide is for a Composio auth config. Managed auth is easy, custom auth is medium because it needs a provider OAuth app and an exact Composio callback URL.",
+   "setupTime": "30 to 60 minutes for managed auth, 1 to 2 hours for a custom auth config with a provider app",
+   "approvalWait": "None in Composio itself. Provider approval, where required, is separate and varies by provider.",
+   "accountNeeded": "Composio project account, plus a provider account if you create a custom auth config",
+   "cost": "Check current Composio pricing in the dashboard. Provider costs are separate.",
+   "consoleName": "Composio dashboard, Auth Configs",
+   "consoleUrl": "https://docs.composio.dev/docs/auth-configuration/custom-auth-configs",
+   "steps": [
+    {
+     "title": "Start with managed auth",
+     "detail": "Use Composio managed auth for the toolkit first and test one connection. Go custom only for your own branding, custom scopes, dedicated quota, a custom instance, or a toolkit with no managed auth.",
+     "who": "human",
+     "time": "15 minutes",
+     "blockerTip": "Custom auth adds a provider app to maintain. Do not start there if managed already covers the toolkit."
+    },
+    {
+     "title": "Get a project API key, server side only",
+     "detail": "In the dashboard, go to Settings, Project Settings, API Keys, copy the key, and store it as COMPOSIO_API_KEY in server secrets.",
+     "who": "human",
+     "time": "10 minutes",
+     "blockerTip": "Never put the project API key in browser code, chat, or a public repo. A CLI login alone does not export it for an app."
+    },
+    {
+     "title": "Create a custom auth config",
+     "detail": "In the dashboard, click Create Auth Config, choose the toolkit, then go to Authentication management and Manage authentication with custom credentials.",
+     "who": "human",
+     "time": "10 minutes",
+     "blockerTip": "Check the toolkit auth scheme first. Some toolkits use API keys, not OAuth2."
+    },
+    {
+     "title": "Register the provider app with the Composio callback",
+     "detail": "In the provider portal, set the authorized redirect URI exactly to https://backend.composio.dev/api/v3/toolkits/auth/callback, then copy the provider client ID and client secret back.",
+     "who": "human",
+     "time": "30 minutes",
+     "blockerTip": "A mismatch here is the most common failure. The legacy URL https://backend.composio.dev/api/v1/auth-apps/add is still supported, but set the URL explicitly in both places."
+    },
+    {
+     "title": "Finish the auth config and copy its ID",
+     "detail": "Select the OAuth2 scheme, toggle Use your own developer credentials, enter the provider client ID and secret, set Redirect URI to the registered URL, click Create, and copy the auth config ID, starting with ac_.",
+     "who": "human",
+     "time": "10 minutes",
+     "blockerTip": "Do not share the client secret. Store it in the auth config, not in code."
+    },
+    {
+     "title": "Use the auth config in a session",
+     "detail": "Pass the auth config ID in authConfigs, keyed by toolkit, when you create a session. Toolkits you leave out keep managed auth. Store the connected account ID on your server and verify the connection before showing success.",
+     "who": "agent",
+     "time": "20 minutes",
+     "blockerTip": "Creating an auth config alone does not change a session. If you do not pass its ID, the session still uses managed auth. For managed OAuth, use link or session authorize, not the retired managed initiate path."
+    }
+   ],
+   "timeline": [
+    {
+     "stage": "Managed auth test",
+     "wait": "30 to 60 minutes",
+     "note": "Fastest path, no provider app needed."
+    },
+    {
+     "stage": "Provider app, for custom only",
+     "wait": "30 minutes plus provider review",
+     "note": "Provider approval is separate from Composio."
+    },
+    {
+     "stage": "Custom auth config",
+     "wait": "15 minutes",
+     "note": "Create, copy the ac_ ID, and pass it to a session."
+    },
+    {
+     "stage": "Connection test",
+     "wait": "15 minutes",
+     "note": "Verify one real connection before showing success."
+    }
+   ],
+   "checklist": [
+    {
+     "item": "Managed auth tested first, custom only if needed",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Project API key stored server side as COMPOSIO_API_KEY",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Provider redirect URI exactly matches the Composio callback",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Auth config created, with ac_ ID copied",
+     "status": "required",
+     "who": "human"
+    },
+    {
+     "item": "Auth config ID passed to the session, keyed by toolkit",
+     "status": "required",
+     "who": "agent"
+    },
+    {
+     "item": "One real connection verified",
+     "status": "required",
+     "who": "agent"
+    }
+   ],
+   "blockers": [
+    {
+     "blocker": "redirect_uri_mismatch",
+     "fix": "Set https://backend.composio.dev/api/v3/toolkits/auth/callback exactly in the provider app and in the auth config. Do not guess a different URL."
+    },
+    {
+     "blocker": "Custom config ignored in a session",
+     "fix": "Pass its ID in authConfigs for that toolkit. Creating it alone does not switch a session to custom."
+    },
+    {
+     "blocker": "Managed initiate path retired",
+     "fix": "For managed OAuth, use link or session authorize. Initiate remains for custom auth configs."
+    },
+    {
+     "blocker": "Provider approval still pending",
+     "fix": "Composio approval is not provider approval. Complete the provider review separately."
+    }
+   ],
+   "agentCan": [
+    "Draft the session code with authConfigs",
+    "Draft a connection test plan",
+    "List when managed vs custom applies"
+   ],
+   "humanMust": [
+    "Create the Composio project and API key",
+    "Register the provider app, if custom",
+    "Create the auth config",
+    "Test one real connection"
+   ],
+   "sources": [
+    "https://docs.composio.dev/docs/auth-configuration/custom-auth-configs",
+    "https://docs.composio.dev/docs/authentication/programmatic-auth-configs",
+    "https://docs.composio.dev/docs/authentication/white-labeling-authentication"
+   ],
+   "tested": "Official Composio auth config docs checked on 2026-10-31. No Composio account, project, or auth config was created for this guide.",
+   "notVerified": [
+    "Exact current dashboard layout, which can change",
+    "Current Composio pricing",
+    "A specific toolkit auth scheme, which varies by toolkit"
+   ],
+   "confidence": "Medium",
+   "managedAppNote": "Managed auth is the default in this guide. Custom auth is the exception, for branding, custom scopes, dedicated quota, a custom instance, or no managed auth.",
+   "nextStep": "Test managed auth for one toolkit first, then create one custom auth config only if you have a clear reason, and test one real connection.",
+   "guideType": "full"
+  }
+ ],
+ "schema": "guides-v1",
+ "updated": "2026-10-31"
 }

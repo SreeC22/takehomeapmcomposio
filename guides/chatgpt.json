@@ -1,0 +1,154 @@
+{
+ "id": "chatgpt",
+ "name": "ChatGPT",
+ "category": "AI",
+ "difficulty": "Hard",
+ "difficultyWhy": "OAuth, but limited trial for commercial apps. Sign in with ChatGPT is a real OAuth 2.0 and OpenID Connect flow, but commercial access is currently a limited trial, so approval is the blocker, not the code.",
+ "setupTime": "2 to 4 hours for the sign-in code, plus unknown wait for commercial trial access",
+ "approvalWait": "Unknown. Commercial Sign in with ChatGPT is a limited trial. Contact an OpenAI representative. Do not promise a date.",
+ "accountNeeded": "OpenAI developer account, plus an approved OAuth client, typically beginning with oaiapp_, for commercial sign-in",
+ "cost": "Free to build. API use is billed separately. ChatGPT plan usage, where offered, has its own caps and is a separate flow from identity sign-in.",
+ "consoleName": "OpenAI Developers, Sign in with ChatGPT",
+ "consoleUrl": "https://developers.openai.com/siwc/website",
+ "steps": [
+  {
+   "title": "Pick the right ChatGPT path first",
+   "detail": "Use Sign in with ChatGPT for user identity. Use an API key for your own OpenAI API calls. Use the Apps SDK with your own authorization server for a ChatGPT app. Do not mix these three.",
+   "who": "human",
+   "time": "20 minutes",
+   "blockerTip": "If you need user identity, the API key path will not give it. If you need API calls, sign-in alone will not give it."
+  },
+  {
+   "title": "Request an OAuth client, do not guess one",
+   "detail": "For a commercial app, join the limited trial through an OpenAI representative and get a client ID, an exact callback URL for each environment, and a token endpoint auth method. If you are not approved, stop here.",
+   "who": "human",
+   "time": "Unknown, trial wait",
+   "blockerTip": "A guessed client ID or callback URL will fail. The example client oaiapp_example is not a real client."
+  },
+  {
+   "title": "Load OpenID discovery, do not hardcode endpoints",
+   "detail": "Load https://auth.openai.com/.well-known/openid-configuration and use the issuer, authorization endpoint, token endpoint, and JWKS URI from that document.",
+   "who": "agent",
+   "time": "20 minutes",
+   "blockerTip": "If OpenAI changes an endpoint, hardcoded values break. Discovery is the source of truth."
+  },
+  {
+   "title": "Build sign-in with PKCE on your backend",
+   "detail": "Create a fresh state, PKCE verifier and S256 challenge, and nonce on your backend, store them server side, and expire the transaction. Bind it to a server session cookie.",
+   "who": "agent",
+   "time": "1 to 2 hours",
+   "blockerTip": "Never create PKCE values or store the verifier in browser code. A reused or expired transaction must end sign-in."
+  },
+  {
+   "title": "Add the Continue with ChatGPT button",
+   "detail": "Use approved OpenAI branding and the label Continue with ChatGPT, and add the data-oai-siwc-button attribute to the button so OpenAI can verify and troubleshoot it.",
+   "who": "human",
+   "time": "20 minutes",
+   "blockerTip": "Use the exact registered callback URL. A mismatch is a common first failure."
+  },
+  {
+   "title": "Exchange the code and verify the ID token",
+   "detail": "On your backend, exchange the code at the token endpoint with the original redirect URI and PKCE verifier, then verify the ID token signature against the JWKS, and check issuer, audience, expiration, nonce, and subject. Then create your own session.",
+   "who": "agent",
+   "time": "30 minutes",
+   "blockerTip": "For identity-only sign-in, do not require an access or refresh token. They are not part of the standard identity contract. Never put a client secret in client code."
+  }
+ ],
+ "timeline": [
+  {
+   "stage": "OAuth client request",
+   "wait": "Unknown, limited trial",
+   "note": "Commercial access is a limited trial, not open self serve."
+  },
+  {
+   "stage": "Sign-in code",
+   "wait": "2 to 4 hours",
+   "note": "PKCE, state, nonce, and ID token verification on the backend."
+  },
+  {
+   "stage": "Test with a real account",
+   "wait": "30 minutes",
+   "note": "Test one sign-in end to end, including a failed and expired transaction."
+  },
+  {
+   "stage": "Approval",
+   "wait": "Unknown",
+   "note": "No fixed date is published for a specific app in this guide."
+  }
+ ],
+ "checklist": [
+  {
+   "item": "Correct ChatGPT path chosen: identity, API key, or Apps SDK",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "OAuth client approved, with exact callback URL per environment",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "OpenID discovery loaded, not hardcoded",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "PKCE, state, and nonce created and verified on the backend",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "ID token verified against JWKS, with issuer, audience, and nonce checked",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Client secret stored server side only, if a confidential client",
+   "status": "required",
+   "who": "human"
+  }
+ ],
+ "blockers": [
+  {
+   "blocker": "Commercial access not open",
+   "fix": "Join the limited trial through an OpenAI representative. Do not ship with a guessed client."
+  },
+  {
+   "blocker": "Callback URL mismatch",
+   "fix": "Use the exact registered callback URL for that environment, including host, path, and https."
+  },
+  {
+   "blocker": "Reused, expired, or mismatched transaction",
+   "fix": "Transactions are one time. Check state and nonce, expire them, and never redeem a code from an unverified callback."
+  },
+  {
+   "blocker": "ID token not trusted",
+   "fix": "Verify the signature against the JWKS, and check issuer, audience, expiration, and nonce before creating a session."
+  }
+ ],
+ "agentCan": [
+  "Draft the PKCE and token exchange code",
+  "Draft the sign-in button markup",
+  "Draft a test plan for success, mismatch, and expiry"
+ ],
+ "humanMust": [
+  "Request the OAuth client through the trial",
+  "Register exact callback URLs",
+  "Test sign-in with a real account",
+  "Respond if OpenAI flags the integration"
+ ],
+ "sources": [
+  "https://developers.openai.com/siwc/website",
+  "https://auth.openai.com/.well-known/openid-configuration"
+ ],
+ "tested": "Official OpenAI Sign in with ChatGPT docs checked on 2026-10-31, including endpoints and scopes. No OAuth client was requested, and no sign-in was completed for this guide.",
+ "notVerified": [
+  "Trial availability for a specific commercial app",
+  "ChatGPT plan usage flow, which is separate from identity sign-in",
+  "Apps SDK submission, which is a separate path"
+ ],
+ "confidence": "Medium",
+ "managedAppNote": "If you use Composio, managed auth does not replace an OpenAI OAuth client for Sign in with ChatGPT. Register your own client for this flow.",
+ "nextStep": "Confirm you have a path to an approved OAuth client, then build backend PKCE sign-in and verify one real ID token.",
+ "guideType": "full"
+}

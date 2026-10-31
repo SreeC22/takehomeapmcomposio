@@ -125,3 +125,14 @@ Final three items, 2026-10-31:
 - Fix: the link builder is now platform agnostic. It strips trailing punctuation (comma, period, semicolon, and similar) from every URL before making the link, and puts that punctuation back outside the link. It also labels endpoints correctly: authorize endpoint and token endpoint, instead of calling every link official docs.
 - Clean URLs verified: Figma https://developers.figma.com/docs/rest-api/oauth-apps/ returns 200, Miro https://developers.miro.com/docs/add-permission-scopes-to-your-app returns 200, while the same URLs with a trailing comma returned 404.
 - Live deployment dpl_FswUXfUEuLNHgVhfqLdwKV9U2Z96, verified on the alias: the new link builder is in the live script.
+
+## Claude, ChatGPT, and Composio guides, plus developer trust check, 2026-10-31
+
+- Library is now 16 guides, 8 full. New full guides: Claude, ChatGPT, and Composio, all Medium confidence, short steps, no em dashes.
+- Developer trust check, done before publishing these three, as a developer arriving cold would check them:
+  - Step 1 must open a real official page. All new sources returned 200, including Anthropic get-api-key, OpenAI Sign in with ChatGPT, OpenAI discovery, and Composio custom auth configs.
+  - Auth model must be real, not invented OAuth. Claude: no third party OAuth app, API key only, sk-ant-, ANTHROPIC_API_KEY, shown once. ChatGPT: real OAuth 2.0 plus OpenID Connect, but commercial access is a limited trial, so approval is Unknown, not a promised date. Composio: not a provider OAuth app, it is an auth config, managed first, custom only with the exact callback https://backend.composio.dev/api/v3/toolkits/auth/callback.
+  - What was not tested is stated. None of the three guides claims a sign-in, key creation, client approval, or auth config creation was completed. NotVerified lists layout, pricing, and specific app availability.
+  - Existing library, same check: GitHub, Slack, and Google are the most trustable full guides, official sources 200, approval as ranges, no High confidence claimed. Airtable is Medium with a timeline explicitly not confirmed. Meta is the weakest full guide, third party sources only, timeline not confirmed, confidence Low to Medium. The 8 summary guides are labeled summary, Low, all details not verified, and are starting cards only, not verified guides. Airtable console https://airtable.com/create/oauth returned 403 to curl, likely a bot block, so it is not claimed as a curl verified link for a human browser.
+  - Trust fixes applied to the new guides: each guide states its real auth model in its first line, so a developer does not follow an OAuth flow for Claude, or expect open ChatGPT client access, or expect Composio itself to approve a provider app.
+- Live deployment dpl_F74FmcWA2punsR9yZMtxhMwHzMCx, verified on the alias: guides.json lists all 16, and guides/claude.json, guides/chatgpt.json, and guides/composio.json all return 200.

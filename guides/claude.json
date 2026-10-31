@@ -1,0 +1,147 @@
+{
+ "id": "claude",
+ "name": "Claude",
+ "category": "AI",
+ "difficulty": "Easy",
+ "difficultyWhy": "Not an OAuth app. Do not try to register an OAuth app for Claude. Third party access is an API key from the Claude Console, with no OAuth approval queue.",
+ "setupTime": "15 to 30 minutes",
+ "approvalWait": "None. There is no OAuth approval stage for a Claude API key.",
+ "accountNeeded": "Claude Console account at platform.claude.com, separate from a claude.ai chat account, plus a payment method for API credits",
+ "cost": "Free to create a key. API use is billed per token from prepaid Console credits, separate from a Claude chat subscription.",
+ "consoleName": "Claude Console, API keys",
+ "consoleUrl": "https://platform.claude.com/settings/keys",
+ "steps": [
+  {
+   "title": "Create a Claude Console account",
+   "detail": "Sign in at platform.claude.com, or create an account. This is separate from claude.ai chat, with separate billing.",
+   "who": "human",
+   "time": "5 minutes",
+   "blockerTip": "A claude.ai chat login alone does not give you API access. Use the Console account."
+  },
+  {
+   "title": "Add credits before testing",
+   "detail": "Open Settings, Billing, and check your balance before your first call. API billing is separate from a Claude subscription.",
+   "who": "human",
+   "time": "5 minutes",
+   "blockerTip": "At a zero balance, API calls will not work. Add credits first."
+  },
+  {
+   "title": "Create one named API key",
+   "detail": "Open API keys, click Create key, name it after the app, choose an expiration, and choose a linked account. Use a service account key for a shared app, CI, or production service.",
+   "who": "human",
+   "time": "5 minutes",
+   "blockerTip": "If Create key is greyed out, your role cannot create keys. Ask an organization admin."
+  },
+  {
+   "title": "Store the key safely, once",
+   "detail": "Copy the full key, starting with sk-ant-, straight into a secrets manager and set ANTHROPIC_API_KEY. The Console shows it only once.",
+   "who": "human",
+   "time": "5 minutes",
+   "blockerTip": "Never put the key in client code, a public repo, logs, or agent output. If you lose it, create a new key and delete the old one."
+  },
+  {
+   "title": "Test one call, then stop",
+   "detail": "Send one test request with the key as a Bearer token. A 401 means a wrong, expired, or revoked key, or trailing whitespace. A multi workspace key must also send the workspace header.",
+   "who": "agent",
+   "time": "10 minutes",
+   "blockerTip": "Do not reuse Claude Code or claude.ai OAuth tokens in another product. Those OAuth tokens are locked to Claude Code and Claude.ai."
+  }
+ ],
+ "timeline": [
+  {
+   "stage": "Console account",
+   "wait": "Immediate",
+   "note": "Self serve, no approval queue for a key."
+  },
+  {
+   "stage": "Billing credits",
+   "wait": "Immediate",
+   "note": "Add credits before testing."
+  },
+  {
+   "stage": "API key",
+   "wait": "Immediate",
+   "note": "Shown only once at creation."
+  },
+  {
+   "stage": "OAuth approval",
+   "wait": "Not applicable",
+   "note": "There is no third party OAuth app to approve."
+  }
+ ],
+ "checklist": [
+  {
+   "item": "Claude Console account created, separate from claude.ai",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "Billing credits checked",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "API key named after the app, with a service account for shared use",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "Key stored in a secrets manager, never in client code",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "One test call works",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "OAuth app registration",
+   "status": "not_applicable",
+   "who": "human"
+  }
+ ],
+ "blockers": [
+  {
+   "blocker": "Create key is greyed out",
+   "fix": "Your role cannot create keys. Ask an organization admin, or ask for a service account key."
+  },
+  {
+   "blocker": "Key lost after closing the dialog",
+   "fix": "There is no reveal button. Create a new key, store it at once, and delete the old one."
+  },
+  {
+   "blocker": "401 on first call",
+   "fix": "Check for a wrong or expired key and trailing whitespace, and send the workspace header if the key is not scoped to one workspace."
+  },
+  {
+   "blocker": "Personal key stops working",
+   "fix": "A personal key acts as you and stops if you leave the organization. Use a service account key for shared workloads."
+  }
+ ],
+ "agentCan": [
+  "Draft a key naming plan",
+  "Draft a test request",
+  "Draft env setup for ANTHROPIC_API_KEY"
+ ],
+ "humanMust": [
+  "Create the Console account",
+  "Add a payment method and credits",
+  "Create and copy the key",
+  "Set a billing limit"
+ ],
+ "sources": [
+  "https://platform.claude.com/docs/en/get-api-key",
+  "https://platform.claude.com/settings/keys"
+ ],
+ "tested": "Official Anthropic API key docs checked on 2026-10-31. No Console sign-in, key creation, or API call was completed for this guide.",
+ "notVerified": [
+  "Exact current Console layout, which can change",
+  "Current pricing and credit amounts",
+  "Current model list"
+ ],
+ "confidence": "Medium",
+ "managedAppNote": "There is no managed OAuth app for Claude. If you use Composio, its Claude toolkit still uses your API key, not an OAuth app.",
+ "nextStep": "Create a Console account, add credits, create one named key, store it in a secrets manager, and test one call.",
+ "guideType": "full"
+}
