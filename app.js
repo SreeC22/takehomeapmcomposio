@@ -111,12 +111,19 @@ function linkify(text) {
     return `<a href="${esc(safeUrl(url))}">${label}</a>${esc(trail)}`;
   }).join('');
 }
+function evidenceHtml(g) {
+  if (!g.evidenceSummary && !g.requirements && !g.qualityGate) return '';
+  const tracks = g.evidenceSummary && g.evidenceSummary.tracks ? Object.values(g.evidenceSummary.tracks).map(t => `<li><strong>${esc(t.name)}:</strong> ${esc(t.status)}, confidence ${esc(t.confidence)}${t.evidence ? ` - ${esc(t.evidence)}` : ''}${t.missing && t.missing.length ? ` Missing: ${esc(t.missing.join('; '))}` : ''}</li>`).join('') : '';
+  const reqs = (g.requirements || []).map(r => `<li><strong>${esc(r.name)}:</strong> ${esc(r.status)}${r.condition ? ` - ${esc(r.condition)}` : ''}${r.evidence ? ` Evidence: ${esc(r.evidence)}` : ''}</li>`).join('');
+  const gate = g.qualityGate ? `<p><strong>Quality gate:</strong> completeness ${esc(g.qualityGate.completeness)}, evidence ${esc(g.qualityGate.evidenceCoverage)}, source authority ${esc(g.qualityGate.sourceAuthority)}, factual confidence ${esc(g.qualityGate.factualConfidence)}</p>${g.qualityGate.checksPassed && g.qualityGate.checksPassed.length ? `<p>Checks passed: ${esc(g.qualityGate.checksPassed.join('; '))}</p>` : ''}${g.qualityGate.checksFailed && g.qualityGate.checksFailed.length ? `<p>Checks failed: ${esc(g.qualityGate.checksFailed.join('; '))}</p>` : ''}` : '';
+  return `<h3>Evidence by track, and requirements</h3><p class="small">Each track is reported separately. A missing track is a real gap, not a guessed step.</p>${tracks ? `<ul>${tracks}</ul>` : ''}${reqs ? `<p><strong>Requirements:</strong></p><ul>${reqs}</ul>` : ''}${gate}`;
+}
 function stepsHtml(g) {
   return '<ol class="steps">' + g.steps.map((s, i) => {
     const split = String(s.detail || '').split(/Evidence from docs:/i);
     const action = split[0].replace(/^Action:\s*/i, '').trim();
-    const evidence = split.slice(1).join('Evidence from docs:').trim();
-    const chips = [s.who ? `Who: ${s.who}` : '', s.time ? `Time: ${s.time}` : ''].filter(Boolean).map(c => `<span class="badge">${esc(c)}</span>`).join(' ');
+    const evidence = split.slice(1).join('Evidence from docs:').trim() || (s.evidence || '');
+    const chips = [s.who ? `Who: ${s.who}` : '', s.time ? `Time: ${s.time}` : '', s.requirement ? `Requirement: ${s.requirement}` : ''].filter(Boolean).map(c => `<span class="badge">${esc(c)}</span>`).join(' ');
     return `<li class="step-card"><span class="step-num">${i + 1}</span><div class="step-body"><strong>${esc(s.title)}</strong><p>${linkify(action)}</p>${chips ? `<p>${chips}</p>` : ''}${s.blockerTip ? `<p class="small">Watch out: ${esc(s.blockerTip)}</p>` : ''}${evidence ? `<details><summary>Evidence from docs</summary><p class="small">${esc(evidence)}</p></details>` : ''}</div></li>`;
   }).join('') + '</ol>';
 }
@@ -154,10 +161,12 @@ function showDetail(g, isGenerated) {
         <li><strong>Account needed:</strong> ${esc(g.accountNeeded)}</li>
         <li><strong>Cost to register:</strong> ${esc(g.cost)}</li>
         <li><strong>Console:</strong> ${esc(g.consoleName)} - ${esc(g.consoleUrl)}</li>
+        ${g.authType ? `<li><strong>Authentication type:</strong> ${esc(g.authType)}</li>` : ''}
         <li><strong>Managed app note:</strong> ${esc(g.managedAppNote)}</li>
       </ul>
     </div>
     <p class="small">Managed or custom? Check managed first. Go custom only for own branding, custom scopes, dedicated quota, or a custom instance.</p>
+    ${evidenceHtml(g)}
     <h3>Step by step guide</h3>
     <p class="small">Quick view. Tap Evidence from docs on a step to see the docs quote behind it.</p>
     ${stepsHtml(g)}
