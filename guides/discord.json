@@ -138,5 +138,6 @@
    "wait": "Separate, not confirmed here",
    "note": "Only if your bot is in many servers."
   }
- ]
+ ],
+ "verificationStatus": "Docs checked, single official source, no sign-in test"
 }

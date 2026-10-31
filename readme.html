@@ -23,14 +23,14 @@
 <li>SUBMISSION-NOTES.md: paste-ready notes for the file upload submission.</li>
 </ul>
 <h2>Guides included</h2>
-<p>16 full guides, 0 summaries, checked against docs on 2026-10-31 as noted in each guide: GitHub, Slack, Google, Meta, Microsoft, Notion, Salesforce, HubSpot, Shopify, Zoom, Discord, LinkedIn, Airtable, Claude, ChatGPT, and Composio. Claude is an API key guide, not an OAuth flow. ChatGPT is Sign in with ChatGPT, commercial access is a limited trial. Composio is an auth config, not a provider OAuth app. No guide claims High confidence, and no guide claims a sign-in, app creation, or provider approval was completed.</p>
+<p>16 full guides, 0 summaries, checked against docs on 2026-10-31 as noted in each guide. Full means completeness, not verification. Verification is shown separately in each guide. Notion and Discord each have a single official source. Meta relies on third-party sources only: GitHub, Slack, Google, Meta, Microsoft, Notion, Salesforce, HubSpot, Shopify, Zoom, Discord, LinkedIn, Airtable, Claude, ChatGPT, and Composio. Claude is an API key guide, not an OAuth flow. ChatGPT is Sign in with ChatGPT, commercial access is a limited trial. Composio is an auth config, not a provider OAuth app. No guide claims High confidence, and no guide claims a sign-in, app creation, or provider approval was completed.</p>
 <h2>Key decisions</h2>
 <ol>
 <li>Same guide schema for every platform, so difficulty and time are comparable.</li>
 <li>Setup time is reported separately from approval wait time.</li>
 <li>Step by step guide, with a separate review timeline and a separate approval checklist.</li>
 <li>Human cards and agent JSON come from the same data.</li>
-<li>Live research returns a full guide with a research log, sources, timings, and confidence, not a static template and not a summary. Claims that cannot be verified from a fetched page are marked Unknown, not invented.</li>
+<li>Live research returns a full guide with a research log, sources, timings, confidence, and a separate verificationStatus, not a static template and not a summary. If the research endpoint itself fails, the browser fallback is a draft, labeled draft and Unverified, not a full guide. Claims that cannot be verified from a fetched page are marked Unknown, not invented.</li>
 <li>Generated guides are shareable. Guide data is encoded in the share link and also saved in the browser, so a copied link survives refresh and sharing.</li>
 <li>Managed or custom is the first decision in every guide. Check Composio managed apps first, and go custom only for own branding, custom scopes, dedicated quota, faster polling, a custom instance, or enterprise branding.</li>
 <li>Quick guide view: steps show a short action, Who and Time chips, and a short Watch out line. Docs evidence is collapsed, and step URLs are cleaned of trailing punctuation before linking.</li>

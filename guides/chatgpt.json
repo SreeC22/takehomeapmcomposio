@@ -150,5 +150,6 @@
  "confidence": "Medium",
  "managedAppNote": "If you use Composio, managed auth does not replace an OpenAI OAuth client for Sign in with ChatGPT. Register your own client for this flow.",
  "nextStep": "Confirm you have a path to an approved OAuth client, then build backend PKCE sign-in and verify one real ID token.",
- "guideType": "full"
+ "guideType": "full",
+ "verificationStatus": "Docs checked, 2 or more official sources, no sign-in test"
 }

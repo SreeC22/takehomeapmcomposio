@@ -26,3 +26,6 @@ Airtable: guides/airtable.json - Medium, full guide
 - [Claude](guides/claude.json): Easy, setup 15 to 30 minutes, approval wait none. Not an OAuth app. API key only.
 - [ChatGPT](guides/chatgpt.json): Hard, setup 2 to 4 hours plus unknown trial wait, approval wait unknown. Sign in with ChatGPT, limited trial for commercial apps.
 - [Composio](guides/composio.json): Medium, setup 30 to 60 minutes managed, 1 to 2 hours custom, approval wait none in Composio itself. Auth config, not a provider OAuth app.
+
+- Verification is separate from completeness. Full means all sections are present. verificationStatus in each guide JSON says how it was checked: Docs checked with 2 or more official sources, single official source, partially verified, third-party only, or Unverified. No library guide was tested with a sign-in.
+- Live fallback: if the research endpoint fails, the browser returns a draft, labeled draft and Unverified, not a full guide.

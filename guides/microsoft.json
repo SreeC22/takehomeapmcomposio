@@ -140,5 +140,6 @@
    "wait": "30 minutes",
    "note": "One real sign-in and one API call."
   }
- ]
+ ],
+ "verificationStatus": "Docs checked, 2 or more official sources, no sign-in test"
 }

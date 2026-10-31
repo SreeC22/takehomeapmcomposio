@@ -1,1 +1,140 @@
-{"accountNeeded":"Free Airtable account","agentCan":["Draft scope lists","Draft redirect URLs","Draft authorize and token exchange code","Draft a test plan"],"approvalWait":"Unknown, no fixed approval timeline was confirmed in this check. Registration gives a Client ID and Client Secret for development use. Public distribution requirements were not confirmed from official Airtable pages in this check.","blockers":[{"blocker":"Redirect URL mismatch","fix":"Copy the exact redirect URL from the integration settings into your authorize request. Redirect URLs must be HTTPS unless using localhost, according to secondary guides."},{"blocker":"Scope not granted for the feature","fix":"Check the scope checkboxes for the exact feature. Records, comments, schema, webhooks, and user email are separate scopes."},{"blocker":"Client secret shown only once","fix":"Store the secret securely at generation time. If it is lost, generate a new secret and update your app."},{"blocker":"Rate limit per base","fix":"Airtable rate limits are reported as 5 requests per second per base in secondary guides. Add backoff and retry handling for 429 responses."}],"category":"Productivity","checklist":[{"item":"Integration name and redirect URL are correct","status":"required","who":"human"},{"item":"Scopes match the feature exactly","status":"required","who":"agent"},{"item":"Client ID and Client Secret stored securely, not in code or a public repo","status":"required","who":"human"},{"item":"Authorize flow tested with a real account","status":"required","who":"human"},{"item":"Support email, privacy policy URL, and terms of service URL, for public use","status":"optional","who":"human"}],"confidence":"Medium","consoleName":"Airtable Developer hub, OAuth integrations","consoleUrl":"https://airtable.com/create/oauth","cost":"Free to register","difficulty":"Medium","difficultyWhy":"Registration is straightforward, but scope selection, redirect URL rules, and public distribution details make the full launch harder than a first test. Official Airtable pages are JavaScript rendered and were not fully extracted in this check, so secondary guides were used and are cited.","guideType":"full","humanMust":["Create the OAuth integration","Generate and store the client secret","Test consent with a real account","Add public details if distributing publicly"],"id":"airtable","managedAppNote":"Check first whether a managed app already covers Airtable. Register your own app when you need your own client ID, scopes, or branding.","name":"Airtable","nextStep":"Register an OAuth integration at airtable.com/create/oauth, add your exact redirect URL, select only the scopes your feature needs, generate the client secret once, then test the authorize flow.","notVerified":["Exact current Airtable portal layout, which is JavaScript rendered","Public distribution approval timeline, not confirmed from official Airtable pages in this check","Exact webhook scope availability for your plan"],"setupTime":"1 to 2 hours","sources":["https://nango.dev/docs/api-integrations/airtable/how-to-register-your-own-airtable-api-oauth-app","https://Formbricks.com/docs/self-hosting/configuration/integrations/airtable","https://airtable.com/developers/web/api/authentication"],"steps":[{"blockerTip":"Redirect URLs must be HTTPS unless using localhost, according to secondary guides.","detail":"Go to the Airtable Developer hub, OAuth integrations, and click Register an OAuth integration. Add a name and your exact redirect URL.","time":"15 minutes","title":"Register an OAuth integration","who":"human"},{"blockerTip":"Client secret is shown only once. Store it securely at generation time.","detail":"Note the Client ID, then generate the client secret and store it securely, never in client code or a public repo.","time":"5 minutes","title":"Save the Client ID and Client Secret","who":"human"},{"blockerTip":"Records, comments, schema, webhooks, and user email are separate scopes. Request only what the feature uses.","detail":"Select scopes for your feature, for example data.records:read and data.records:write for records, schema.bases:read for base structure, and user.email:read for user identity. Add webhook:manage only if webhooks are needed.","time":"20 minutes","title":"Choose minimum scopes","who":"agent"},{"blockerTip":"Authorize endpoint is airtable.com/oauth2/v1/authorize and token endpoint is airtable.com/oauth2/v1/token, according to secondary guides. Confirm both on official docs before shipping.","detail":"Redirect the user to the authorize endpoint with client_id, redirect_uri, scope, and state. Exchange the returned code for an access token at the token endpoint, then call the API with that token.","time":"30 minutes","title":"Build the authorization flow","who":"agent"},{"blockerTip":"If consent shows extra scopes, fix the authorize URL and scope checkboxes, not just the app settings alone.","detail":"Authorize with a test account, confirm the consent screen shows only the scopes you requested, and confirm a token works for one real API call, for example reading a record.","time":"20 minutes","title":"Test with your own account","who":"human"}],"tested":"Docs research on 2026-10-31 from Nango, Formbricks, and Pipedream scope lists, plus Airtable developer pages. Official Airtable pages are JavaScript rendered and were not fully extracted, so approval and distribution claims are marked Unknown. No account sign-in, app creation, or provider approval was completed for this guide.","timeline":[{"note":"Registration gives Client ID and Client Secret for development use, according to secondary guides.","stage":"Register integration","wait":"Immediate"},{"note":"Test consent with your own account before distributing.","stage":"Test with users","wait":"Immediate to hours"},{"note":"Not confirmed from official Airtable pages in this check. Do not promise a date.","stage":"Public distribution, if required","wait":"Unknown"}]}
+{
+ "accountNeeded": "Free Airtable account",
+ "agentCan": [
+  "Draft scope lists",
+  "Draft redirect URLs",
+  "Draft authorize and token exchange code",
+  "Draft a test plan"
+ ],
+ "approvalWait": "Unknown, no fixed approval timeline was confirmed in this check. Registration gives a Client ID and Client Secret for development use. Public distribution requirements were not confirmed from official Airtable pages in this check.",
+ "blockers": [
+  {
+   "blocker": "Redirect URL mismatch",
+   "fix": "Copy the exact redirect URL from the integration settings into your authorize request. Redirect URLs must be HTTPS unless using localhost, according to secondary guides."
+  },
+  {
+   "blocker": "Scope not granted for the feature",
+   "fix": "Check the scope checkboxes for the exact feature. Records, comments, schema, webhooks, and user email are separate scopes."
+  },
+  {
+   "blocker": "Client secret shown only once",
+   "fix": "Store the secret securely at generation time. If it is lost, generate a new secret and update your app."
+  },
+  {
+   "blocker": "Rate limit per base",
+   "fix": "Airtable rate limits are reported as 5 requests per second per base in secondary guides. Add backoff and retry handling for 429 responses."
+  }
+ ],
+ "category": "Productivity",
+ "checklist": [
+  {
+   "item": "Integration name and redirect URL are correct",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "Scopes match the feature exactly",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Client ID and Client Secret stored securely, not in code or a public repo",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "Authorize flow tested with a real account",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "Support email, privacy policy URL, and terms of service URL, for public use",
+   "status": "optional",
+   "who": "human"
+  }
+ ],
+ "confidence": "Medium",
+ "consoleName": "Airtable Developer hub, OAuth integrations",
+ "consoleUrl": "https://airtable.com/create/oauth",
+ "cost": "Free to register",
+ "difficulty": "Medium",
+ "difficultyWhy": "Registration is straightforward, but scope selection, redirect URL rules, and public distribution details make the full launch harder than a first test. Official Airtable pages are JavaScript rendered and were not fully extracted in this check, so secondary guides were used and are cited.",
+ "guideType": "full",
+ "humanMust": [
+  "Create the OAuth integration",
+  "Generate and store the client secret",
+  "Test consent with a real account",
+  "Add public details if distributing publicly"
+ ],
+ "id": "airtable",
+ "managedAppNote": "Check first whether a managed app already covers Airtable. Register your own app when you need your own client ID, scopes, or branding.",
+ "name": "Airtable",
+ "nextStep": "Register an OAuth integration at airtable.com/create/oauth, add your exact redirect URL, select only the scopes your feature needs, generate the client secret once, then test the authorize flow.",
+ "notVerified": [
+  "Exact current Airtable portal layout, which is JavaScript rendered",
+  "Public distribution approval timeline, not confirmed from official Airtable pages in this check",
+  "Exact webhook scope availability for your plan"
+ ],
+ "setupTime": "1 to 2 hours",
+ "sources": [
+  "https://nango.dev/docs/api-integrations/airtable/how-to-register-your-own-airtable-api-oauth-app",
+  "https://Formbricks.com/docs/self-hosting/configuration/integrations/airtable",
+  "https://airtable.com/developers/web/api/authentication"
+ ],
+ "steps": [
+  {
+   "blockerTip": "Redirect URLs must be HTTPS unless using localhost, according to secondary guides.",
+   "detail": "Go to the Airtable Developer hub, OAuth integrations, and click Register an OAuth integration. Add a name and your exact redirect URL.",
+   "time": "15 minutes",
+   "title": "Register an OAuth integration",
+   "who": "human"
+  },
+  {
+   "blockerTip": "Client secret is shown only once. Store it securely at generation time.",
+   "detail": "Note the Client ID, then generate the client secret and store it securely, never in client code or a public repo.",
+   "time": "5 minutes",
+   "title": "Save the Client ID and Client Secret",
+   "who": "human"
+  },
+  {
+   "blockerTip": "Records, comments, schema, webhooks, and user email are separate scopes. Request only what the feature uses.",
+   "detail": "Select scopes for your feature, for example data.records:read and data.records:write for records, schema.bases:read for base structure, and user.email:read for user identity. Add webhook:manage only if webhooks are needed.",
+   "time": "20 minutes",
+   "title": "Choose minimum scopes",
+   "who": "agent"
+  },
+  {
+   "blockerTip": "Authorize endpoint is airtable.com/oauth2/v1/authorize and token endpoint is airtable.com/oauth2/v1/token, according to secondary guides. Confirm both on official docs before shipping.",
+   "detail": "Redirect the user to the authorize endpoint with client_id, redirect_uri, scope, and state. Exchange the returned code for an access token at the token endpoint, then call the API with that token.",
+   "time": "30 minutes",
+   "title": "Build the authorization flow",
+   "who": "agent"
+  },
+  {
+   "blockerTip": "If consent shows extra scopes, fix the authorize URL and scope checkboxes, not just the app settings alone.",
+   "detail": "Authorize with a test account, confirm the consent screen shows only the scopes you requested, and confirm a token works for one real API call, for example reading a record.",
+   "time": "20 minutes",
+   "title": "Test with your own account",
+   "who": "human"
+  }
+ ],
+ "tested": "Docs research on 2026-10-31 from Nango, Formbricks, and Pipedream scope lists, plus Airtable developer pages. Official Airtable pages are JavaScript rendered and were not fully extracted, so approval and distribution claims are marked Unknown. No account sign-in, app creation, or provider approval was completed for this guide.",
+ "timeline": [
+  {
+   "note": "Registration gives Client ID and Client Secret for development use, according to secondary guides.",
+   "stage": "Register integration",
+   "wait": "Immediate"
+  },
+  {
+   "note": "Test consent with your own account before distributing.",
+   "stage": "Test with users",
+   "wait": "Immediate to hours"
+  },
+  {
+   "note": "Not confirmed from official Airtable pages in this check. Do not promise a date.",
+   "stage": "Public distribution, if required",
+   "wait": "Unknown"
+  }
+ ],
+ "verificationStatus": "Partially verified, official page plus secondary sources, timeline Unknown, no sign-in test"
+}

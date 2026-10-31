@@ -143,5 +143,6 @@
  "confidence": "Medium",
  "managedAppNote": "There is no managed OAuth app for Claude. If you use Composio, its Claude toolkit still uses your API key, not an OAuth app.",
  "nextStep": "Create a Console account, add credits, create one named key, store it in a secrets manager, and test one call.",
- "guideType": "full"
+ "guideType": "full",
+ "verificationStatus": "Docs checked, 2 or more official sources, no sign-in test"
 }

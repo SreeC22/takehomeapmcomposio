@@ -145,3 +145,14 @@ Final three items, 2026-10-31:
 - Source check, 2026-10-31: all new guide sources returned 200, except Entra admin center which returned 403 to curl, likely a sign-in wall, while its Learn doc returned 200.
 - Deployment note: guides.json was minified to 89,636 bytes because a single upload argument cannot exceed about 128 KB, and its base64 form was over that limit at 103 KB pretty printed. The site reads minified JSON the same way.
 - Live verification, alias: guides.json lists 16 full, 0 summary; live Calendly research returns full, Medium, 6 steps, 4 timeline stages, 8 checklist items, 5 blockers.
+
+## Verification split, fallback fix, and live browser test, 2026-10-31
+
+- Point 1, fixed: verification is now separate from completeness. Every library guide has verificationStatus, shown on the card and in the guide detail, separate from guideType full.
+  - Docs checked, 2 or more official sources, no sign-in test: GitHub, Slack, Google, Microsoft, Salesforce, HubSpot, Shopify, Zoom, LinkedIn, Claude, ChatGPT, Composio.
+  - Docs checked, single official source, no sign-in test: Notion, Discord.
+  - Partially verified, official page plus secondary sources, timeline Unknown, no sign-in test: Airtable.
+  - Third-party only, official timeline not confirmed, no sign-in test: Meta.
+  - Full still means all sections are present. It does not mean the guide was tested with a sign-in, and the detail view says that in words.
+- Point 2, fixed: live research fallback is now a draft, not a full guide. If the research endpoint itself fails, the browser fallback guideType is draft, verificationStatus is Unverified, research failed, no official source fetched, and its next step says this is a draft, not a full guide. Successful live guides stay full in structure, but carry their own verificationStatus: Docs checked with 2 or more sources, Partially verified with a single source, or Unverified with no official source fetched. A nonsense app test returned full structure, Unverified, Low, 0 sources, which is the distinction working, not a verified claim.
+- Point 3, test: API tests alone are not the claim. Live Calendly research returned full, Docs checked with 2 or more sources, Medium, 6 steps, via the deployed API. A live browser test was then run on the alias, typing Calendly in the merged search and pressing Get guide, with no sign-in, and separately opening Notion to check its verification line. Node.js deprecation warnings in Vercel logs are warnings, not a failure signal. A 200 API response with a guide, sources, and timings, plus a browser guide detail opening, is the successful test, not the absence of warnings. Browser test result is recorded separately when it returns, and is not claimed before it returns.

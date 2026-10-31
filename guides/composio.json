@@ -151,5 +151,6 @@
  "confidence": "Medium",
  "managedAppNote": "Managed auth is the default in this guide. Custom auth is the exception, for branding, custom scopes, dedicated quota, a custom instance, or no managed auth.",
  "nextStep": "Test managed auth for one toolkit first, then create one custom auth config only if you have a clear reason, and test one real connection.",
- "guideType": "full"
+ "guideType": "full",
+ "verificationStatus": "Docs checked, 2 or more official sources, no sign-in test"
 }

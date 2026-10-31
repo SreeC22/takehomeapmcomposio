@@ -30,7 +30,7 @@ To deploy on Vercel:
 
 ## Guides included
 
-16 full guides, 0 summaries, checked against docs on 2026-10-31 as noted in each guide. No guide claims High confidence, and no guide claims a sign-in, app creation, or provider approval was completed.
+16 full guides, 0 summaries, checked against docs on 2026-10-31 as noted in each guide. Full means completeness, all sections present. It does not mean verified. Verification is shown separately in each guide, as verificationStatus, and in the guide detail view. No guide claims High confidence, and no guide claims a sign-in, app creation, or provider approval was completed. Notion and Discord each have a single official source. Meta relies on third-party sources only, with its official timeline not confirmed. Airtable is partially verified, official page plus secondary sources, timeline Unknown.
 
 - GitHub, Easy
 - Slack, Medium
@@ -55,7 +55,7 @@ To deploy on Vercel:
 2. Setup time is reported separately from approval wait time, because that is the question developers actually ask.
 3. Step by step guide, with a separate review timeline and a separate approval checklist, so a developer can see the gate before they submit.
 4. Human cards and agent JSON come from the same data, so an agent can call `guides.json` or `guides/<id>.json` and get the same guide a human reads.
-5. Live research returns a full guide with a research log, sources, timings, and confidence, not a static template and not a summary. Claims that cannot be verified from a fetched page are marked Unknown, not invented. It does not submit an OAuth app to any provider.
+5. Live research returns a full guide with a research log, sources, timings, confidence, and a separate verificationStatus, not a static template and not a summary. Claims that cannot be verified from a fetched page are marked Unknown, not invented. It does not submit an OAuth app to any provider. If the research endpoint itself fails, the browser fallback is a draft, labeled draft and Unverified, not a full guide. A successful live guide with Low confidence and no official source is still a full structure guide, but its verificationStatus is Unverified, and that is shown separately from completeness.
 6. Generated guides are shareable. The guide data is encoded in the share link and also saved in the browser, so a copied link survives refresh and sharing. Generated steps are clear actions, not raw fragments: register, set redirect, choose scopes, build authorize and token flow, test and review, submit for review, each with an evidence quote from fetched docs where one was found, and authorize and token endpoints listed separately.
 7. Managed or custom is the first decision in every guide. Check Composio managed apps first, and go custom only for own branding, custom scopes, dedicated quota, faster polling, a custom instance, or enterprise branding.
 8. Agent vs human steps are explicit on every guide, because an agent cannot complete business verification, domain verification, or provider review for a developer.

@@ -482,6 +482,7 @@ module.exports = async (req, res) => {
     consoleName: sources.length ? 'Official developer portal, see sources' : 'Unknown, find the official developer console first',
     consoleUrl: consoleUrl,
     guideType: 'full',
+    verificationStatus: sources.length >= 2 ? 'Docs checked, 2 or more sources, no sign-in test' : sources.length === 1 ? 'Partially verified, single source, no sign-in test' : 'Unverified, no official source fetched, no sign-in test',
     confidence: confidence,
     managedAppNote: 'Check first whether a managed app already covers this platform. If it does, you may not need your own app.',
     nextStep: sources.length ? 'Open the first source below, confirm the registration fields and redirect URL, then list scopes before building.' : 'Find the official developer console and registration docs for ' + app + ', then list scopes and review triggers before building.',
