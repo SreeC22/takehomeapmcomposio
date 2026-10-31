@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>README - OAuth Setup Guides</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top"><div class="wrap"><h1>OAuth Setup Guides - README</h1><p class="sub">Rendered README for the deployed site. Source on GitHub: <a href="https://github.com/SreeC22/takehomeapmcomposio">SreeC22/takehomeapmcomposio</a>. Live site guide library is on the home page.</p><p><a href="index.html">Back to guides</a></p></div></header>
+<main class="wrap">
+<section class="about">
+<h2>Live use</h2>
+<p>Open index.html for the library, or deploy this folder to Vercel. Live research uses the serverless endpoint in api/research.js, which runs on Vercel with no paid API key. No login and no secrets are needed to run it.</p>
+<h2>What is inside</h2>
+<ul>
+<li>index.html, style.css, app.js: searchable library, guide cards, guide detail view, live research, and shareable generated guides.</li>
+<li>api/research.js: serverless live research endpoint. It searches for official developer and OAuth docs, fetches candidate pages, extracts registration, scope, and review claims, and returns a guide plus a research log.</li>
+<li>guides.json: full guide index, in the same schema used for human cards and agent JSON.</li>
+<li>guides/&lt;id&gt;.json: one machine readable guide per platform.</li>
+<li>llms.txt: plain text index for agents and crawlers.</li>
+<li>VERIFICATION-LOG.md: what was checked, what was corrected, and what could not be verified.</li>
+<li>SUBMISSION-NOTES.md: paste-ready notes for the file upload submission.</li>
+</ul>
+<h2>Guides included</h2>
+<p>Full guides, checked against docs on 2026-10-31 as noted in each guide: GitHub, Slack, Google, Meta, Airtable. Summary guides, not verified, that live research can expand: Microsoft, Notion, Salesforce, HubSpot, Shopify, Zoom, Discord, LinkedIn.</p>
+<h2>Key decisions</h2>
+<ol>
+<li>Same guide schema for every platform, so difficulty and time are comparable.</li>
+<li>Setup time is reported separately from approval wait time.</li>
+<li>Card-by-card setup, with a separate review timeline card and a separate approval checklist card.</li>
+<li>Human cards and agent JSON come from the same data.</li>
+<li>Live research returns a guide with a research log, sources, and confidence, not a static template. Claims that cannot be verified from a fetched page are marked Unknown, not invented.</li>
+<li>Generated guides are shareable. Guide data is encoded in the share link and also saved in the browser, so a copied link survives refresh and sharing.</li>
+<li>Managed or custom is the first decision in every guide. Check Composio managed apps first, and go custom only for own branding, custom scopes, dedicated quota, faster polling, a custom instance, or enterprise branding.</li>
+<li>Focused slice, not 100 thin guides. Five full guides that can be checked beat twelve guessed guides.</li>
+</ol>
+<h2>Live research, honest version</h2>
+<p>The live form calls api/research.js. That endpoint searches for official developer and OAuth docs, fetches candidate pages, and extracts claims only where pages mention OAuth, client ID, redirect, or scopes. It returns a guide, a research log with timestamps and failures, sources, and confidence. Extraction is rule-based, not a language model, so quality varies by site, and failures are logged instead of hidden. A generated guide must be checked against official docs before use.</p>
+<h2>Limitations</h2>
+<ul>
+<li>No account sign-in, app creation, or provider approval was completed for these guides.</li>
+<li>Google and Meta timelines are ranges, not guarantees. Meta timeline was not confirmed from an official Meta page in this check.</li>
+<li>Summary guides are not verified against official docs in this build.</li>
+<li>Live research extraction is heuristic. It can miss JavaScript rendered official pages, and it can return Low confidence with Unknowns when no official page can be verified.</li>
+<li>No credentials, tokens, or client secrets are included anywhere in this repo.</li>
+</ul>
+<h2>Verification</h2>
+<p>See VERIFICATION-LOG.md for the sample checked, corrections made, and items that could not be verified. A sampled verification report is also on the home page.</p>
+</section>
+</main>
+<footer class="wrap small"><a href="index.html">Back to guides</a> | <a href="https://github.com/SreeC22/takehomeapmcomposio">Source on GitHub</a></footer>
+</body>
+</html>

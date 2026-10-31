@@ -21,3 +21,5 @@
 ## Optional
 
 - Use live generation on the home page to create a draft for an app outside the library. Drafts are labeled Agent draft, Low confidence, and must be checked against official docs before use.
+
+Airtable: guides/airtable.json - Medium, full guide

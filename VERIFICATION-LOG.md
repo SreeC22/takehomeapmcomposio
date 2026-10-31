@@ -29,3 +29,13 @@ Checked on 2026-10-31, from search results, not from completed provider sign-ins
 - No user consent flow with a real account.
 - No App Review or verification submission.
 - No paid accounts.
+
+
+Fixes on 2026-10-31, from reviewer critique:
+- Live generation template replaced by api/research.js, which searches, fetches, extracts, and logs, with Unknowns for unverified claims.
+- Generated guides now shareable via encoded URL hash and local storage, and appear in search immediately after generation.
+- User-provided text is escaped before HTML insertion in app.js.
+- README link on deployed site confirmed 404 in live browser on 2026-10-31. Fix: readme.html rendered page on site, plus visible GitHub link in header and footer.
+- Sampled verification report added to home page for GitHub, Slack, Google, Meta, and Airtable, comparing initial claim, source check, and result.
+- Per-guide execution records added to guide detail, with sources checked, tested notes, and not verified lists.
+- Airtable added as a full guide from Nango, Formbricks, and Pipedream sources, with official page limits noted.

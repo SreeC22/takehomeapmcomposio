@@ -4,86 +4,117 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OAuth Setup Guides - For developers building AI agents</title>
-<meta name="description" content="Pick a platform and get its OAuth setup, review timeline, and approval checklist, with setup time separate from approval wait time.">
+<meta name="description" content="Searchable guides for setting up an OAuth app and getting it approved, with setup time, approval wait time, blockers, and agent vs human steps.">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="top">
 <div class="wrap">
-<p class="eyebrow">OAuth app setup, made clear</p>
 <h1>OAuth Setup Guides</h1>
-<p class="sub">Pick a platform. Get the exact setup, review timeline, and approval checklist for its OAuth app.</p>
-<p class="quick">Start with: <a href="#guide=github">GitHub</a> <a href="#guide=slack">Slack</a> <a href="#guide=google">Google</a> <a href="#guide=meta">Meta</a></p>
+<p class="sub">For developers building AI agents. Pick an app you want your agent to connect to, and get a card-by-card setup, with setup time, approval wait time, blockers, and what an agent can do vs what you must do.</p>
+<p class="note">Start here: <strong>GitHub</strong> is easy, <strong>Slack</strong> is medium, <strong>Google</strong> is medium to hard, <strong>Meta</strong> is hard, <strong>Airtable</strong> is medium. Other platforms are summary cards that live generation can expand into full guides.</p>
+<p class="note"><a href="readme.html">Read the README on this site</a> | <a href="https://github.com/SreeC22/takehomeapmcomposio">Source on GitHub</a></p>
 </div>
 </header>
 <main class="wrap">
 <section class="search-card">
 <label for="search">I want to connect to</label>
-<input id="search" type="search" placeholder="Search GitHub, Slack, Google, Meta, Notion..." autocomplete="off">
-<div class="filters">
-<div>
-<p class="filter-label">Difficulty</p>
-<div class="pills" id="difficultyPills">
-<button type="button" data-value="" class="pill active" aria-pressed="true">All</button>
-<button type="button" data-value="Easy" class="pill" aria-pressed="false">Easy</button>
-<button type="button" data-value="Medium" class="pill" aria-pressed="false">Medium</button>
-<button type="button" data-value="Medium to Hard" class="pill" aria-pressed="false">Medium to Hard</button>
-<button type="button" data-value="Hard" class="pill" aria-pressed="false">Hard</button>
+<div class="search-row">
+<input id="search" type="search" placeholder="Try GitHub, Slack, Google, Meta, Notion..." autocomplete="off">
+<select id="difficulty" aria-label="Filter by difficulty">
+<option value="">All difficulties</option>
+<option value="Easy">Easy</option>
+<option value="Medium">Medium</option>
+<option value="Medium to Hard">Medium to Hard</option>
+<option value="Hard">Hard</option>
+</select>
+<select id="guideType" aria-label="Filter by guide type">
+<option value="">All guides</option>
+<option value="full">Full guides</option>
+<option value="summary">Summary guides</option>
+</select>
 </div>
-</div>
-<div>
-<p class="filter-label">Guide type</p>
-<div class="pills" id="typePills">
-<button type="button" data-value="" class="pill active" aria-pressed="true">All guides</button>
-<button type="button" data-value="full" class="pill" aria-pressed="false">Full guides</button>
-<button type="button" data-value="summary" class="pill" aria-pressed="false">Summary guides</button>
-</div>
-</div>
-</div>
-<p class="hint">Click a card to open its guide. For an app not listed, use live generation below.</p>
+<p class="hint">Tip: click a card to open its full card-by-card guide. Use the form below the list to research an app that is not in the library, live.</p>
+</section>
+
+<section class="about">
+<h2>Managed or custom, first decision</h2>
+<p>Check Composio managed apps first. Managed apps are the default when they are available. Stay managed if default scopes cover your needs and Composio branding fits your product. You can still white-label the Connect Link page without your own OAuth app.</p>
+<p>Go custom if you need your own app name on consent screens, custom scopes beyond defaults, dedicated quota instead of shared quota, faster polling than the managed 2-minute minimum, a custom instance such as a private Salesforce subdomain, or enterprise end-to-end branding. Choosing your own app changes ownership, branding, scopes, and quota, not token custody. You can mix approaches by toolkit.</p>
+<p>Source: Composio docs, Managed vs custom auth, checked 2026-10-31.</p>
 </section>
 
 <section>
 <h2>Most common platforms</h2>
 <div id="grid" class="grid" aria-live="polite"></div>
-<p id="empty" class="hidden">No guide matches that search yet. Try live generation below to create a draft for that app.</p>
+<p id="empty" class="hidden">No guide matches that search yet. Try the live generation form below to create a draft for that app.</p>
 </section>
 
 <section id="detail" class="detail hidden"></section>
 
 <section class="live-card">
-<h2>Live generation</h2>
-<p>Enter an app outside the library. You get a draft in the same format, marked Agent draft, with Unknowns where docs still need checking. It does not submit an OAuth app to any provider.</p>
+<h2>Live research: submit an app outside the library</h2>
+<p>Enter an app name or website. The research endpoint searches for official developer and OAuth docs, fetches candidate pages, extracts registration, scope, and review claims, and returns a guide with a research log, sources, and confidence. It does not submit an OAuth app to any provider, and it does not claim approval. If no official docs can be verified, the guide says Unknown instead of inventing a timeline.</p>
 <form id="liveForm">
 <label for="liveApp">App name or website</label>
-<div class="form-row">
-<input id="liveApp" type="text" placeholder="Example: Figma, or figma.com" required>
-<button type="submit">Generate draft guide</button>
-</div>
+<input id="liveApp" type="text" placeholder="Example: Airtable, Figma, or figma.com" required>
+<button type="submit">Research and generate guide</button>
 </form>
-<p class="small">A real agent run would first find the official console and registration docs, list scopes and scope tiers, then check review docs before drafting.</p>
+<p class="small">How it works: search, fetch candidate pages, check for OAuth, client ID, redirect, and scope mentions, extract scope-like tokens, build steps from what was actually fetched, and log every attempt, success, and failure with a timestamp. Generated guides get a shareable link that survives refresh, because the guide data is encoded in the link and also saved in this browser.</p>
 <div id="liveResult"></div>
 </section>
 
-<section class="agent-card">
-<h2>For agents</h2>
-<p>The same guides, as structured JSON, with no login.</p>
-<ul class="json-list">
-<li><code>/guides.json</code> - full index</li>
-<li><code>/guides/&lt;id&gt;.json</code> - one guide, for example <code>/guides/github.json</code></li>
-<li><code>/llms.txt</code> - plain text index</li>
+<section class="about">
+<h2>Verification report, sampled checks on 2026-10-31</h2>
+<p>This report compares an initial claim against an independent source check. It is not a claim that every guide is fully verified.</p>
+<ul>
+<li><strong>GitHub, no approval for standard scopes:</strong> Initial claim was that registration is immediate. Source check, GitHub Docs authorizing OAuth apps and scopes pages, confirmed. Result: confirmed, no separate approval stage for basic scopes.</li>
+<li><strong>Slack, own workspace versus public distribution:</strong> Initial claim was that setup is quick. Source check, Slack Developer Docs installing with OAuth, confirmed for own workspace, and showed public distribution as a separate step with review time not published as one fixed number. Result: corrected, guide now separates own workspace install from public distribution.</li>
+<li><strong>Google, verification timelines:</strong> Initial claim was that verification takes a few days. Source check, Google restricted scope verification page, showed brand verification typically 2 to 3 business days if branding changed, sensitive scope verification up to around 10 days in some guidance, and restricted scope verification several weeks plus a security assessment. Result: corrected to ranges, not a single number, and assessment cost left unknown.</li>
+<li><strong>Meta, App Review timeline:</strong> Initial claim was that a timeline could be stated. Source check found only third-party summaries, no official Meta timeline confirmed. Result: downgraded, guide says varies by permission and review round, with no fixed timeline claimed.</li>
+<li><strong>Airtable, registration and scopes:</strong> Initial claim from secondary guides was that registration gives Client ID and Secret, with scopes for records, comments, schema, webhooks, and user email. Source check, Nango and Formbricks guides plus Pipedream scope lists, confirmed consistently, but official Airtable pages are JavaScript rendered and were not fully extracted. Result: guide kept at Medium confidence, approval and distribution marked Unknown.</li>
 </ul>
-<button id="copyJson" type="button" class="secondary">Copy guides.json URL</button>
+<p>Full execution records are in each guide detail, under Execution record, with sources checked, tested notes, and not verified lists.</p>
+</section>
+
+<section class="agent-card">
+<h2>Pick your agent</h2>
+<p>Same guide JSON for every agent, with no plugin from this library to install. Give the agent guides.json or one guide JSON, and it follows the same steps, timeline, and checklist a human follows.</p>
+<ul>
+<li>Claude Code: point it at guides.json or paste one guide JSON</li>
+<li>OpenAI Codex: add the guide JSON to the task context</li>
+<li>Cursor: keep guides.json in the project and ask Cursor to build against that guide</li>
+<li>GitHub Copilot: in agent mode, give it the guide JSON from the repo</li>
+<li>Gemini CLI: load guides.json first, then ask it to walk the setup step by step</li>
+<li>OpenClaw: give it the guide JSON as the task spec, with human steps left to you</li>
+<li>OpenCode: add guides.json to the project and ask it to follow that platform guide</li>
+<li>Cline: paste the guide JSON into the task</li>
+<li>Grok Build: give it the guide JSON, then ask it to build the authorize flow from that guide</li>
+</ul>
+<p>LinkedIn is a platform, not an agent. It stays in the platform library as a summary guide, low confidence, with product access that varies.</p>
+</section>
+
+<section class="agent-card">
+<h2>For agents: machine readable guides</h2>
+<p>Humans read the cards above. Agents can read the same guides as structured JSON, with no login.</p>
+<ul>
+<li><code>/guides.json</code> - full index of all guides</li>
+<li><code>/guides/&lt;id&gt;.json</code> - one guide, for example <code>/guides/github.json</code></li>
+<li><code>/llms.txt</code> - a plain text index for agents and crawlers</li>
+</ul>
+<p>Each guide JSON uses the same schema: id, name, difficulty, setupTime, approvalWait, steps, timeline, checklist, blockers, agentCan, humanMust, sources, tested, notVerified, confidence, and nextStep. The human cards and the JSON come from the same data, so they do not drift apart.</p>
+<button id="copyJson" type="button">Copy guides.json URL for an agent</button>
 <p id="copyMsg" class="small"></p>
 </section>
 
 <section class="about">
-<h2>What to trust</h2>
-<p>Setup time is active work. Approval wait is waiting for a provider. A range means the provider does not publish one fixed number, or the time depends on your submission. Unknown means it could not be confirmed in this check, not that it is zero.</p>
-<p>Full guides were checked against official or close to official docs on 2026-10-31. Summary guides are not verified. No sign-in, app creation, or provider approval was completed, and no secrets are included. See <a href="README.md">README</a> for decisions and limitations.</p>
+<h2>How to read a guide, and what to trust</h2>
+<p>Setup time is active work. Approval wait time is waiting for a provider. They are reported separately on purpose. A range means the provider does not publish one fixed number, or the time depends on your submission quality. Unknown means we could not confirm it from a source in this check, not that it is zero.</p>
+<p>Full guides were checked against official or close to official docs on 2026-10-31, as noted in each guide. Summary guides are not verified and must be expanded by live research and checked against official docs before use. No account sign-in, app creation, or provider approval was completed for these guides, and no secrets are included.</p>
+<p>See <a href="readme.html">README on this site</a> for setup, decisions, limitations, and the verification log. Source: <a href="https://github.com/SreeC22/takehomeapmcomposio">GitHub repository</a>.</p>
 </section>
 </main>
-<footer class="wrap small">A take-home slice, not a full 100 app library. Full guides: GitHub, Slack, Google, Meta. Summary guides: Microsoft, Notion, Salesforce, HubSpot, Shopify, Zoom, Discord, LinkedIn.</footer>
+<footer class="wrap small">Built as a take-home slice, not a full 100 app library. Full guides: GitHub, Slack, Google, Meta, Airtable. Summary guides: Microsoft, Notion, Salesforce, HubSpot, Shopify, Zoom, Discord, LinkedIn. Source: <a href="https://github.com/SreeC22/takehomeapmcomposio">GitHub repository</a> | <a href="readme.html">README</a></footer>
 <script src="app.js"></script>
 </body>
 </html>
