@@ -101,7 +101,14 @@ function render() {
 }
 function linkify(text) {
   const parts = String(text || '').split(/(https?:\/\/[^\s)]+)/g);
-  return parts.map(p => /^https?:\/\//.test(p) ? `<a href="${esc(safeUrl(p))}">official docs</a>` : esc(p)).join('');
+  return parts.map(p => {
+    if (!/^https?:\/\//.test(p)) return esc(p);
+    let url = p;
+    let trail = '';
+    while (url && /[.,;:!?)\]}'"]$/.test(url)) { trail = url.slice(-1) + trail; url = url.slice(0, -1); }
+    const label = /\/token\b/.test(url) ? 'token endpoint' : /authorize/.test(url) ? 'authorize endpoint' : 'official docs';
+    return `<a href="${esc(safeUrl(url))}">${label}</a>${esc(trail)}`;
+  }).join('');
 }
 function stepsHtml(g) {
   return '<ol class="steps">' + g.steps.map((s, i) => {

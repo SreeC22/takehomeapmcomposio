@@ -118,3 +118,10 @@ Final three items, 2026-10-31:
 - The difficulty explanation under the guide title is now small muted text, so the steps start sooner.
 - No guide content was deleted. Library guides were already short, so the main change is for generated guides like Miro, where evidence quotes made steps wordy.
 - Live deployment dpl_8Nwfsa7gvvX7Kmr23v2UYwejUWMK, verified on the alias: step cards, Evidence from docs, and official docs links are in the live script and style.
+
+## Official docs link fix, 2026-10-31
+
+- Root cause: step text puts a comma after a URL, for example "open https://developers.figma.com/docs/rest-api/oauth-apps/, sign in". The link builder was including that comma inside the link, so the browser opened .../oauth-apps/, and Figma returned Page Not Found. The same comma broke the Miro step 1 link.
+- Fix: the link builder is now platform agnostic. It strips trailing punctuation (comma, period, semicolon, and similar) from every URL before making the link, and puts that punctuation back outside the link. It also labels endpoints correctly: authorize endpoint and token endpoint, instead of calling every link official docs.
+- Clean URLs verified: Figma https://developers.figma.com/docs/rest-api/oauth-apps/ returns 200, Miro https://developers.miro.com/docs/add-permission-scopes-to-your-app returns 200, while the same URLs with a trailing comma returned 404.
+- Live deployment dpl_FswUXfUEuLNHgVhfqLdwKV9U2Z96, verified on the alias: the new link builder is in the live script.
