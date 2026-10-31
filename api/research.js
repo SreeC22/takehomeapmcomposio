@@ -5,7 +5,7 @@
 // Claims that cannot be verified from a fetched page are marked Unknown.
 // This file runs as a Vercel serverless function when deployed under /api.
 function stripHtml(html) {
-  return String(html || '').replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
+  return String(html || '').replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#x27;/gi, "'").replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
 }
 function snippet(text, keyword) {
   const idx = text.toLowerCase().indexOf(keyword.toLowerCase());
@@ -71,13 +71,22 @@ function extractScopes(text) {
   }
   return Array.from(found);
 }
-function extractEndpoints(text) {
+function extractEndpoints(text, slug, domainGuess) {
   const found = new Set();
   const re = /https:\/\/[^\s"'<>]+(?:authorize|token|oauth)[^\s"'<>]*/gi;
   let m;
   while ((m = re.exec(text)) !== null) {
-    const u = m[0].replace(/[.,)]+$/, '');
-    if (u.length < 100) found.add(u);
+    let u = m[0];
+    while (/[\\.,):;`]$/.test(u)) u = u.slice(0, -1);
+    if (u.includes('&#')) u = u.split('&#')[0];
+    u = u.replace(/\):$/, '');
+    if (u.length >= 100) continue;
+    try { const pp = new URL(u).pathname.toLowerCase(); const hh = new URL(u).hostname.toLowerCase(); if (pp.includes('/docs/') || pp.includes('/reference/') || pp.endsWith('.md') || pp.endsWith('.png') || pp.endsWith('.jpg') || pp.endsWith('.jpeg') || pp.endsWith('.svg') || pp.endsWith('.gif') || pp.includes('/attachments') || hh.includes('attachments')) continue; } catch (e) { continue; }
+    try {
+      const host = new URL(u).hostname.toLowerCase();
+      if (!isProviderHost(host, slug, domainGuess)) continue;
+    } catch (e) { continue; }
+    found.add(u);
     if (found.size >= 4) break;
   }
   return Array.from(found);
@@ -90,7 +99,9 @@ function snippetFor(text, keywords) {
       let start = Math.max(0, idx - 60);
       const nextSpace = text.indexOf(' ', start);
       if (nextSpace >= 0 && nextSpace < idx) start = nextSpace + 1;
-      let end = Math.min(text.length, idx + 200);
+      let end = Math.min(text.length, idx + 160);
+      const period = text.indexOf('.', idx + 30);
+      if (period >= 0 && period < end) end = period + 1;
       const prevSpace = text.lastIndexOf(' ', end);
       if (prevSpace > idx) end = prevSpace;
       const s = text.slice(start, end).trim();
@@ -113,6 +124,7 @@ async function fetchOnce(url, timeoutMs) {
 async function fetchText(url, timeoutMs) {
   const direct = await fetchOnce(url, timeoutMs);
   if (direct.ok && direct.body && direct.body.length > 200) return direct;
+  if (direct.status === 404) return direct;
   // Proxy retry: search engines and some docs sites block datacenter IPs with 403 or 429.
   // AllOrigins is a public proxy whose IP is not the Vercel server IP, so it can
   // fetch pages that direct fetch cannot. The source URL is still the original URL,
@@ -182,6 +194,7 @@ module.exports = async (req, res) => {
     siteHosts.push(domainGuess);
     if (!domainGuess.startsWith('developers.') && !domainGuess.startsWith('docs.')) {
       siteHosts.push('developers.' + domainGuess);
+      siteHosts.push('developer.' + domainGuess);
       siteHosts.push('docs.' + domainGuess);
     }
   }
@@ -194,15 +207,21 @@ module.exports = async (req, res) => {
       const links = [];
       for (const href of hrefs) {
         try {
-          const abs = new URL(href, homeUrl).toString();
-          if (abs.startsWith('https://') && (abs.includes(host) || abs.includes(domainGuess))) {
-            const low = abs.toLowerCase();
-            if (low.includes('developer') || low.includes('docs') || low.includes('api') || low.includes('oauth')) {
-              if (!links.includes(abs)) links.push(abs);
-            }
+          const absUrl = new URL(href, homeUrl);
+          const abs = absUrl.toString();
+          const path = absUrl.pathname.toLowerCase();
+          if (abs.startsWith('https://') && (absUrl.hostname.includes(host) || absUrl.hostname.includes(domainGuess))) {
+            if (/\.(ico|png|jpg|jpeg|svg|css|js|webmanifest|xml|pdf)(\?|$)/.test(path)) continue;
+            if (path.startsWith('/apps/') || path.includes('/capabilities/') || path.includes('/login') || path.includes('/signup') || path.includes('/pricing') || path.includes('/blog/')) continue;
+            const isDoc = path.includes('/oauth') || path.includes('/developer') || path.includes('/docs/') || path === '/docs' || path.includes('/api/');
+            if (isDoc && !links.includes(abs)) links.push(abs);
           }
         } catch (e) {}
       }
+      links.sort((a, b) => {
+        const score = u => u.toLowerCase().includes('/oauth') ? 0 : u.toLowerCase().includes('/docs/') ? 1 : u.toLowerCase().includes('/developer') ? 2 : 3;
+        return score(a) - score(b);
+      });
       log.push({ time: now(), action: 'site_navigation', url: homeUrl, status: 'found_' + links.length, detail: 'Homepage navigation found ' + links.length + ' developer, docs, or API links.' });
       navUrls.push(...links.slice(0, 6));
     } else {
@@ -215,8 +234,12 @@ module.exports = async (req, res) => {
       if (sm.ok && sm.body) {
         const locs = Array.from(sm.body.matchAll(/<loc>([^<]+)<\/loc>/g)).map(m => m[1].trim());
         const filtered = locs.filter(u => {
-          const low = u.toLowerCase();
-          return low.includes('oauth') || low.includes('developer') || (low.includes('api') && (low.includes('auth') || low.includes('app')));
+          try {
+            const path = new URL(u).pathname.toLowerCase();
+            if (/\.(ico|png|jpg|jpeg|svg|css|js|webmanifest|pdf)(\?|$)/.test(path)) return false;
+            if (path.startsWith('/apps/')) return false;
+            return path.includes('/oauth') || path.includes('/developer') || path.includes('/docs/oauth') || path.includes('/docs/auth') || path.includes('/docs/scopes') || path.includes('/api/oauth') || path.includes('/getting-started-with-oauth');
+          } catch (e) { return false; }
         });
         if (filtered.length) {
           log.push({ time: now(), action: 'sitemap', url: smUrl, status: 'found_' + filtered.length, detail: 'Sitemap or robots file listed ' + filtered.length + ' OAuth, developer, or API pages.' });
@@ -247,27 +270,61 @@ module.exports = async (req, res) => {
   } else {
     log.push({ time: now(), action: 'directory_lookup', url: '', status: 'miss', detail: 'No verified docs directory entry for ' + app + '. Falling back to search and domain guesses.' });
   }
-  const fallbacks = [
-    'https://' + domainGuess + '.com/developers',
-    'https://developers.' + domainGuess + '.com',
-    'https://docs.' + domainGuess + '.com',
-    'https://developers.' + domainGuess + '.com/docs/rest-api/oauth-apps/',
-    'https://developers.' + domainGuess + '.com/docs/rest-api/scopes/',
-    'https://developers.' + domainGuess + '.com/docs/oauth/',
-    'https://' + domainGuess + '.com/developers/web/api/oauth-reference',
-    'https://' + domainGuess + '.com/developers/web/guides/oauth-integrations',
-    'https://' + domainGuess + '.com/create/oauth'
-  ];
+  const fallbacks = [];
   const fallbackExpanded = [];
   for (const u of fallbacks) {
     fallbackExpanded.push(u);
     if (u.includes('/developers/') || u.includes('/docs/')) fallbackExpanded.push(u + '.md');
   }
-  candidateUrls = candidateUrls.concat(fallbackExpanded.filter(u => !candidateUrls.includes(u))).slice(0, 12);
+  candidateUrls = candidateUrls.concat(fallbackExpanded.filter(u => !candidateUrls.includes(u)));
+  // Generic OAuth docs patterns, not provider-specific hardcoded entries.
+  // Most developer docs sites use one of these structures, so trying them
+  // gives a deterministic discovery path that does not depend on search
+  // results or homepage link order.
+  const hosts = ['developers.' + domainGuess, 'developer.' + domainGuess];
+  const paths = ['/docs/getting-started-with-oauth', '/docs/oauth', '/docs/oauth-2-0-authentication', '/docs/authentication', '/docs/authorization', '/docs/oauth-scopes', '/docs/scopes', '/reference/scopes', '/docs/add-permission-scopes-to-your-app', '/api/oauth'];
+  for (const h of hosts) {
+    for (const pa of paths) {
+      const u = 'https://' + h + pa;
+      if (!candidateUrls.includes(u)) candidateUrls.push(u);
+    }
+  }
   const sources = [];
   const pages = [];
   const directorySet = new Set(Object.values(docsDirectory).flat());
-  for (const url of candidateUrls.slice(0, 10)) {
+  candidateUrls = candidateUrls.filter((u, i, a) => a.indexOf(u) === i);
+  candidateUrls.sort((a, b) => {
+    const score = u => {
+      const low = u.toLowerCase();
+      let s = 0;
+      if (low.includes('oauth')) s = 0;
+      else if (low.includes('scopes') || low.includes('permissions')) s = 1;
+      else if (low.includes('authentication') || low.includes('authorization')) s = 2;
+      else if (low.includes('/developer') || low.includes('/docs/')) s = 3;
+      else s = 4;
+      if (low.includes('community.') || low.includes('/forum') || low.includes('reddit.com') || low.includes('/blog/')) s += 10;
+      return s;
+    };
+    return score(a) - score(b);
+  });
+  // Readme.io docs, used by Miro, Pipedrive, and others, publish a full markdown version
+  // at the same URL plus .md, which contains the real guide text that the JS page hides.
+  // Try the .md variant right after the original docs page.
+  const expanded = candidateUrls.slice();
+  for (const u of candidateUrls) {
+    if ((u.includes('/docs/') || u.includes('/developer')) && !u.endsWith('.md')) {
+      const md = u + '.md';
+      if (!candidateUrls.includes(md)) expanded.push(md);
+    }
+  }
+  candidateUrls = expanded;
+  const fetchQueue = candidateUrls.slice(0, 20);
+  const visited = new Set();
+  for (let qi = 0; qi < fetchQueue.length && qi < 20; qi++) {
+    const url = fetchQueue[qi];
+    if (visited.has(url)) continue;
+    visited.add(url);
+    try { const pp = new URL(url).pathname.toLowerCase(); if (url.includes('#content') || /\.(ico|png|jpg|jpeg|svg|css|js|webmanifest|pdf)(\?|$)/.test(pp) || pp.startsWith('/apps/')) continue; } catch (e) {}
     if (!directorySet.has(url)) {
       try {
         const host = new URL(url).hostname.toLowerCase();
@@ -275,7 +332,7 @@ module.exports = async (req, res) => {
         if (!isProvider) { log.push({ time: now(), action: 'fetch_page', url: url, status: 'skipped_not_provider', detail: 'Skipped generic page, not specific to ' + app + '.' }); continue; }
       } catch (e) {}
     }
-    const page = await fetchText(url, 5000);
+    const page = await fetchText(url, 4000);
     if (page.ok && page.body) {
       const text = stripHtml(page.body);
       const hasOAuth = /oauth/i.test(text);
@@ -284,26 +341,48 @@ module.exports = async (req, res) => {
       const hasScope = /scope/i.test(text);
       log.push({ time: now(), action: 'fetch_page', url: url, status: 'ok_' + page.status + (page.viaProxy ? '_via_proxy' : ''), detail: 'Fetched' + (page.viaProxy ? ' via AllOrigins proxy after direct fetch failed with ' + page.directStatus : '') + '. OAuth mention: ' + hasOAuth + ', client ID mention: ' + hasClient + ', redirect mention: ' + hasRedirect + ', scope mention: ' + hasScope + '. Text length: ' + text.length + '.' });
       if (hasOAuth || hasClient || hasScope) {
-        sources.push(url);
+        const cleanUrl = url.split('#')[0];
+        if (!sources.includes(cleanUrl)) sources.push(cleanUrl); else { log.push({ time: now(), action: 'fetch_page', url: url, status: 'skipped_duplicate', detail: 'Duplicate source without fragment, already counted.' }); }
         pages.push({ url, text });
+        // Follow scopes and OAuth links from this docs page, for example Miro's
+        // scopes page links to its scopes reference page, which lists the actual tokens.
+        try {
+          const hrefs = Array.from(page.body.matchAll(/href=["']([^"']+)["']/g)).map(m => m[1]).concat(Array.from(page.body.matchAll(/\[[^\]]+\]\((https:[^)]+)\)/g)).map(m => m[1]));
+          for (const href of hrefs) {
+            try {
+              const abs = new URL(href, url).toString();
+              const path = new URL(abs).pathname.toLowerCase();
+              if ((path.includes('scope') || path.includes('oauth')) && !visited.has(abs) && !fetchQueue.includes(abs) && fetchQueue.length < 25) {
+                const host = new URL(abs).hostname.toLowerCase();
+                if (isProviderHost(host, slug, domainGuess)) fetchQueue.push(abs);
+              }
+            } catch (e) {}
+          }
+        } catch (e) {}
       } else {
         log.push({ time: now(), action: 'fetch_page', url: url, status: 'skipped', detail: 'Page fetched but contained no OAuth, client ID, or scope claims, so it was not used as a source.' });
       }
     } else {
       log.push({ time: now(), action: 'fetch_page', url: url, status: 'failed_' + page.status, detail: 'Could not fetch page. ' + (page.error || '') });
     }
-    if (sources.length >= 3) break;
+    if (sources.length >= 5) break;
+    if (sources.length >= 3) {
+      const soFar = pages.map(p => p.text).join(' ');
+      const hasScopeSoFar = /[a-z][a-z0-9_]*:[a-z][a-z0-9_]*/.test(soFar);
+      const hasEndpointSoFar = /https:\/\/[^\s"'<>]+(?:authorize|token)/i.test(soFar);
+      if (hasScopeSoFar && hasEndpointSoFar) break;
+    }
   }
   const allText = pages.map(p => p.text).join(' ');
   const scopes = extractScopes(allText);
-  const endpoints = extractEndpoints(allText);
+  const endpoints = extractEndpoints(allText, slug, domainGuess);
   const hasApproval = /app review|app approval|submit for review|review process|approval process|publish.*app|public app|distribution/i.test(allText);
   const hasRedirect = /redirect/i.test(allText);
   const hasClient = /client[ _-]id/i.test(allText);
   const hasBusiness = /business verification|company verification/i.test(allText);
   const hasSensitive = /sensitive scope|restricted scope/i.test(allText);
   const hasWrite = scopes.some(s => s.endsWith(':write') || s.includes('.write') || s.includes(':write'));
-  const registerSnippet = snippetFor(allText, ['register an oauth', 'register a new oauth', 'create an oauth app', 'create a new app', 'register your app']);
+  const registerSnippet = snippetFor(allText, ['register an oauth', 'register a new oauth', 'create an oauth app', 'create a new app', 'register your app', 'register an application', 'create your app', 'created your app', 'create a developer team', 'created a developer team']);
   const redirectSnippet = snippetFor(allText, ['redirect uri', 'redirect url', 'callback url']);
   const reviewSnippet = snippetFor(allText, ['app review', 'approval', 'verification']);
   let difficulty = 'Unknown';
@@ -330,7 +409,7 @@ module.exports = async (req, res) => {
   } else if (sources.length) {
     setupTime = 'Unknown, registration steps were not fully found in fetched pages';
   }
-  const confidence = sources.length >= 2 && hasClient ? 'Medium' : 'Low';
+  const confidence = (sources.length >= 2 && hasClient && (scopes.length > 0 || endpoints.length > 0)) || (sources.length >= 1 && hasClient && endpoints.length > 0) ? 'Medium' : 'Low';
   const consoleUrl = sources[0] || 'Unknown';
   const guide = {
     id: 'generated-' + slug,
@@ -353,7 +432,7 @@ module.exports = async (req, res) => {
       { title: 'Set the redirect URI', detail: redirectSnippet ? 'From retrieved docs: ' + redirectSnippet.slice(0, 300) : 'No redirect URI rule was found in fetched pages. Copy the exact redirect URI from official docs and from your code, including host and path.', who: 'human', time: '10 minutes', blockerTip: 'A redirect mismatch is the most common first failure. Do not guess the URI.' },
       { title: 'Choose scopes from retrieved docs', detail: scopes.length ? 'Scopes found in fetched pages: ' + scopes.join(', ') + '. Request only the scopes your feature uses, and verify each one against official docs. Invalid scope-like tokens such as client_id and client_secret are filtered out and are not scopes.' : 'No valid scope tokens were extracted from fetched pages. List every scope your feature needs from official docs before requesting it.', who: 'agent', time: '20 minutes', blockerTip: 'A single sensitive scope can change the whole timeline.' },
       { title: 'Build the authorize and token flow', detail: endpoints.length ? 'Endpoints found in fetched pages: ' + endpoints.join(', ') + '. Redirect the user to the authorize endpoint, exchange the code at the token endpoint, and store tokens securely, never in client code.' : 'No authorize or token endpoints were found in fetched pages. Find both endpoints in official docs before building the flow.', who: 'agent', time: '30 minutes', blockerTip: 'Store client secrets securely. If a secret is exposed, rotate it.' },
-      { title: 'Test and review', detail: hasApproval ? 'From retrieved docs: ' + (reviewSnippet ? reviewSnippet.slice(0, 300) : 'approval, review, or verification is mentioned, but no fixed timeline was confirmed.') + ' Test consent with a real account first, then prepare review material if required.' : 'No approval or review claim was verified in fetched pages. Test consent with a real account, and mark review timeline as Unknown until official review docs are checked.', who: 'human', time: '20 minutes for a first test', blockerTip: 'If review docs are missing, mark timeline as Unknown.' }
+      { title: 'Test and review', detail: hasApproval ? 'From retrieved docs: ' + (reviewSnippet ? reviewSnippet.slice(0, 300) : 'approval, review, or verification is mentioned, but no fixed timeline was confirmed.') + ' Note: authentication and app review are different. Authentication gives a user token. App review is publishing or listing your app, with its own approval checklist, and it does not replace authentication. Test consent with a real account first, then prepare review material if required.' : 'No approval or review claim was verified in fetched pages. Test consent with a real account, and mark review timeline as Unknown until official review docs are checked.', who: 'human', time: '20 minutes for a first test', blockerTip: 'If review docs are missing, mark timeline as Unknown.' }
     ],
     timeline: [
       { stage: 'Live research', wait: 'Completed in this run', note: 'See research log for sources fetched and failures.' },
