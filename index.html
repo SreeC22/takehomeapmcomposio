@@ -4,79 +4,86 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OAuth Setup Guides - For developers building AI agents</title>
-<meta name="description" content="Searchable guides for setting up an OAuth app and getting it approved, with setup time, approval wait time, blockers, and agent vs human steps.">
+<meta name="description" content="Pick a platform and get its OAuth setup, review timeline, and approval checklist, with setup time separate from approval wait time.">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="top">
 <div class="wrap">
+<p class="eyebrow">OAuth app setup, made clear</p>
 <h1>OAuth Setup Guides</h1>
-<p class="sub">For developers building AI agents. Pick an app you want your agent to connect to, and get a card-by-card setup, with setup time, approval wait time, blockers, and what an agent can do vs what you must do.</p>
-<p class="note">Start here: <strong>GitHub</strong> is easy, <strong>Slack</strong> is medium, <strong>Google</strong> is medium to hard, <strong>Meta</strong> is hard. Other platforms are summary cards that live generation can expand into full guides.</p>
+<p class="sub">Pick a platform. Get the exact setup, review timeline, and approval checklist for its OAuth app.</p>
+<p class="quick">Start with: <a href="#guide=github">GitHub</a> <a href="#guide=slack">Slack</a> <a href="#guide=google">Google</a> <a href="#guide=meta">Meta</a></p>
 </div>
 </header>
 <main class="wrap">
 <section class="search-card">
 <label for="search">I want to connect to</label>
-<div class="search-row">
-<input id="search" type="search" placeholder="Try GitHub, Slack, Google, Meta, Notion..." autocomplete="off">
-<select id="difficulty" aria-label="Filter by difficulty">
-<option value="">All difficulties</option>
-<option value="Easy">Easy</option>
-<option value="Medium">Medium</option>
-<option value="Medium to Hard">Medium to Hard</option>
-<option value="Hard">Hard</option>
-</select>
-<select id="guideType" aria-label="Filter by guide type">
-<option value="">All guides</option>
-<option value="full">Full guides</option>
-<option value="summary">Summary guides</option>
-</select>
+<input id="search" type="search" placeholder="Search GitHub, Slack, Google, Meta, Notion..." autocomplete="off">
+<div class="filters">
+<div>
+<p class="filter-label">Difficulty</p>
+<div class="pills" id="difficultyPills">
+<button type="button" data-value="" class="pill active" aria-pressed="true">All</button>
+<button type="button" data-value="Easy" class="pill" aria-pressed="false">Easy</button>
+<button type="button" data-value="Medium" class="pill" aria-pressed="false">Medium</button>
+<button type="button" data-value="Medium to Hard" class="pill" aria-pressed="false">Medium to Hard</button>
+<button type="button" data-value="Hard" class="pill" aria-pressed="false">Hard</button>
 </div>
-<p class="hint">Tip: click a card to open its full card-by-card guide. Use the form below the list to generate a draft for an app that is not in the library.</p>
+</div>
+<div>
+<p class="filter-label">Guide type</p>
+<div class="pills" id="typePills">
+<button type="button" data-value="" class="pill active" aria-pressed="true">All guides</button>
+<button type="button" data-value="full" class="pill" aria-pressed="false">Full guides</button>
+<button type="button" data-value="summary" class="pill" aria-pressed="false">Summary guides</button>
+</div>
+</div>
+</div>
+<p class="hint">Click a card to open its guide. For an app not listed, use live generation below.</p>
 </section>
 
 <section>
 <h2>Most common platforms</h2>
 <div id="grid" class="grid" aria-live="polite"></div>
-<p id="empty" class="hidden">No guide matches that search yet. Try the live generation form below to create a draft for that app.</p>
+<p id="empty" class="hidden">No guide matches that search yet. Try live generation below to create a draft for that app.</p>
 </section>
 
 <section id="detail" class="detail hidden"></section>
 
 <section class="live-card">
-<h2>Live generation: submit an app outside the library</h2>
-<p>Enter an app name or website. This demo creates a draft guide in the standard format, with investigation steps, sources to check, and honest Unknowns. It does not submit an OAuth app to any provider, and it does not claim approval.</p>
+<h2>Live generation</h2>
+<p>Enter an app outside the library. You get a draft in the same format, marked Agent draft, with Unknowns where docs still need checking. It does not submit an OAuth app to any provider.</p>
 <form id="liveForm">
 <label for="liveApp">App name or website</label>
+<div class="form-row">
 <input id="liveApp" type="text" placeholder="Example: Figma, or figma.com" required>
 <button type="submit">Generate draft guide</button>
+</div>
 </form>
-<p class="small">How it works in a real agent run: identify the provider and developer console, read registration docs, list scopes and scope tiers, read review docs, list required fields, then draft in this schema with sources and a not verified list. This demo shows that draft structure and the checks an agent must still run against official docs before the draft is treated as verified.</p>
+<p class="small">A real agent run would first find the official console and registration docs, list scopes and scope tiers, then check review docs before drafting.</p>
 <div id="liveResult"></div>
 </section>
 
 <section class="agent-card">
-<h2>For agents: machine readable guides</h2>
-<p>Humans read the cards above. Agents can read the same guides as structured JSON, with no login.</p>
-<ul>
-<li><code>/guides.json</code> - full index of all guides</li>
+<h2>For agents</h2>
+<p>The same guides, as structured JSON, with no login.</p>
+<ul class="json-list">
+<li><code>/guides.json</code> - full index</li>
 <li><code>/guides/&lt;id&gt;.json</code> - one guide, for example <code>/guides/github.json</code></li>
-<li><code>/llms.txt</code> - a plain text index for agents and crawlers</li>
+<li><code>/llms.txt</code> - plain text index</li>
 </ul>
-<p>Each guide JSON uses the same schema: id, name, difficulty, setupTime, approvalWait, steps, timeline, checklist, blockers, agentCan, humanMust, sources, tested, notVerified, confidence, and nextStep. The human cards and the JSON come from the same data, so they do not drift apart.</p>
-<button id="copyJson" type="button">Copy guides.json URL for an agent</button>
+<button id="copyJson" type="button" class="secondary">Copy guides.json URL</button>
 <p id="copyMsg" class="small"></p>
 </section>
 
 <section class="about">
-<h2>How to read a guide, and what to trust</h2>
-<p>Setup time is active work. Approval wait time is waiting for a provider. They are reported separately on purpose. A range means the provider does not publish one fixed number, or the time depends on your submission quality. Unknown means we could not confirm it from a source in this check, not that it is zero.</p>
-<p>Full guides were checked against official or close to official docs on 2026-10-31, as noted in each guide. Summary guides are not verified and must be expanded by live generation and checked against official docs before use. No account sign-in, app creation, or provider approval was completed for these guides, and no secrets are included.</p>
-<p>See <a href="README.md">README</a> for setup, decisions, limitations, and the verification log.</p>
+<h2>What to trust</h2>
+<p>Setup time is active work. Approval wait is waiting for a provider. A range means the provider does not publish one fixed number, or the time depends on your submission. Unknown means it could not be confirmed in this check, not that it is zero.</p>
+<p>Full guides were checked against official or close to official docs on 2026-10-31. Summary guides are not verified. No sign-in, app creation, or provider approval was completed, and no secrets are included. See <a href="README.md">README</a> for decisions and limitations.</p>
 </section>
 </main>
-<footer class="wrap small">Built as a take-home slice, not a full 100 app library. Full guides: GitHub, Slack, Google, Meta. Summary guides: Microsoft, Notion, Salesforce, HubSpot, Shopify, Zoom, Discord, LinkedIn.</footer>
+<footer class="wrap small">A take-home slice, not a full 100 app library. Full guides: GitHub, Slack, Google, Meta. Summary guides: Microsoft, Notion, Salesforce, HubSpot, Shopify, Zoom, Discord, LinkedIn.</footer>
 <script src="app.js"></script>
 </body>
 </html>

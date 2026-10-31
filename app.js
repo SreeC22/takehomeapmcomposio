@@ -1,5 +1,20 @@
 let guides = [];
 let allGuides = [];
+let difficultyFilter = '';
+let guideTypeFilter = '';
+const logos = {github: 'github', slack: 'slack', google: 'google', meta: 'meta', microsoft: 'microsoft', notion: 'notion', salesforce: 'salesforce', hubspot: 'hubspot', shopify: 'shopify', zoom: 'zoom', discord: 'discord', linkedin: 'linkedin'};
+function logoHtml(g, size) {
+  const slug = logos[g.id];
+  if (!slug) return '';
+  return `<img class="logo" src="https://cdn.simpleicons.org/${slug}/111827" alt="${g.name} logo" onerror="this.remove()">`;
+}
+function setPills(containerId, value) {
+  document.querySelectorAll('#' + containerId + ' .pill').forEach(b => {
+    const active = b.dataset.value === value;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
 async function load() {
   const res = await fetch('guides.json');
   const data = await res.json();
@@ -14,18 +29,18 @@ async function load() {
 }
 function card(g) {
   return `<article class="card" tabindex="0" data-id="${g.id}">
-    <h3>${g.name}</h3>
+    <div class="card-head">${logoHtml(g)}<h3>${g.name}</h3></div>
     <p><span class="badge">${g.difficulty}</span><span class="badge ${g.guideType}">${g.guideType}</span></p>
     <p class="meta"><strong>Setup:</strong> ${g.setupTime}</p>
     <p class="meta"><strong>Approval wait:</strong> ${g.approvalWait}</p>
-    <p>${g.difficultyWhy}</p>
     <p class="meta">${g.category}</p>
+    <p class="view">View guide</p>
   </article>`;
 }
 function render() {
   const q = (document.getElementById('search').value || '').toLowerCase();
-  const d = document.getElementById('difficulty').value;
-  const t = document.getElementById('guideType').value;
+  const d = difficultyFilter;
+  const t = guideTypeFilter;
   const list = guides.filter(g => {
     return (!q || (g.name + ' ' + g.category).toLowerCase().includes(q)) &&
       (!d || g.difficulty === d) &&
@@ -43,38 +58,38 @@ function render() {
   });
 }
 function stepsHtml(g) {
-  return g.steps.map((s, i) => `<div class="step"><h3>Step ${i + 1}: ${s.title}</h3><p>${s.detail}</p><p class="meta">Who: ${s.who} | Time: ${s.time}</p><p><strong>Watch out:</strong> ${s.blockerTip}</p></div>`).join('');
+  return g.steps.map((s, i) => `<div class="step"><div class="step-num">${i + 1}</div><div><h3>${s.title}</h3><p>${s.detail}</p><p class="meta">${s.who} - ${s.time}</p><p class="watch"><strong>Watch out:</strong> ${s.blockerTip}</p></div></div>`).join('');
 }
 function showDetail(g) {
   location.hash = 'guide=' + g.id;
   const el = document.getElementById('detail');
   el.classList.remove('hidden');
   el.innerHTML = `
-    <p><a href="#grid">Back to all platforms</a> | <button id="shareBtn" type="button">Copy share link</button> | <button id="jsonBtn" type="button">Copy guide JSON</button></p>
-    <h2>${g.name} <span class="badge">${g.difficulty}</span> <span class="badge ${g.guideType}">${g.guideType}</span></h2>
+    <div class="detail-actions"><button id="backBtn" type="button" class="secondary">Back to all platforms</button><button id="shareBtn" type="button" class="secondary">Copy share link</button><button id="jsonBtn" type="button" class="secondary">Copy guide JSON</button></div>
+    <div class="detail-head">${logoHtml(g)}<div><h2>${g.name}</h2><p><span class="badge">${g.difficulty}</span> <span class="badge ${g.guideType}">${g.guideType}</span></p></div></div>
     <p>${g.difficultyWhy}</p>
-    <div class="step"><h3>At a glance</h3>
-      <p><strong>Setup time:</strong> ${g.setupTime}</p>
-      <p><strong>Approval wait:</strong> ${g.approvalWait}</p>
-      <p><strong>Account needed:</strong> ${g.accountNeeded}</p>
-      <p><strong>Cost to register:</strong> ${g.cost}</p>
-      <p><strong>Console:</strong> ${g.consoleName} - ${g.consoleUrl}</p>
-      <p><strong>Managed app note:</strong> ${g.managedAppNote}</p>
-    </div>
-    <h3>Card-by-card setup</h3>
+    <h3>At a glance</h3>
+    <dl class="glance">
+      <div><dt>Setup time</dt><dd>${g.setupTime}</dd></div>
+      <div><dt>Approval wait</dt><dd>${g.approvalWait}</dd></div>
+      <div><dt>Account needed</dt><dd>${g.accountNeeded}</dd></div>
+      <div><dt>Cost</dt><dd>${g.cost}</dd></div>
+      <div><dt>Console</dt><dd>${g.consoleName} - ${g.consoleUrl}</dd></div>
+      <div><dt>Managed app note</dt><dd>${g.managedAppNote}</dd></div>
+    </dl>
+    <h3>Setup</h3>
     ${stepsHtml(g)}
-    <h3>Review timeline card</h3>
-    ${g.timeline.map(t => `<div class="timeline-item"><h3>${t.stage}</h3><p><strong>Wait:</strong> ${t.wait}</p><p>${t.note}</p></div>`).join('')}
-    <h3>Approval checklist card</h3>
+    <h3>Review timeline</h3>
+    ${g.timeline.map(t => `<div class="timeline-item"><h3>${t.stage} <span class="badge">${t.wait}</span></h3><p>${t.note}</p></div>`).join('')}
+    <h3>Approval checklist</h3>
     <div class="checklist">
       ${g.checklist.map(c => `<label><input type="checkbox"> <span><strong>${c.item}</strong> - ${c.status} - ${c.who}</span></label>`).join('')}
     </div>
-    <p class="small">Check items as you complete them. This checklist is a local browser check only, it does not submit anything to the provider.</p>
+    <p class="small">Local browser checks only. Checking an item does not submit anything to the provider.</p>
     <h3>Blockers and fixes</h3>
-    ${g.blockers.map(b => `<div class="blocker"><h3>${b.blocker}</h3><p>${b.fix}</p></div>`).join('')}
-    <h3>What an agent can do, and where you take over</h3>
-    <p><strong>Agent can:</strong> ${g.agentCan.join(', ')}.</p>
-    <p><strong>You must:</strong> ${g.humanMust.join(', ')}.</p>
+    ${g.blockers.map(b => `<div class="timeline-item"><h3>${b.blocker}</h3><p>${b.fix}</p></div>`).join('')}
+    <h3>Agent vs human</h3>
+    <div class="two-col"><div><h3>Agent can</h3><ul>${g.agentCan.map(x => `<li>${x}</li>`).join('')}</ul></div><div><h3>You must</h3><ul>${g.humanMust.map(x => `<li>${x}</li>`).join('')}</ul></div></div>
     <h3>Evidence and uncertainty</h3>
     <p><strong>Confidence:</strong> ${g.confidence}</p>
     <p><strong>Tested:</strong> ${g.tested}</p>
@@ -83,6 +98,11 @@ function showDetail(g) {
     <h3>Next step</h3>
     <p><strong>${g.nextStep}</strong></p>
   `;
+  document.getElementById('backBtn').addEventListener('click', () => {
+    history.pushState(null, '', location.pathname);
+    el.classList.add('hidden');
+    document.getElementById('grid').scrollIntoView({behavior: 'smooth'});
+  });
   document.getElementById('shareBtn').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(location.href); alert('Share link copied.'); } catch (e) { alert(location.href); }
   });
@@ -93,8 +113,22 @@ function showDetail(g) {
   el.scrollIntoView({behavior: 'smooth'});
 }
 document.getElementById('search').addEventListener('input', render);
-document.getElementById('difficulty').addEventListener('change', render);
-document.getElementById('guideType').addEventListener('change', render);
+document.querySelectorAll('#difficultyPills .pill').forEach(b => b.addEventListener('click', () => {
+  difficultyFilter = b.dataset.value;
+  setPills('difficultyPills', difficultyFilter);
+  render();
+}));
+document.querySelectorAll('#typePills .pill').forEach(b => b.addEventListener('click', () => {
+  guideTypeFilter = b.dataset.value;
+  setPills('typePills', guideTypeFilter);
+  render();
+}));
+window.addEventListener('hashchange', () => {
+  const hash = location.hash.replace('#guide=', '');
+  if (!hash) return;
+  const g = guides.find(x => x.id === hash);
+  if (g) showDetail(g);
+});
 document.getElementById('copyJson').addEventListener('click', async () => {
   const url = location.origin + location.pathname.replace(/index\.html$/, '') + 'guides.json';
   try { await navigator.clipboard.writeText(url); document.getElementById('copyMsg').textContent = 'Copied: ' + url; } catch (e) { document.getElementById('copyMsg').textContent = url; }
