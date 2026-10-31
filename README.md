@@ -92,3 +92,8 @@ Claude Code, OpenAI Codex, Cursor, GitHub Copilot, Gemini CLI, OpenClaw, OpenCod
 ## Verification
 
 See `VERIFICATION-LOG.md` for the sample checked, corrections made, and items that could not be verified. See `SUBMISSION-NOTES.md` for the full round by round record, including the developer trust check, the full guides only upgrade, and the live generation upgrade.
+
+
+## Final priority, factual accuracy
+
+A requirement is marked required, optional, conditional, or not applicable only when the sentence about that exact action, in its section, explicitly supports it, with negation and modal words linked to that action. Example and suggestion sentences do not establish requirements. Auth systems are distinguished: third-party OAuth, sign-in OAuth, registration-free OAuth, API key, personal token, service account, MCP, and SSO are recorded separately. Every requirement, auth system, and endpoint is an atomic claim with passage, section, source URL, classification, condition, and verified flag. The final consistency checker makes a guide a draft, not full, on a critical contradiction, a wrong provider, an API page as console, a malformed scope or endpoint, metadata evidence, or a required step without a verb-bearing passage. No paid or local language model is used in this serverless function. Semantic verification is deterministic, with modelUsed false in the guide, and uncertain claims are marked Unknown. See SUBMISSION-NOTES.md for evaluation numbers and remaining limitations.

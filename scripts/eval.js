@@ -17,7 +17,14 @@ const providers = [
   { name: 'Dropbox', regression: false }, { name: 'Intercom', regression: false },
   { name: 'Zendesk', regression: false }, { name: 'Webflow', regression: false },
   { name: 'Todoist', regression: false }, { name: 'Xero', regression: false },
-  { name: 'BigCommerce', regression: false }, { name: 'Ghost', regression: false }
+  { name: 'BigCommerce', regression: false }, { name: 'Ghost', regression: false },
+  { name: 'Buffer', regression: false }, { name: 'Mailchimp', regression: false },
+  { name: 'Wix', regression: false }, { name: 'Canva', regression: false },
+  { name: 'Freshdesk', regression: false }, { name: 'Amplitude', regression: false },
+  { name: 'Twilio', regression: false }, { name: 'SendGrid', regression: false },
+  { name: 'PayPal', regression: false }, { name: 'Square', regression: false },
+  { name: 'Loom', regression: false }, { name: 'Framer', regression: false },
+  { name: 'Mercury', regression: false }
 ];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 function hostOf(u) { try { return new URL(u).hostname.toLowerCase(); } catch { return ''; } }
@@ -27,7 +34,7 @@ function slugOf(name) {
 }
 async function main() {
   const only = process.argv.slice(2);
-  const list = only.length ? providers.filter(x => only.includes(x.name)) : providers;
+  const list = only.length ? only.map(n => providers.find(x => x.name === n) || { name: n, regression: false }) : providers;
   const results = [];
   for (const p of list) {
     const url = BASE + '?app=' + encodeURIComponent(p.name) + '&refresh=1';
@@ -41,7 +48,22 @@ async function main() {
     const g = data.guide;
     const slug = slugOf(g.name || p.name);
     const sourceHosts = (g.sources || []).map(hostOf);
-    const providerHostMatch = (g.sources || []).length === 0 ? false : sourceHosts.every(h => h === slug + '.com' || h.endsWith('.' + slug + '.com') || h.split('.').slice(-2, -1)[0] === slug || h.split('.')[0] === slug);
+    const providerHostMatch = (g.sources || []).length === 0 ? false : sourceHosts.every(h => h === slug + '.com' || h.endsWith('.' + slug + '.com') || h.split('.').slice(-2, -1)[0] === slug || h.split('.')[0] === slug || h.split('.')[0].startsWith(slug));
+    const baseDomains = [...new Set(sourceHosts.map(h => h.split('.').slice(-2).join('.')))];
+    const providerIdentitySingle = (g.sources || []).length === 0 ? false : baseDomains.length === 1;
+    const reqs = g.requirements || [];
+    const requirementPassageBacked = reqs.every(r => r.status === 'unknown' || (r.evidence && r.evidenceUrl && (g.sources || []).includes(r.evidenceUrl)));
+    const publicReq = reqs.find(r => /Public review/.test(r.name));
+    const inventedMandatoryApproval = publicReq && publicReq.status === 'required' && !/must|required|need/i.test(publicReq.evidence || '');
+    const scopeStep = (g.steps || []).find(s => /Choose scopes/i.test(s.title));
+    const scopeTokensAll = scopeStep ? (String(scopeStep.detail || '').match(/\b[a-z][a-z0-9_-]*[:.][a-z][a-z0-9_.-]+\b/g) || []) : [];
+    const scopesWellFormed = scopeTokensAll.every(tok => /^[a-z][a-z0-9_-]+([:.][a-z][a-z0-9_-]+)+$/.test(tok) && !/client_id|client_secret|access_token|\.com$|\.json$|\.html$/.test(tok));
+    const stepReqMap = [['Register', 'Register an OAuth app'], ['review', 'Public review and marketplace listing'], ['redirect', 'Redirect URI'], ['scopes', 'Scopes'], ['API key', 'Create an API key'], ['credentials', 'Create credentials'], ['pricing', 'Pricing or tier eligibility']];
+    const stepsNotContradictory = (g.steps || []).every(s => { const m = stepReqMap.find(([k]) => s.title.toLowerCase().includes(k.toLowerCase())); if (!m) return true; const r = reqs.find(x => x.name === m[1]); if (!r) return true; return !(s.requirement === 'required' && (r.status === 'optional' || r.status === 'not_applicable' || r.status === 'unknown')); });
+    const allEvidence = [...reqs.map(r => r.evidence || ''), ...(g.steps || []).map(s => s.evidence || '')];
+    const evidenceMetadataClean = !allEvidence.some(e => /cookie|copyright|all rights reserved|newsletter/i.test(e));
+    const validationFailed = (g.qualityGate && g.qualityGate.checksFailed || []).some(x => /Validation failed/i.test(x));
+    const validationGateHonest = validationFailed ? g.guideType === 'draft' : true;
     const consoleIsApiRef = /\/api-reference\/|\/reference\//.test(g.consoleUrl || '');
     const consoleValid = g.consoleUrl === 'Unknown' ? false : !consoleIsApiRef;
     const endpointsValid = (g.evidenceSummary && g.evidenceSummary.tracks) ? true : false;
@@ -60,7 +82,10 @@ async function main() {
       noInventedFixedTimeline: !hasFixedTimeline,
       guideActionable: (g.steps || []).length >= 3,
       guideTypeFull: g.guideType === 'full',
-      verificationNotHighClaim: g.confidence !== 'High'
+      verificationNotHighClaim: g.confidence !== 'High',
+      requirementPassageBacked, scopesWellFormed, stepsNotContradictory,
+      evidenceMetadataClean, providerIdentitySingle, validationGateHonest,
+      noInventedMandatoryApproval: !inventedMandatoryApproval
     };
     const passed = Object.values(checks).filter(Boolean).length;
     const total = Object.keys(checks).length;
