@@ -102,3 +102,10 @@ Final three items, 2026-10-31:
 - Background is now uniform white across the whole page. The black hero was removed, so the header, body, cards, search card, and detail all sit on white, with borders and the blue accent doing the separation work instead of switching backgrounds.
 - Category is now a tag, not plain text. Platform cards and guide details show the category as a badge, so Salesforce, HubSpot, and Shopify show a Business tag, GitHub shows Developer tools, and so on.
 - Live deployment dpl_F67f2zxrbof2PPnyobC2oUUYLNxw, verified on the alias: hero background is white, and app.js renders the category badge.
+
+## Blue accent upgrade, 2026-10-31
+
+- Blue is now the main accent, not just links. Primary buttons are pure blue, turning black on hover. The eyebrow pill is blue text on a blue tint, hero stat numbers are blue, and the brand word Guides is blue.
+- Category tags, including Business, are blue tint tags. Search card has a blue tint border and shadow, platform cards get a blue border and blue tint shadow on hover, and section headings get a short blue bar underneath.
+- Uniform white background and Inter font are unchanged.
+- Live deployment dpl_4jrDsiBTwyLhCLV6AJoiB5azpcLF, verified on the alias: blue buttons, blue category tags, and blue hero stat numbers are in the live style and script.
