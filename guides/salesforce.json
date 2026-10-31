@@ -1,80 +1,143 @@
 {
-  "accountNeeded": "Salesforce org with Connected App access",
-  "agentCan": [
-    "Draft scope lists"
-  ],
-  "approvalWait": "Varies. AppExchange security review can take weeks and is not confirmed here.",
-  "blockers": [
-    {
-      "blocker": "Org admin blocks the Connected App",
-      "fix": "Ask the org admin to allow the Connected App and scopes for that org."
-    }
-  ],
-  "category": "Business",
-  "checklist": [
-    {
-      "item": "Callback URL matches the code",
-      "status": "required",
-      "who": "agent"
-    },
-    {
-      "item": "Scopes are minimum needed",
-      "status": "required",
-      "who": "agent"
-    },
-    {
-      "item": "Test org used before production",
-      "status": "required",
-      "who": "human"
-    }
-  ],
-  "confidence": "Low",
-  "consoleName": "Salesforce Setup, App Manager, Connected Apps",
-  "consoleUrl": "https://login.salesforce.com/",
-  "cost": "Free to register",
-  "difficulty": "Medium to Hard",
-  "difficultyWhy": "Summary card only. Salesforce Connected Apps, org settings, and security review for AppExchange can make this harder than a single org test.",
-  "guideType": "summary",
-  "humanMust": [
-    "Create the Connected App",
-    "Submit for security review if listing"
-  ],
-  "id": "salesforce",
-  "managedAppNote": "Use a managed app first if it covers Salesforce. Register your own Connected App for your own org or listing.",
-  "name": "Salesforce",
-  "nextStep": "Use live generation to expand this summary into a full step by step guide from official Salesforce docs.",
-  "notVerified": [
-    "All details in this summary card"
-  ],
-  "setupTime": "2 to 4 hours, plus security review time if listing publicly",
-  "sources": [],
-  "steps": [
-    {
-      "blockerTip": "Callback URL must match exactly.",
-      "detail": "Create a Connected App, add callback URL, and choose OAuth scopes.",
-      "time": "30 minutes",
-      "title": "Create a Connected App",
-      "who": "human"
-    },
-    {
-      "blockerTip": "Test in a sandbox first, not production.",
-      "detail": "Complete OAuth in a test org and make one API call.",
-      "time": "30 minutes",
-      "title": "Test OAuth in a sandbox or dev org",
-      "who": "human"
-    }
-  ],
-  "tested": "Summary card only, not verified against official docs in this build.",
-  "timeline": [
-    {
-      "note": "Summary only.",
-      "stage": "Create and test in an org",
-      "wait": "Immediate to hours"
-    },
-    {
-      "note": "Summary only.",
-      "stage": "AppExchange security review, if listing",
-      "wait": "Varies, weeks in many cases, not confirmed here"
-    }
-  ]
+ "accountNeeded": "Salesforce org with Connected App access",
+ "agentCan": [
+  "Draft the app name and scope list",
+  "Draft the authorize URL and token exchange code",
+  "Draft a sandbox test plan"
+ ],
+ "approvalWait": "None for a Connected App in your own org. AppExchange security review can take weeks and is not confirmed as a fixed timeline here.",
+ "blockers": [
+  {
+   "blocker": "Callback URL mismatch",
+   "fix": "Copy the exact callback URL from the app into your authorize request."
+  },
+  {
+   "blocker": "Refresh token expires early",
+   "fix": "Check refresh token policy. Set it to valid until revoked if your use needs it."
+  },
+  {
+   "blocker": "Scope too broad or too narrow",
+   "fix": "Request only the scopes the feature uses. Full access is not a default choice."
+  }
+ ],
+ "category": "Business",
+ "checklist": [
+  {
+   "item": "Connected App or External Client App created",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "Callback URL matches code exactly",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Minimum scopes only",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Consumer Secret stored server side",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "OAuth tested in sandbox or dev org",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Refresh token policy set, if needed",
+   "status": "required",
+   "who": "agent"
+  }
+ ],
+ "confidence": "Medium",
+ "consoleName": "Salesforce Setup, App Manager, Connected Apps",
+ "consoleUrl": "https://login.salesforce.com/",
+ "cost": "Free to register",
+ "difficulty": "Medium to Hard",
+ "difficultyWhy": "Creating the app is medium, but Salesforce has two app models and strict callback and scope rules. Public listing adds a separate security review, which is why this is medium to hard.",
+ "guideType": "full",
+ "humanMust": [
+  "Create the app in Setup",
+  "Copy and store the Consumer Secret",
+  "Test in a sandbox or dev org",
+  "Complete AppExchange security review, if listing"
+ ],
+ "id": "salesforce",
+ "managedAppNote": "If a managed directory already covers Salesforce, use it first. Register your own app when you need your own Consumer Key, scopes, or branding.",
+ "name": "Salesforce",
+ "nextStep": "Create a Connected App or External Client App, set the exact callback URL, and test OAuth in a sandbox first.",
+ "notVerified": [
+  "Exact current Setup menu layout, which can change",
+  "AppExchange security review time for a specific app",
+  "Whether External Client App or Connected App is right for a specific Salesforce product"
+ ],
+ "setupTime": "2 to 4 hours, plus security review time if listing publicly",
+ "sources": [
+  "https://developer.salesforce.com/docs/service/messaging-api/guide/create-connected-app.html",
+  "https://developer.salesforce.com/docs/commerce/commerce-api/guide/slas-salesforce-idp.html"
+ ],
+ "steps": [
+  {
+   "title": "Create a Connected App, or External Client App",
+   "detail": "In Setup, create a Connected App, or an External Client App, which Salesforce recommends starting in Spring 26. Give it a unique name. The API name is used for the developer name.",
+   "who": "human",
+   "time": "20 minutes",
+   "blockerTip": "Check the current Setup menu in your org. Connected Apps and External Client Apps are different models, do not mix their settings."
+  },
+  {
+   "title": "Enable OAuth and set the callback URL",
+   "detail": "Enable OAuth Settings and enter your exact Callback URL. Add Selected OAuth Scopes, minimum only, for example api for API access, and refresh_token and offline_access if you need refresh tokens.",
+   "who": "agent",
+   "time": "30 minutes",
+   "blockerTip": "The callback URL must match your code exactly. A placeholder callback will fail in a real flow."
+  },
+  {
+   "title": "Get the Consumer Key and Secret",
+   "detail": "Save the app, then go to Manage Consumer Details and copy the Consumer Key and Consumer Secret. Store the secret server side.",
+   "who": "human",
+   "time": "10 minutes",
+   "blockerTip": "Never put the Consumer Secret in client code or a public repo."
+  },
+  {
+   "title": "Test OAuth in a sandbox or dev org",
+   "detail": "Test the authorization code flow in a sandbox or dev org first, with one API call. Set refresh token policy to valid until revoked if you need long lived refresh tokens.",
+   "who": "agent",
+   "time": "30 minutes",
+   "blockerTip": "Test in production only after sandbox works. A production callback or scope change can break an install."
+  },
+  {
+   "title": "List publicly only if you need to",
+   "detail": "For AppExchange listing, complete the security review separately. Do not promise a listing date until that review is done.",
+   "who": "human",
+   "time": "Weeks, not confirmed here",
+   "blockerTip": "Security review is separate from app creation. Creating the app does not mean it is listed."
+  }
+ ],
+ "tested": "Official Salesforce Connected App docs checked on 2026-10-31 via search results. No Salesforce sign-in, app creation, or OAuth test was completed for this guide.",
+ "timeline": [
+  {
+   "stage": "Connected App",
+   "wait": "30 minutes",
+   "note": "Name, OAuth settings, callback URL, and scopes."
+  },
+  {
+   "stage": "Credentials",
+   "wait": "10 minutes",
+   "note": "Consumer Key and Secret, stored server side."
+  },
+  {
+   "stage": "Sandbox test",
+   "wait": "30 minutes",
+   "note": "One real OAuth flow and one API call."
+  },
+  {
+   "stage": "AppExchange review",
+   "wait": "Weeks, not confirmed here",
+   "note": "Only if listing publicly."
+  }
+ ]
 }

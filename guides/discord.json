@@ -1,75 +1,142 @@
 {
-  "accountNeeded": "Discord account",
-  "agentCan": [
-    "Draft scope lists"
-  ],
-  "approvalWait": "None for basic OAuth app testing. Verification for bots in many servers is separate and not confirmed here.",
-  "blockers": [
-    {
-      "blocker": "Redirect URI mismatch",
-      "fix": "Copy the exact redirect URI from the Developer Portal into your code."
-    }
-  ],
-  "category": "Communication",
-  "checklist": [
-    {
-      "item": "Redirect URIs match the code",
-      "status": "required",
-      "who": "agent"
-    },
-    {
-      "item": "Scopes are minimum needed",
-      "status": "required",
-      "who": "agent"
-    },
-    {
-      "item": "Client secret stored securely",
-      "status": "required",
-      "who": "human"
-    }
-  ],
-  "confidence": "Low",
-  "consoleName": "Discord Developer Portal",
-  "consoleUrl": "https://discord.com/developers/applications",
-  "cost": "Free to register",
-  "difficulty": "Easy to Medium",
-  "difficultyWhy": "Summary card only. Discord developer applications, OAuth2 redirect URIs, and scopes are straightforward for basic use, with bot permissions adding complexity.",
-  "guideType": "summary",
-  "humanMust": [
-    "Create the application",
-    "Test OAuth"
-  ],
-  "id": "discord",
-  "managedAppNote": "Use a managed app first if it covers Discord. Register your own application for your own bot or OAuth scopes.",
-  "name": "Discord",
-  "nextStep": "Use live generation to expand this summary into a full step by step guide from official Discord docs.",
-  "notVerified": [
-    "All details in this summary card"
-  ],
-  "setupTime": "30 to 90 minutes",
-  "sources": [],
-  "steps": [
-    {
-      "blockerTip": "Redirect URIs must match exactly.",
-      "detail": "Create an application, copy client ID and secret, and add redirect URIs under OAuth2.",
-      "time": "15 minutes",
-      "title": "Create an application",
-      "who": "human"
-    },
-    {
-      "blockerTip": "Bot scope and permissions are separate from user OAuth scopes.",
-      "detail": "Choose scopes, for example identify, and test the OAuth flow with a test account.",
-      "time": "20 minutes",
-      "title": "Choose scopes and test OAuth",
-      "who": "human"
-    }
-  ],
-  "tested": "Summary card only, not verified against official docs in this build.",
-  "timeline": [
-    {
-      "note": "Summary only.",
-      "stage": "Create and test",
-      "wait": "Immediate"
-    }
-  ]
+ "accountNeeded": "Discord account",
+ "agentCan": [
+  "Draft the authorize URL",
+  "Draft the token exchange code",
+  "Draft a test plan for sign-in and bot install"
+ ],
+ "approvalWait": "None for basic OAuth app testing. Verification for bots in many servers is separate and not confirmed here.",
+ "blockers": [
+  {
+   "blocker": "Invalid OAuth2 redirect_uri",
+   "fix": "Add the exact redirect URL to OAuth2 Redirects, including https and path, for that flow."
+  },
+  {
+   "blocker": "Scope not approved",
+   "fix": "Check Discord scope approval requirements before requesting that scope."
+  },
+  {
+   "blocker": "Bot install fails but sign-in works",
+   "fix": "Bot install needs bot permissions and a bot scope, not just user identity scopes. Test it separately."
+  }
+ ],
+ "category": "Communication",
+ "checklist": [
+  {
+   "item": "Application created, secret stored server side",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "Redirect URLs registered for every flow used",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Minimum scopes only, approval checked",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "State checked on callback",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Code exchanged server side",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Sign-in and bot install tested separately",
+   "status": "required",
+   "who": "agent"
+  }
+ ],
+ "confidence": "Medium",
+ "consoleName": "Discord Developer Portal",
+ "consoleUrl": "https://discord.com/developers/applications",
+ "cost": "Free to register",
+ "difficulty": "Easy to Medium",
+ "difficultyWhy": "Basic OAuth is easy to medium, but Discord has separate user OAuth and bot install flows, and some scopes need approval. That separation is the main trap.",
+ "guideType": "full",
+ "humanMust": [
+  "Create the application",
+  "Copy and store the client secret",
+  "Test in a test server",
+  "Apply for bot verification, if needed"
+ ],
+ "id": "discord",
+ "managedAppNote": "If a managed directory already covers Discord, use it first. Register your own application when you need your own client ID, scopes, or branding.",
+ "name": "Discord",
+ "nextStep": "Create an application, register exact redirects for each flow, and test sign-in and bot install separately in a test server.",
+ "notVerified": [
+  "Exact current Developer Portal layout, which can change",
+  "Scope approval time for a specific scope",
+  "Bot verification threshold and time for a specific bot"
+ ],
+ "setupTime": "30 to 90 minutes",
+ "sources": [
+  "https://docs.discord.com/developers/topics/oauth2"
+ ],
+ "steps": [
+  {
+   "title": "Create an application",
+   "detail": "In the Discord Developer Portal, create a New Application. Copy Client ID and Client secret from OAuth2, General. Store the secret server side.",
+   "who": "human",
+   "time": "10 minutes",
+   "blockerTip": "Never put the secret in client code or a public repo."
+  },
+  {
+   "title": "Add redirect URLs, one per flow",
+   "detail": "In OAuth2, Redirects, add your exact redirect URLs. User sign-in and bot install are different flows and may need different redirect entries. Register both if you use both.",
+   "who": "agent",
+   "time": "15 minutes",
+   "blockerTip": "A missing redirect entry fails with Invalid OAuth2 redirect_uri. Register every redirect you actually use."
+  },
+  {
+   "title": "Choose scopes, minimum only",
+   "detail": "Choose scopes for the flow you need, for example identify for user identity, guilds for servers, bot and applications.commands for a bot install. Some scopes need Discord approval before use.",
+   "who": "agent",
+   "time": "15 minutes",
+   "blockerTip": "Requesting an unapproved scope can cause errors or undocumented behavior. Check scope approval requirements first."
+  },
+  {
+   "title": "Build the authorize URL and exchange the code",
+   "detail": "Send the user to https://discord.com/oauth2/authorize with client_id, scope, redirect_uri, response_type code, and state. On callback, check state and iss, then exchange the code at https://discord.com/api/oauth2/token server side.",
+   "who": "agent",
+   "time": "20 minutes",
+   "blockerTip": "Check state on callback to prevent CSRF. Exchange the code server side, never in browser code."
+  },
+  {
+   "title": "Test sign-in and bot install separately",
+   "detail": "Test user sign-in with one API call, and test bot install in a test server separately. Do not assume one flow passing means the other works.",
+   "who": "agent",
+   "time": "15 minutes",
+   "blockerTip": "Bot install needs bot permissions as well as scopes. Test both flows in a test server first."
+  }
+ ],
+ "tested": "Official Discord OAuth2 docs checked on 2026-10-31 via search results. No Discord sign-in, application creation, or OAuth test was completed for this guide.",
+ "timeline": [
+  {
+   "stage": "Application",
+   "wait": "10 minutes",
+   "note": "Client ID and secret, stored server side."
+  },
+  {
+   "stage": "Redirects and scopes",
+   "wait": "30 minutes",
+   "note": "Exact redirects, minimum scopes, approval checked."
+  },
+  {
+   "stage": "OAuth test",
+   "wait": "20 minutes",
+   "note": "Authorize, exchange, and one API call."
+  },
+  {
+   "stage": "Bot verification",
+   "wait": "Separate, not confirmed here",
+   "note": "Only if your bot is in many servers."
+  }
+ ]
 }

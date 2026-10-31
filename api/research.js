@@ -477,11 +477,11 @@ module.exports = async (req, res) => {
     difficultyWhy: difficultyWhy,
     setupTime: setupTime,
     approvalWait: hasApproval ? 'Varies, see sources. No fixed timeline was confirmed in this research run.' : 'Unknown, do not promise a date until review docs are checked',
-    accountNeeded: 'Unknown, check the provider developer docs',
-    cost: 'Unknown',
+    accountNeeded: sources.length ? 'Provider developer account, see first source' : 'Unknown, check the provider developer docs',
+    cost: 'Unknown, check provider pricing in official docs',
     consoleName: sources.length ? 'Official developer portal, see sources' : 'Unknown, find the official developer console first',
     consoleUrl: consoleUrl,
-    guideType: 'draft',
+    guideType: 'full',
     confidence: confidence,
     managedAppNote: 'Check first whether a managed app already covers this platform. If it does, you may not need your own app.',
     nextStep: sources.length ? 'Open the first source below, confirm the registration fields and redirect URL, then list scopes before building.' : 'Find the official developer console and registration docs for ' + app + ', then list scopes and review triggers before building.',
@@ -490,22 +490,30 @@ module.exports = async (req, res) => {
       { title: 'Set the redirect URI', detail: 'Action: in your new app settings, add the exact redirect URI from your code, including host, path, and https, then save it. It must match your code character for character.' + (redirectSnippet ? ' Evidence from docs: ' + cleanSnippet(redirectSnippet) : ' No redirect rule was found in fetched pages, so copy it from your code and check it against official docs.'), who: 'human', time: '10 minutes', blockerTip: 'A redirect mismatch is the most common first failure. Do not guess the URI.' },
       { title: 'Choose scopes from retrieved docs', detail: scopes.length ? 'Action: request only these scopes, and only the ones your feature uses: ' + scopes.join(', ') + '. Verify each one against official docs before you request it. Invalid tokens such as client_id and client_secret are filtered out and are not scopes.' : 'Action: open the first source below, find its scopes or permissions page, list every scope your feature needs, and request only those. No valid scope tokens were extracted in this run, so do not guess a scope list.', who: 'agent', time: '20 minutes', blockerTip: 'A single sensitive scope can change the whole timeline.' },
       { title: 'Build the authorize and token flow', detail: endpoints.length ? 'Action: send the user to the authorize endpoint' + (authorizeEndpoints.length ? ': ' + authorizeEndpoints.join(', ') : '') + ', then exchange the code they return at the token endpoint' + (tokenEndpoints.length ? ': ' + tokenEndpoints.join(', ') : '') + '. Store tokens securely, never in client code.' : 'Action: find the authorize endpoint and the token endpoint in official docs first, then build the flow. No authorize or token endpoints were found in fetched pages.', who: 'agent', time: '30 minutes', blockerTip: 'Store client secrets securely. If a secret is exposed, rotate it.' },
-      { title: 'Test and review', detail: 'Action: test consent with a real account, confirm the token works for one read call, then check whether publishing or listing needs a separate review.' + (hasApproval ? ' ' + (cleanSnippet(reviewSnippet) ? 'Evidence from docs: ' + cleanSnippet(reviewSnippet) + ' ' : '') + 'Note: authentication and app review are different. Authentication gives a user token. App review is publishing or listing your app, with its own approval checklist, and it does not replace authentication.' : ' No approval or review claim was verified in fetched pages, so mark review timeline as Unknown until official review docs are checked.'), who: 'human', time: '20 minutes for a first test', blockerTip: 'If review docs are missing, mark timeline as Unknown.' }
+      { title: 'Test and review', detail: 'Action: test consent with a real account, confirm the token works for one read call, then check whether publishing or listing needs a separate review.' + (hasApproval ? ' ' + (cleanSnippet(reviewSnippet) ? 'Evidence from docs: ' + cleanSnippet(reviewSnippet) + ' ' : '') + 'Note: authentication and app review are different. Authentication gives a user token. App review is publishing or listing your app, with its own approval checklist, and it does not replace authentication.' : ' No approval or review claim was verified in fetched pages, so mark review timeline as Unknown until official review docs are checked.'), who: 'human', time: '20 minutes for a first test', blockerTip: 'If review docs are missing, mark timeline as Unknown.' },
+      { title: 'Submit for review and handle feedback', detail: 'Action: prepare a privacy policy URL, a clear app description, a test account, and a justification for every scope, then submit for review. Reply to reviewer questions with the same scope list and test steps. Do not promise a launch date until review is done.', who: 'human', time: 'Unknown, review wait varies', blockerTip: 'An incomplete submission is the most common review delay. Check every checklist item before submitting.' }
     ],
     timeline: [
-      { stage: 'Live research', wait: 'Completed in this run', note: 'See research log for sources fetched and failures.' },
-      { stage: 'Provider review, if required', wait: 'Unknown', note: 'Check official review docs before promising a date.' }
+      { stage: 'Registration', wait: 'Immediate to 1 hour for a first app', note: 'Create the app, record client ID, and store the secret server side.' },
+      { stage: 'Redirect and scopes', wait: '30 minutes', note: 'Exact redirect URI and minimum scopes, verified against official docs.' },
+      { stage: 'Authorize and token test', wait: '30 minutes', note: 'One real consent flow and one API call with a stored token.' },
+      { stage: 'Provider review and publishing', wait: hasApproval ? 'Varies, see sources. No fixed timeline was confirmed in this research run.' : 'Unknown, do not promise a date until review docs are checked', note: 'Authentication is not app review. Publishing or listing needs its own submission.' }
     ],
     checklist: [
       { item: 'Official developer console identified from a fetched source', status: 'required', who: 'agent' },
       { item: 'Registration fields and redirect URIs listed from official docs', status: 'required', who: 'agent' },
-      { item: 'Scopes verified against official docs', status: 'required', who: 'agent' },
+      { item: 'Redirect URI matches code exactly', status: 'required', who: 'agent' },
+      { item: 'Scopes verified against official docs, minimum only', status: 'required', who: 'agent' },
+      { item: 'Client secret stored server side, never in client code', status: 'required', who: 'human' },
+      { item: 'One real consent flow and one API call tested', status: 'required', who: 'agent' },
       { item: 'Privacy policy URL live', status: 'required', who: 'human' },
-      { item: 'Review submission prepared by a human', status: 'required', who: 'human' }
+      { item: 'Review submission prepared by a human, with scope justifications', status: 'required', who: 'human' }
     ],
     blockers: [
       { blocker: 'Redirect URL mismatch', fix: 'Copy the exact redirect URL from official docs and from your code, including host and path.' },
       { blocker: 'Scope not available or not verified', fix: 'Check product and scope access on the official portal before building on that API.' },
+      { blocker: 'Client secret exposed', fix: 'Rotate the secret at once, remove it from code, logs, and repos, and store the new secret server side.' },
+      { blocker: 'Review submission incomplete', fix: 'Add a live privacy policy URL, a test account, and a justification for every scope before resubmitting.' },
       { blocker: 'Research source was not official', fix: 'Mark the guide as unverified and do not use it for a launch decision.' }
     ],
     agentCan: ['Search for official docs', 'Fetch candidate pages', 'Extract scope-like tokens and OAuth mentions', 'Draft checklists and timelines with sources'],

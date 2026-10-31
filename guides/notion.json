@@ -1,80 +1,142 @@
 {
-  "accountNeeded": "Notion account with a workspace",
-  "agentCan": [
-    "Draft capabilities list"
-  ],
-  "approvalWait": "None for private testing in your workspace. Public distribution review varies and is not confirmed here.",
-  "blockers": [
-    {
-      "blocker": "Integration cannot see a page",
-      "fix": "Share that page with the integration from the page menu."
-    }
-  ],
-  "category": "Productivity",
-  "checklist": [
-    {
-      "item": "Redirect URI matches the code",
-      "status": "required",
-      "who": "agent"
-    },
-    {
-      "item": "Capabilities are minimum needed",
-      "status": "required",
-      "who": "agent"
-    },
-    {
-      "item": "Test page shared with the integration",
-      "status": "required",
-      "who": "human"
-    }
-  ],
-  "confidence": "Low",
-  "consoleName": "Notion integrations dashboard",
-  "consoleUrl": "https://www.notion.so/my-account/integrations",
-  "cost": "Free to register",
-  "difficulty": "Easy to Medium",
-  "difficultyWhy": "Summary card only. Notion public integrations use OAuth, with workspace sharing and capability choices that affect what an agent can read or write.",
-  "guideType": "summary",
-  "humanMust": [
-    "Create the integration",
-    "Share test pages"
-  ],
-  "id": "notion",
-  "managedAppNote": "Use a managed app first if it covers Notion. Register your own integration for your own branding or capabilities.",
-  "name": "Notion",
-  "nextStep": "Use live generation to expand this summary into a full step by step guide from official Notion docs.",
-  "notVerified": [
-    "All details in this summary card"
-  ],
-  "setupTime": "30 to 90 minutes",
-  "sources": [],
-  "steps": [
-    {
-      "blockerTip": "Capabilities decide read vs write access. Choose the minimum.",
-      "detail": "Create an integration, set redirect URI, and choose capabilities.",
-      "time": "20 minutes",
-      "title": "Create a public integration",
-      "who": "human"
-    },
-    {
-      "blockerTip": "An integration cannot see a page until that page is shared with it.",
-      "detail": "Share a test page with the integration, complete OAuth, and test one read or write call.",
-      "time": "20 minutes",
-      "title": "Share pages with the integration and test",
-      "who": "human"
-    }
-  ],
-  "tested": "Summary card only, not verified against official docs in this build.",
-  "timeline": [
-    {
-      "note": "Summary only.",
-      "stage": "Create and test in your workspace",
-      "wait": "Immediate"
-    },
-    {
-      "note": "Not confirmed here.",
-      "stage": "Public distribution, if needed",
-      "wait": "Varies"
-    }
-  ]
+ "accountNeeded": "Notion account with a workspace",
+ "agentCan": [
+  "Draft the authorize URL",
+  "Draft the token exchange code",
+  "Draft a test plan using only shared pages"
+ ],
+ "approvalWait": "None for private testing in your workspace. Public distribution requirements, including privacy policy, terms, and support email, vary and are not confirmed as a fixed timeline here.",
+ "blockers": [
+  {
+   "blocker": "Token works but pages are missing",
+   "fix": "The user did not share those pages at install. Ask the user to share them, or re-authorize with the right pages."
+  },
+  {
+   "blocker": "Redirect URI mismatch",
+   "fix": "Use the exact registered URI, including https and path."
+  },
+  {
+   "blocker": "Scope parameter ignored",
+   "fix": "Notion uses dashboard capabilities, not a scope query parameter. Set capabilities in the portal."
+  }
+ ],
+ "category": "Productivity",
+ "checklist": [
+  {
+   "item": "Public connection created, not an internal token",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "Capabilities set, minimum only",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Redirect URIs registered and matching code",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Client secret stored server side",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "Tokens stored per user, server side",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Test uses only shared pages",
+   "status": "required",
+   "who": "agent"
+  }
+ ],
+ "confidence": "Medium",
+ "consoleName": "Notion integrations dashboard",
+ "consoleUrl": "https://www.notion.so/my-account/integrations",
+ "cost": "Free to register",
+ "difficulty": "Easy to Medium",
+ "difficultyWhy": "OAuth itself is simple, but Notion uses capabilities, not a scope parameter, and page access is chosen by the user at install. That is easy to get wrong if you expect classic scopes.",
+ "guideType": "full",
+ "humanMust": [
+  "Create the public connection",
+  "Set capabilities and redirect URIs",
+  "Test with a real workspace",
+  "Provide privacy policy, terms, and support email for public use"
+ ],
+ "id": "notion",
+ "managedAppNote": "If a managed directory already covers Notion, use it first. Register your own public connection when you need your own client ID, capabilities, or branding.",
+ "name": "Notion",
+ "nextStep": "Create a public connection, set minimum capabilities, and test OAuth with pages the user actually shared.",
+ "notVerified": [
+  "Exact current Developer portal layout, which can change",
+  "Public distribution review time, if any, for a specific app",
+  "Current capability list, which can change"
+ ],
+ "setupTime": "30 to 90 minutes",
+ "sources": [
+  "https://developers.notion.com/guides/get-started/authorization"
+ ],
+ "steps": [
+  {
+   "title": "Create a public connection, not an internal token",
+   "detail": "In the Notion Developer portal, create a new public connection. Choose installation scope, Any workspace or Selected workspaces only, at creation. This cannot be changed later.",
+   "who": "human",
+   "time": "15 minutes",
+   "blockerTip": "An internal connection token works only in your own workspace. For customers, you need a public OAuth connection."
+  },
+  {
+   "title": "Set capabilities and redirect URIs",
+   "detail": "Set capabilities in the connection settings, for example Content Read, Update, or Insert, Comment, and User information. Add your redirect URIs under OAuth configuration.",
+   "who": "agent",
+   "time": "15 minutes",
+   "blockerTip": "Notion does not take a scope query parameter. Capabilities are set in the dashboard, and page access is picked by the user at install."
+  },
+  {
+   "title": "Send the user to the authorize URL",
+   "detail": "Send the user to https://api.notion.com/v1/oauth/authorize with client_id, redirect_uri, response_type code, owner user, and state. The user picks pages and databases to share.",
+   "who": "agent",
+   "time": "15 minutes",
+   "blockerTip": "The redirect URI must match the one registered. A mismatch stops the flow."
+  },
+  {
+   "title": "Exchange the code for tokens",
+   "detail": "Exchange the code at https://api.notion.com/v1/oauth/token with Basic auth using client ID and client secret, grant_type authorization_code, code, and redirect_uri. Store access and refresh tokens per user, server side.",
+   "who": "agent",
+   "time": "15 minutes",
+   "blockerTip": "Never exchange the code in browser code. The secret must stay server side."
+  },
+  {
+   "title": "Test with shared pages only",
+   "detail": "Test with pages the user actually shared. Unshared content is not available, even if the token works.",
+   "who": "agent",
+   "time": "15 minutes",
+   "blockerTip": "A working token does not mean all pages are available. Check what was shared at install."
+  }
+ ],
+ "tested": "Official Notion authorization docs checked on 2026-10-31 via search results. No Notion sign-in, connection creation, or token exchange was completed for this guide.",
+ "timeline": [
+  {
+   "stage": "Public connection",
+   "wait": "15 minutes",
+   "note": "Capabilities, redirect URIs, and installation scope."
+  },
+  {
+   "stage": "OAuth flow",
+   "wait": "30 minutes",
+   "note": "Authorize, exchange, and store tokens per user."
+  },
+  {
+   "stage": "Test",
+   "wait": "15 minutes",
+   "note": "Only shared pages and databases."
+  },
+  {
+   "stage": "Public distribution",
+   "wait": "Varies, not confirmed here",
+   "note": "Privacy policy, terms, and support email are required before public use."
+  }
+ ]
 }

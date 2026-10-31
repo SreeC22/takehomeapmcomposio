@@ -1,80 +1,143 @@
 {
-  "accountNeeded": "Zoom account with Marketplace access",
-  "agentCan": [
-    "Draft scope lists"
-  ],
-  "approvalWait": "None for private testing. Publish review varies and is not confirmed here.",
-  "blockers": [
-    {
-      "blocker": "Wrong app type",
-      "fix": "Use an OAuth Marketplace app for user connections."
-    }
-  ],
-  "category": "Communication",
-  "checklist": [
-    {
-      "item": "Redirect URL matches the code",
-      "status": "required",
-      "who": "agent"
-    },
-    {
-      "item": "Scopes are minimum needed",
-      "status": "required",
-      "who": "agent"
-    },
-    {
-      "item": "Test account used",
-      "status": "required",
-      "who": "human"
-    }
-  ],
-  "confidence": "Low",
-  "consoleName": "Zoom Marketplace, Build App",
-  "consoleUrl": "https://marketplace.zoom.us/",
-  "cost": "Free to register",
-  "difficulty": "Medium",
-  "difficultyWhy": "Summary card only. Zoom Marketplace apps, scopes, and publish review affect setup.",
-  "guideType": "summary",
-  "humanMust": [
-    "Create the app",
-    "Submit for publish if listing"
-  ],
-  "id": "zoom",
-  "managedAppNote": "Use a managed app first if it covers Zoom. Register your own app for your own scopes or listing.",
-  "name": "Zoom",
-  "nextStep": "Use live generation to expand this summary into a full step by step guide from official Zoom docs.",
-  "notVerified": [
-    "All details in this summary card"
-  ],
-  "setupTime": "1 to 3 hours, plus publish review if listing",
-  "sources": [],
-  "steps": [
-    {
-      "blockerTip": "Choose General vs Server-to-Server correctly. OAuth user connections need the OAuth app type.",
-      "detail": "Create an OAuth app, add redirect URL, and choose scopes.",
-      "time": "20 minutes",
-      "title": "Create a Marketplace app",
-      "who": "human"
-    },
-    {
-      "blockerTip": "Test with a test Zoom account.",
-      "detail": "Complete OAuth in a test account and test one API call.",
-      "time": "20 minutes",
-      "title": "Test OAuth and one API call",
-      "who": "human"
-    }
-  ],
-  "tested": "Summary card only, not verified against official docs in this build.",
-  "timeline": [
-    {
-      "note": "Summary only.",
-      "stage": "Create and test",
-      "wait": "Immediate"
-    },
-    {
-      "note": "Not confirmed here.",
-      "stage": "Publish review, if listing",
-      "wait": "Varies"
-    }
-  ]
+ "accountNeeded": "Zoom account with Marketplace access",
+ "agentCan": [
+  "Draft the scope list with descriptions",
+  "Draft the authorize URL and token exchange code",
+  "Draft a development test plan"
+ ],
+ "approvalWait": "None for private testing in development mode. Publish review varies and is not confirmed here.",
+ "blockers": [
+  {
+   "blocker": "Redirect URL rejected",
+   "fix": "Add the exact URL to both Redirect URL for OAuth and the allow list, with https and a fully qualified domain."
+  },
+  {
+   "blocker": "Scope not granted",
+   "fix": "Check whether the scope is user, admin, or master level, and whether your app type can request it."
+  },
+  {
+   "blocker": "Publish rejected for missing descriptions",
+   "fix": "Add a scope description for every scope, explaining why you need it."
+  }
+ ],
+ "category": "Communication",
+ "checklist": [
+  {
+   "item": "App type chosen correctly: user-managed vs admin-managed",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "Redirect URL and allow list match exactly",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Minimum scopes only, with descriptions",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Client secret stored server side",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "OAuth tested in development mode",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Publish submission completed, if listing",
+   "status": "required",
+   "who": "human"
+  }
+ ],
+ "confidence": "Medium",
+ "consoleName": "Zoom Marketplace, Build App",
+ "consoleUrl": "https://marketplace.zoom.us/",
+ "cost": "Free to register",
+ "difficulty": "Medium",
+ "difficultyWhy": "Creating the app is medium, but Zoom has user-managed and admin-managed types, granular scopes, and a separate publish review. Choosing the wrong type or scope set is the hard part.",
+ "guideType": "full",
+ "humanMust": [
+  "Create the app in the Marketplace",
+  "Copy and store the client secret",
+  "Add test users and test OAuth",
+  "Submit for publish review, if listing"
+ ],
+ "id": "zoom",
+ "managedAppNote": "If a managed directory already covers Zoom, use it first. Register your own app when you need your own client ID, scopes, or branding.",
+ "name": "Zoom",
+ "nextStep": "Create a user-managed OAuth app, set the exact redirect URL and allow list, and test in development mode first.",
+ "notVerified": [
+  "Exact current Marketplace build flow layout, which can change",
+  "Publish review time for a specific app",
+  "Granular scope availability for a specific resource"
+ ],
+ "setupTime": "1 to 3 hours, plus publish review if listing",
+ "sources": [
+  "https://developers.zoom.us/docs/api/authentication/",
+  "https://godevelopers.zoom.us/docs/integrations/oauth-scopes-overview/"
+ ],
+ "steps": [
+  {
+   "title": "Create a Marketplace app, user-managed first",
+   "detail": "In the Zoom App Marketplace, go to Develop, Build App, and create an OAuth app. Choose User-managed app for a user level app. Admin-managed is for admin scopes only.",
+   "who": "human",
+   "time": "20 minutes",
+   "blockerTip": "User-managed apps can only request scopes for an individual user's data. Admin scopes need an admin-managed app and an account admin."
+  },
+  {
+   "title": "Set the Redirect URL for OAuth and allow list",
+   "detail": "Set Redirect URL for OAuth to your exact callback URL, and add the same URL to the allow list. Use https and a fully qualified domain, not localhost for production.",
+   "who": "agent",
+   "time": "15 minutes",
+   "blockerTip": "Zoom checks the allow list against the Redirect URL. A URL in one place but not the other can fail."
+  },
+  {
+   "title": "Add scopes, with a reason for each",
+   "detail": "Add scopes in the Scopes tab, minimum only, for example meeting:read or user:read for the feature you need. New apps use granular scopes. Write a scope description for each scope.",
+   "who": "agent",
+   "time": "20 minutes",
+   "blockerTip": "Missing scope descriptions can cause rejection at publish. Do not add scopes you cannot justify."
+  },
+  {
+   "title": "Get client ID and secret, and test in development",
+   "detail": "Copy Client ID and Client secret from App Credentials. Store the secret server side. In development mode, add test users and test OAuth with one API call.",
+   "who": "human",
+   "time": "20 minutes",
+   "blockerTip": "Development mode is limited to specified users and needs no Zoom review. Production needs publish review."
+  },
+  {
+   "title": "Publish only if you need public distribution",
+   "detail": "For public distribution, switch to production, complete submission details, and submit for Zoom Marketplace review. Do not promise a publish date until review is done.",
+   "who": "human",
+   "time": "Varies, not confirmed here",
+   "blockerTip": "Publishing is separate from creation. A development app does not become public by itself."
+  }
+ ],
+ "tested": "Official Zoom OAuth docs checked on 2026-10-31 via search results. No Zoom sign-in, app creation, or OAuth test was completed for this guide.",
+ "timeline": [
+  {
+   "stage": "App creation",
+   "wait": "20 minutes",
+   "note": "User-managed type, redirect URL, and allow list."
+  },
+  {
+   "stage": "Scopes",
+   "wait": "20 minutes",
+   "note": "Minimum granular scopes, with descriptions."
+  },
+  {
+   "stage": "Development test",
+   "wait": "20 minutes",
+   "note": "Test users, OAuth, and one API call."
+  },
+  {
+   "stage": "Publish review",
+   "wait": "Varies, not confirmed here",
+   "note": "Only if listing publicly."
+  }
+ ]
 }

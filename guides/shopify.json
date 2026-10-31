@@ -1,80 +1,149 @@
 {
-  "accountNeeded": "Shopify Partner account and a dev store",
-  "agentCan": [
-    "Draft scope lists"
-  ],
-  "approvalWait": "None for a custom app in your own store. App Store review varies and is not confirmed here.",
-  "blockers": [
-    {
-      "blocker": "App cannot access store data",
-      "fix": "Check access scopes and whether the app is installed in that store."
-    }
-  ],
-  "category": "Business",
-  "checklist": [
-    {
-      "item": "Redirect URL matches the code",
-      "status": "required",
-      "who": "agent"
-    },
-    {
-      "item": "Access scopes are minimum needed",
-      "status": "required",
-      "who": "agent"
-    },
-    {
-      "item": "Dev store used for testing",
-      "status": "required",
-      "who": "human"
-    }
-  ],
-  "confidence": "Low",
-  "consoleName": "Shopify Partners dashboard, Apps",
-  "consoleUrl": "https://partners.shopify.com/",
-  "cost": "Free to register",
-  "difficulty": "Medium",
-  "difficultyWhy": "Summary card only. Shopify custom vs public apps, access scopes, and App Store review affect setup.",
-  "guideType": "summary",
-  "humanMust": [
-    "Create the app",
-    "Install in a dev store"
-  ],
-  "id": "shopify",
-  "managedAppNote": "Use a managed app first if it covers Shopify. Register your own app for your own scopes or listing.",
-  "name": "Shopify",
-  "nextStep": "Use live generation to expand this summary into a full step by step guide from official Shopify docs.",
-  "notVerified": [
-    "All details in this summary card"
-  ],
-  "setupTime": "1 to 3 hours, plus App Store review if listing",
-  "sources": [],
-  "steps": [
-    {
-      "blockerTip": "Scopes decide what store data the app can read or write.",
-      "detail": "Create an app, add redirect URL, and choose access scopes.",
-      "time": "20 minutes",
-      "title": "Create an app in Partners",
-      "who": "human"
-    },
-    {
-      "blockerTip": "Test in a dev store, not a live merchant store.",
-      "detail": "Install in a dev store, complete OAuth, and test one API call.",
-      "time": "20 minutes",
-      "title": "Install in a dev store and test",
-      "who": "human"
-    }
-  ],
-  "tested": "Summary card only, not verified against official docs in this build.",
-  "timeline": [
-    {
-      "note": "Summary only.",
-      "stage": "Create and test in a dev store",
-      "wait": "Immediate"
-    },
-    {
-      "note": "Not confirmed here.",
-      "stage": "App Store review, if listing",
-      "wait": "Varies"
-    }
-  ]
+ "accountNeeded": "Shopify Partner account and a dev store",
+ "agentCan": [
+  "Draft the app file scopes and redirect URLs",
+  "Draft the install and token exchange flow",
+  "Draft a test plan for one API call"
+ ],
+ "approvalWait": "None for a custom app in your own store. App Store review varies and is not confirmed here.",
+ "blockers": [
+  {
+   "blocker": "Install link fails",
+   "fix": "Use the Partner Dashboard install link. Do not ask for a myshopify.com URL manually."
+  },
+  {
+   "blocker": "Scope missing for a field",
+   "fix": "Check the Access scopes reference for that field, add the scope, and reinstall."
+  },
+  {
+   "blocker": "Token exposed in browser",
+   "fix": "Tokens stay on the backend. CLI templates handle token exchange and refresh, do not implement it in frontend code."
+  }
+ ],
+ "category": "Business",
+ "checklist": [
+  {
+   "item": "Partner account and dev store created",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "App URL and redirect URLs set",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Minimum scopes only",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Client secret stored server side",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "App installed in dev store and tested",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Webhook verification, if using webhooks",
+   "status": "required",
+   "who": "agent"
+  }
+ ],
+ "confidence": "Medium",
+ "consoleName": "Shopify Partners dashboard, Apps",
+ "consoleUrl": "https://partners.shopify.com/",
+ "cost": "Free to register",
+ "difficulty": "Medium",
+ "difficultyWhy": "Shopify handles much of OAuth for CLI apps, but you still need the right app type, scopes, and redirect URLs. Public listing adds review, which keeps this medium.",
+ "guideType": "full",
+ "humanMust": [
+  "Create the Partner account and dev store",
+  "Copy and store the client secret",
+  "Install and test in the dev store",
+  "Submit for App Store review, if listing"
+ ],
+ "id": "shopify",
+ "managedAppNote": "If a managed directory already covers Shopify, use it first. Register your own app when you need your own client ID, scopes, or branding.",
+ "name": "Shopify",
+ "nextStep": "Create a Partner account and dev store, set minimum scopes, and test one install in the dev store.",
+ "notVerified": [
+  "Exact current Dev Dashboard layout, which can change",
+  "App Store review time for a specific app",
+  "Managed installation behavior for a specific app type, which can change"
+ ],
+ "setupTime": "1 to 3 hours, plus App Store review if listing",
+ "sources": [
+  "https://shopify.dev/docs/apps/build/authentication-authorization",
+  "https://shopify.dev/docs/apps/build/authentication-authorization/manage-credentials",
+  "https://shopify.dev/docs/apps/build/authentication-authorization/cli-app-authentication"
+ ],
+ "steps": [
+  {
+   "title": "Create a Partner account and a dev store",
+   "detail": "Create a Shopify Partner account, then a development store for testing. Do not test a public app in a live merchant store first.",
+   "who": "human",
+   "time": "20 minutes",
+   "blockerTip": "A dev store lets you install and uninstall safely. A live store install cannot be undone as easily."
+  },
+  {
+   "title": "Create the app in the Dev Dashboard",
+   "detail": "In the Dev Dashboard, create the app, set App URL, and set Allowed redirection URLs. For CLI apps, set scopes and redirect URLs in shopify.app.toml and deploy.",
+   "who": "agent",
+   "time": "30 minutes",
+   "blockerTip": "For CLI apps, the app file is the source of truth. A dashboard change alone may not apply if the file is redeployed."
+  },
+  {
+   "title": "Set scopes, minimum only",
+   "detail": "Set access scopes for the resources you actually use, for example read_products or read_orders. Remove scopes you do not need.",
+   "who": "agent",
+   "time": "20 minutes",
+   "blockerTip": "Overbroad scopes slow review and increase risk. Each field needs the scope that grants it."
+  },
+  {
+   "title": "Get client ID and secret from Credentials",
+   "detail": "In the Dev Dashboard, open the app, Settings, Credentials, and copy Client ID and Client secret. Store the secret server side. Shopify also calls these API key and API secret.",
+   "who": "human",
+   "time": "10 minutes",
+   "blockerTip": "Never put the secret in browser code. Shopify signs webhooks with it, so it also verifies webhook requests."
+  },
+  {
+   "title": "Install in the dev store and test",
+   "detail": "Install the app in the dev store from the Partner Dashboard install link. The merchant approves scopes, Shopify redirects with a code, and your app exchanges it for a token. Test one API call with the token in the X-Shopify-Access-Token header.",
+   "who": "agent",
+   "time": "30 minutes",
+   "blockerTip": "Do not ask the merchant to type a myshopify.com URL. Shopify supplies the shop parameter in install links."
+  }
+ ],
+ "tested": "Official Shopify app authentication docs checked on 2026-10-31 via search results. No Partner sign-in, app creation, or install was completed for this guide.",
+ "timeline": [
+  {
+   "stage": "Partner and dev store",
+   "wait": "20 minutes",
+   "note": "Partner account and development store."
+  },
+  {
+   "stage": "App and scopes",
+   "wait": "30 minutes",
+   "note": "App URL, redirect URLs, and minimum scopes."
+  },
+  {
+   "stage": "Credentials",
+   "wait": "10 minutes",
+   "note": "Client ID and secret, stored server side."
+  },
+  {
+   "stage": "Install and test",
+   "wait": "30 minutes",
+   "note": "One real install and one API call."
+  },
+  {
+   "stage": "App Store review",
+   "wait": "Varies, not confirmed here",
+   "note": "Only if listing publicly."
+  }
+ ]
 }

@@ -11,7 +11,7 @@
 
 ## Summary guides
 
-- Microsoft, Notion, Salesforce, HubSpot, Shopify, Zoom, Discord, LinkedIn: summary cards in guides.json, not verified, expand with live generation and official docs before use.
+- Microsoft, Notion, Salesforce, HubSpot, Shopify, Zoom, Discord, LinkedIn: full guides in guides.json, Medium confidence, docs checked 2026-10-31, no sign-in or app creation completed.
 
 ## Machine readable index
 
@@ -20,7 +20,7 @@
 
 ## Optional
 
-- Use live generation on the home page to create a draft for an app outside the library. Drafts are labeled Agent draft, Low confidence, and must be checked against official docs before use.
+- Use live generation on the home page to create a full guide for an app outside the library. Live guides are full guides, with confidence Medium or Low as earned from fetched official docs, and must be checked against official docs before use.
 
 Airtable: guides/airtable.json - Medium, full guide
 - [Claude](guides/claude.json): Easy, setup 15 to 30 minutes, approval wait none. Not an OAuth app. API key only.

@@ -1,80 +1,143 @@
 {
-  "accountNeeded": "HubSpot developer account and a test account",
-  "agentCan": [
-    "Draft scope lists"
-  ],
-  "approvalWait": "None for private app testing. Public listing review varies and is not confirmed here.",
-  "blockers": [
-    {
-      "blocker": "Wrong app type for OAuth",
-      "fix": "Use a public app for OAuth user connections, not a private app token flow."
-    }
-  ],
-  "category": "Business",
-  "checklist": [
-    {
-      "item": "Redirect URL matches the code",
-      "status": "required",
-      "who": "agent"
-    },
-    {
-      "item": "Scopes are minimum needed",
-      "status": "required",
-      "who": "agent"
-    },
-    {
-      "item": "Test account used",
-      "status": "required",
-      "who": "human"
-    }
-  ],
-  "confidence": "Low",
-  "consoleName": "HubSpot developer account, Apps",
-  "consoleUrl": "https://developers.hubspot.com/",
-  "cost": "Free to register",
-  "difficulty": "Medium",
-  "difficultyWhy": "Summary card only. HubSpot private vs public apps, scopes, and redirect URLs affect setup, and public app listing adds review.",
-  "guideType": "summary",
-  "humanMust": [
-    "Create the app",
-    "Install in a test account"
-  ],
-  "id": "hubspot",
-  "managedAppNote": "Use a managed app first if it covers HubSpot. Register your own app for your own scopes or listing.",
-  "name": "HubSpot",
-  "nextStep": "Use live generation to expand this summary into a full step by step guide from official HubSpot docs.",
-  "notVerified": [
-    "All details in this summary card"
-  ],
-  "setupTime": "1 to 3 hours",
-  "sources": [],
-  "steps": [
-    {
-      "blockerTip": "Private apps use a different auth model. Use a public app for OAuth user connections.",
-      "detail": "Create an app, add redirect URL, and choose scopes.",
-      "time": "20 minutes",
-      "title": "Create a public app",
-      "who": "human"
-    },
-    {
-      "blockerTip": "Test with a test account, not a production CRM.",
-      "detail": "Install the app in a test account, complete OAuth, and test one API call.",
-      "time": "20 minutes",
-      "title": "Install in a test account and test",
-      "who": "human"
-    }
-  ],
-  "tested": "Summary card only, not verified against official docs in this build.",
-  "timeline": [
-    {
-      "note": "Summary only.",
-      "stage": "Create and test",
-      "wait": "Immediate"
-    },
-    {
-      "note": "Not confirmed here.",
-      "stage": "Public listing, if needed",
-      "wait": "Varies"
-    }
-  ]
+ "accountNeeded": "HubSpot developer account and a test account",
+ "agentCan": [
+  "Draft the app file scopes and redirect URLs",
+  "Draft the authorize URL and token exchange code",
+  "Draft a test plan for granted scopes"
+ ],
+ "approvalWait": "None for private app testing. Public listing review varies and is not confirmed here. Before listing, installs are limited to 25 accounts.",
+ "blockers": [
+  {
+   "blocker": "Authorization validation error",
+   "fix": "Check distribution in the app file. Marketplace distribution allows installs beyond an allowlist, private distribution is limited to allowlisted accounts."
+  },
+  {
+   "blocker": "Redirect URL mismatch",
+   "fix": "Update redirectUrls in the app file and upload, then use that exact URL in code."
+  },
+  {
+   "blocker": "Scope dropped at install",
+   "fix": "Optional scopes are dropped for accounts without that tool. Check granted scopes, do not assume all requested scopes were granted."
+  }
+ ],
+ "category": "Business",
+ "checklist": [
+  {
+   "item": "App created on the project platform",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "Redirect URLs and scopes set in the app file and uploaded",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Client secret stored server side",
+   "status": "required",
+   "who": "human"
+  },
+  {
+   "item": "Authorize URL uses exact redirect URI",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Tokens stored server side, refresh tested",
+   "status": "required",
+   "who": "agent"
+  },
+  {
+   "item": "Granted scopes checked after install",
+   "status": "required",
+   "who": "agent"
+  }
+ ],
+ "confidence": "Medium",
+ "consoleName": "HubSpot developer account, Apps",
+ "consoleUrl": "https://developers.hubspot.com/",
+ "cost": "Free to register",
+ "difficulty": "Medium",
+ "difficultyWhy": "OAuth itself is textbook, but HubSpot now uses a project based app flow, not just a legacy Create app button. That is why this is medium, not easy.",
+ "guideType": "full",
+ "humanMust": [
+  "Create the app and upload the project",
+  "Copy and store the client secret",
+  "Test install in a real account",
+  "Submit for Marketplace listing, if needed"
+ ],
+ "id": "hubspot",
+ "managedAppNote": "If a managed directory already covers HubSpot, use it first. Register your own app when you need your own client ID, scopes, or branding.",
+ "name": "HubSpot",
+ "nextStep": "Create a project app, set redirect URLs and minimum scopes in the app file, and test one real install.",
+ "notVerified": [
+  "Exact current project platform layout, which can change",
+  "Marketplace listing review time for a specific app",
+  "Exact token lifetime for a specific app type"
+ ],
+ "setupTime": "1 to 3 hours",
+ "sources": [
+  "https://developers.hubspot.com/docs/apps/developer-platform/build-apps/authentication/oauth/working-with-oauth",
+  "https://developers.hubspot.com/docs/apps/developer-platform/build-apps/manage-apps-in-hubspot"
+ ],
+ "steps": [
+  {
+   "title": "Create the app on the project platform",
+   "detail": "Create a HubSpot app on the project based platform, using the HubSpot CLI and app-hsmeta.json if your account uses that flow. Do not rely on a legacy Create app button that may no longer be there.",
+   "who": "human",
+   "time": "30 minutes",
+   "blockerTip": "HubSpot retired the legacy public app creation UI. If you cannot find the old button, use the project flow."
+  },
+  {
+   "title": "Set redirect URLs and scopes in the app file",
+   "detail": "Set auth redirectUrls and requiredScopes in the app file, minimum only, for example contacts or crm.objects.contacts.read for the feature you need. Upload the project to apply the change.",
+   "who": "agent",
+   "time": "30 minutes",
+   "blockerTip": "Changing redirect URLs in the portal alone may not apply. Update the app file and upload it."
+  },
+  {
+   "title": "Get the client ID and secret from Auth",
+   "detail": "On the app project details page, open the app, go to Auth, and copy Client ID and Client secret. Store the secret server side.",
+   "who": "human",
+   "time": "10 minutes",
+   "blockerTip": "Never put the secret in client code or a public repo."
+  },
+  {
+   "title": "Send the user to the authorize URL",
+   "detail": "Send the user to https://app.hubspot.com/oauth/authorize with client_id, scope, and redirect_uri. The user picks an account and grants scopes. After approval, HubSpot redirects back with a code.",
+   "who": "agent",
+   "time": "20 minutes",
+   "blockerTip": "Optional scopes can be dropped for accounts that do not have that tool. Check granted scopes after install."
+  },
+  {
+   "title": "Exchange the code and test one call",
+   "detail": "Exchange the code at the token endpoint with grant_type authorization_code, client_id, client_secret, and redirect_uri. Store access and refresh tokens server side, then test one API call.",
+   "who": "agent",
+   "time": "20 minutes",
+   "blockerTip": "Access tokens are short lived, about 30 minutes in HubSpot docs summaries. Use the refresh token, do not re-authorize on every call."
+  }
+ ],
+ "tested": "Official HubSpot OAuth docs checked on 2026-10-31 via search results. No HubSpot sign-in, app creation, or OAuth test was completed for this guide.",
+ "timeline": [
+  {
+   "stage": "App creation",
+   "wait": "30 minutes",
+   "note": "Project app, redirect URLs, and scopes."
+  },
+  {
+   "stage": "Credentials",
+   "wait": "10 minutes",
+   "note": "Client ID and secret from Auth."
+  },
+  {
+   "stage": "OAuth test",
+   "wait": "30 minutes",
+   "note": "Authorize, exchange, and one API call."
+  },
+  {
+   "stage": "Marketplace listing",
+   "wait": "Varies, not confirmed here",
+   "note": "25 installs before listing, unlimited after publishing."
+  }
+ ]
 }
