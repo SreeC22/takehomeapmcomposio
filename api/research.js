@@ -1,5 +1,5 @@
 // Live research endpoint for the OAuth guides site.
-// No LLM and no paid API key. It searches for official developer and OAuth
+// Tavily is optional, only if TAVILY_API_KEY is set in Vercel. It searches for official developer and OAuth
 // docs, fetches candidate pages, extracts registration, scope, and review
 // claims, and returns a structured guide plus a step-by-step execution log.
 // Claims that cannot be verified from a fetched page are marked Unknown.
@@ -94,8 +94,10 @@ function extractEndpoints(text, slug, domainGuess) {
 function snippetFor(text, keywords) {
   const lower = text.toLowerCase();
   for (const kw of keywords) {
-    const idx = lower.indexOf(kw.toLowerCase());
-    if (idx >= 0) {
+    let searchFrom = 0;
+    while (true) {
+      const idx = lower.indexOf(kw.toLowerCase(), searchFrom);
+      if (idx < 0) break;
       let start = Math.max(0, idx - 60);
       const nextSpace = text.indexOf(' ', start);
       if (nextSpace >= 0 && nextSpace < idx) start = nextSpace + 1;
@@ -105,7 +107,8 @@ function snippetFor(text, keywords) {
       const prevSpace = text.lastIndexOf(' ', end);
       if (prevSpace > idx) end = prevSpace;
       const s = text.slice(start, end).trim();
-      if (s.length > 20) return s;
+      if (s.length > 20 && !/try-it|api key to use|api key for/i.test(s)) return s;
+      searchFrom = idx + kw.length;
     }
   }
   return '';
@@ -138,9 +141,32 @@ async function fetchText(url, timeoutMs) {
   } catch (e) {}
   return direct;
 }
+// Simple rate limiting, so the Tavily key cannot be burned by abuse.
+// Vercel serverless functions are stateless across instances, so this is a
+// per-instance in-memory limit, not a hard global guarantee. It still stops
+// a single client hammering one warm instance, and it stops Tavily calls
+// entirely once the per-IP limits are hit, because the check runs first.
+// Limits are generous for a reviewer: 5 searches per minute per IP, 20 per
+// hour per IP, and a per-instance Tavily cap of 200 calls per day.
+const rateStore = globalThis.__researchRateStore || (globalThis.__researchRateStore = new Map());
+function rateCheck(ip) {
+  const now = Date.now();
+  const arr = (rateStore.get(ip) || []).filter(ts => now - ts < 3600000);
+  const perMinute = arr.filter(ts => now - ts < 60000).length;
+  if (perMinute >= 5) return 'Too many searches in the last minute. Wait a minute and try again.';
+  if (arr.length >= 20) return 'Too many searches in the last hour. Wait and try again later.';
+  arr.push(now);
+  rateStore.set(ip, arr);
+  return '';
+}
+let tavilyCallsToday = globalThis.__tavilyCallsToday || { day: new Date().toISOString().slice(0, 10), count: 0 };
+globalThis.__tavilyCallsToday = tavilyCallsToday;
 module.exports = async (req, res) => {
   const rawApp = String((req.query && req.query.app) || '').trim();
   if (!rawApp) { res.status(400).json({ error: 'Missing app name' }); return; }
+  const clientIp = String((req.headers && (req.headers['x-forwarded-for'] || '')) || '').split(',')[0].trim() || 'unknown';
+  const rateError = rateCheck(clientIp);
+  if (rateError) { res.status(429).json({ error: rateError }); return; }
   const parsed = parseInput(rawApp);
   const app = parsed.app;
   const slug = parsed.slug;
@@ -158,6 +184,27 @@ module.exports = async (req, res) => {
     { name: 'brave', url: 'https://search.brave.com/search?q=' + encodeURIComponent(app + ' OAuth developer docs register app scopes') }
   ];
   let candidateUrls = [];
+  // Tavily, single simple search source, if a key is set in Vercel.
+  // One official API call replaces scraping 3 search pages, which Vercel IPs get blocked from.
+  // If no key is set, this step is skipped and the existing navigation fallback runs.
+  if (process.env.TAVILY_API_KEY && tavilyCallsToday.day === new Date().toISOString().slice(0, 10) && tavilyCallsToday.count >= 200) {
+    log.push({ time: now(), action: 'search', url: 'https://api.tavily.com/search', status: 'skipped_rate_limit', detail: 'Per-instance Tavily daily cap reached, using site navigation fallback instead, so the key is not burned.' });
+  } else if (process.env.TAVILY_API_KEY) {
+    if (tavilyCallsToday.day !== new Date().toISOString().slice(0, 10)) { tavilyCallsToday.day = new Date().toISOString().slice(0, 10); tavilyCallsToday.count = 0; }
+    tavilyCallsToday.count += 1;
+    try {
+      const tavRes = await fetch('https://api.tavily.com/search', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + process.env.TAVILY_API_KEY }, body: JSON.stringify({ query: app + ' OAuth developer docs register app scopes', search_depth: 'basic', max_results: 8 }) });
+      const tavJson = await tavRes.json().catch(() => ({}));
+      const tavUrls = (tavJson.results || []).map(r => r.url).filter(u => typeof u === 'string' && u.startsWith('http'));
+      const tavFound = tavUrls.filter(u => { try { return isProviderHost(new URL(u).hostname.toLowerCase(), slug, domainGuessForSearch); } catch (e) { return false; } }).slice(0, 8);
+      log.push({ time: now(), action: 'search', url: 'https://api.tavily.com/search', status: tavRes.ok ? 'found_' + tavFound.length : 'failed_' + tavRes.status, detail: 'Tavily search returned ' + tavUrls.length + ' URLs, ' + tavFound.length + ' provider-specific.' });
+      candidateUrls = candidateUrls.concat(tavFound.filter(u => !candidateUrls.includes(u)));
+    } catch (e) {
+      log.push({ time: now(), action: 'search', url: 'https://api.tavily.com/search', status: 'failed', detail: 'Tavily search failed, falling back to site navigation. ' + String(e && e.message ? e.message : e) });
+    }
+  } else {
+    log.push({ time: now(), action: 'search', url: 'https://api.tavily.com/search', status: 'skipped_no_key', detail: 'No TAVILY_API_KEY set, skipping Tavily and using site navigation fallback.' });
+  }
   for (const src of searchSources) {
     log.push({ time: now(), action: 'search', url: src.url, status: 'attempted', detail: 'Searching ' + src.name + ' for official developer and OAuth docs.' });
     const search = await fetchText(src.url, 4000);
@@ -376,6 +423,9 @@ module.exports = async (req, res) => {
   const allText = pages.map(p => p.text).join(' ');
   const scopes = extractScopes(allText);
   const endpoints = extractEndpoints(allText, slug, domainGuess);
+  const authorizeEndpoints = endpoints.filter(u => /authorize/i.test(u));
+  const tokenEndpoints = endpoints.filter(u => /token/i.test(u));
+  const cleanSnippet = s => { if (!s) return ''; const cut = s.slice(0, 280); const lastPeriod = cut.lastIndexOf('.'); return (lastPeriod > 80 ? cut.slice(0, lastPeriod + 1) : cut).trim(); };
   const hasApproval = /app review|app approval|submit for review|review process|approval process|publish.*app|public app|distribution/i.test(allText);
   const hasRedirect = /redirect/i.test(allText);
   const hasClient = /client[ _-]id/i.test(allText);
@@ -428,11 +478,11 @@ module.exports = async (req, res) => {
     managedAppNote: 'Check first whether a managed app already covers this platform. If it does, you may not need your own app.',
     nextStep: sources.length ? 'Open the first source below, confirm the registration fields and redirect URL, then list scopes before building.' : 'Find the official developer console and registration docs for ' + app + ', then list scopes and review triggers before building.',
     steps: [
-      { title: 'Register the app', detail: registerSnippet ? 'From retrieved docs: ' + registerSnippet.slice(0, 300) + ' First source: ' + (sources[0] || 'Unknown') : 'No registration snippet was found in fetched pages. Open the first source below and confirm the exact registration fields before building.', who: 'human', time: '20 minutes for registration, plus test time', blockerTip: 'If the portal is not official, stop and mark the guide as unverified.' },
-      { title: 'Set the redirect URI', detail: redirectSnippet ? 'From retrieved docs: ' + redirectSnippet.slice(0, 300) : 'No redirect URI rule was found in fetched pages. Copy the exact redirect URI from official docs and from your code, including host and path.', who: 'human', time: '10 minutes', blockerTip: 'A redirect mismatch is the most common first failure. Do not guess the URI.' },
-      { title: 'Choose scopes from retrieved docs', detail: scopes.length ? 'Scopes found in fetched pages: ' + scopes.join(', ') + '. Request only the scopes your feature uses, and verify each one against official docs. Invalid scope-like tokens such as client_id and client_secret are filtered out and are not scopes.' : 'No valid scope tokens were extracted from fetched pages. List every scope your feature needs from official docs before requesting it.', who: 'agent', time: '20 minutes', blockerTip: 'A single sensitive scope can change the whole timeline.' },
-      { title: 'Build the authorize and token flow', detail: endpoints.length ? 'Endpoints found in fetched pages: ' + endpoints.join(', ') + '. Redirect the user to the authorize endpoint, exchange the code at the token endpoint, and store tokens securely, never in client code.' : 'No authorize or token endpoints were found in fetched pages. Find both endpoints in official docs before building the flow.', who: 'agent', time: '30 minutes', blockerTip: 'Store client secrets securely. If a secret is exposed, rotate it.' },
-      { title: 'Test and review', detail: hasApproval ? 'From retrieved docs: ' + (reviewSnippet ? reviewSnippet.slice(0, 300) : 'approval, review, or verification is mentioned, but no fixed timeline was confirmed.') + ' Note: authentication and app review are different. Authentication gives a user token. App review is publishing or listing your app, with its own approval checklist, and it does not replace authentication. Test consent with a real account first, then prepare review material if required.' : 'No approval or review claim was verified in fetched pages. Test consent with a real account, and mark review timeline as Unknown until official review docs are checked.', who: 'human', time: '20 minutes for a first test', blockerTip: 'If review docs are missing, mark timeline as Unknown.' }
+      { title: 'Register the app', detail: sources.length ? 'Action: open ' + (sources[0] || 'the official developer portal') + ', sign in, create a new OAuth app, give it a name, and save the Client ID it shows you. Do not share the Client Secret, store it securely.' + (registerSnippet ? ' Evidence from docs: ' + cleanSnippet(registerSnippet) : '') : 'No registration snippet was found in fetched pages. Action: open the official developer portal from the sources below, sign in, create a new OAuth app, and confirm the exact registration fields before building.', who: 'human', time: '20 minutes for registration, plus test time', blockerTip: 'If the portal is not official, stop and mark the guide as unverified.' },
+      { title: 'Set the redirect URI', detail: 'Action: in your new app settings, add the exact redirect URI from your code, including host, path, and https, then save it. It must match your code character for character.' + (redirectSnippet ? ' Evidence from docs: ' + cleanSnippet(redirectSnippet) : ' No redirect rule was found in fetched pages, so copy it from your code and check it against official docs.'), who: 'human', time: '10 minutes', blockerTip: 'A redirect mismatch is the most common first failure. Do not guess the URI.' },
+      { title: 'Choose scopes from retrieved docs', detail: scopes.length ? 'Action: request only these scopes, and only the ones your feature uses: ' + scopes.join(', ') + '. Verify each one against official docs before you request it. Invalid tokens such as client_id and client_secret are filtered out and are not scopes.' : 'Action: open the first source below, find its scopes or permissions page, list every scope your feature needs, and request only those. No valid scope tokens were extracted in this run, so do not guess a scope list.', who: 'agent', time: '20 minutes', blockerTip: 'A single sensitive scope can change the whole timeline.' },
+      { title: 'Build the authorize and token flow', detail: endpoints.length ? 'Action: send the user to the authorize endpoint' + (authorizeEndpoints.length ? ': ' + authorizeEndpoints.join(', ') : '') + ', then exchange the code they return at the token endpoint' + (tokenEndpoints.length ? ': ' + tokenEndpoints.join(', ') : '') + '. Store tokens securely, never in client code.' : 'Action: find the authorize endpoint and the token endpoint in official docs first, then build the flow. No authorize or token endpoints were found in fetched pages.', who: 'agent', time: '30 minutes', blockerTip: 'Store client secrets securely. If a secret is exposed, rotate it.' },
+      { title: 'Test and review', detail: 'Action: test consent with a real account, confirm the token works for one read call, then check whether publishing or listing needs a separate review.' + (hasApproval ? ' ' + (cleanSnippet(reviewSnippet) ? 'Evidence from docs: ' + cleanSnippet(reviewSnippet) + ' ' : '') + 'Note: authentication and app review are different. Authentication gives a user token. App review is publishing or listing your app, with its own approval checklist, and it does not replace authentication.' : ' No approval or review claim was verified in fetched pages, so mark review timeline as Unknown until official review docs are checked.'), who: 'human', time: '20 minutes for a first test', blockerTip: 'If review docs are missing, mark timeline as Unknown.' }
     ],
     timeline: [
       { stage: 'Live research', wait: 'Completed in this run', note: 'See research log for sources fetched and failures.' },
@@ -457,7 +507,7 @@ module.exports = async (req, res) => {
     notVerified: ['All provider-specific details not extracted from a fetched official page', 'Exact console layout', 'Exact scope list for your feature', 'Approval timeline', 'Distribution requirements'],
     executionLog: log
   };
-  if (/api key/i.test(allText) && scopes.length === 0) {
+  if (/api key/i.test(allText) && scopes.length === 0 && endpoints.length === 0 && !registerSnippet) {
     guide.blockers.push({ blocker: 'Platform may use API keys instead of OAuth', fix: 'Fetched docs mention API keys and no valid OAuth scopes were found. Confirm OAuth support on official docs before building an OAuth flow, and do not present API key access as OAuth.' });
     guide.nextStep = 'Confirm whether ' + app + ' supports OAuth at all. Fetched docs mention API keys, and no valid OAuth scopes were found in this run.';
   }

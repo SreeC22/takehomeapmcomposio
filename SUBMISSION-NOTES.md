@@ -58,3 +58,10 @@ Unfamiliar provider live research, 2026-10-31, reviewer score 73/100 follow-up:
 
 
 Style update, 2026-10-31: clean Composio-inspired styling, visual pattern only, no Composio content, logos, or product copy copied. Near-black hero #0A0A0A, white body, pure blue #0000FF used sparingly for the headline block and links, uppercase mono labels, sharp rectangular buttons, thin light gray borders, rounded cards, generous whitespace, no gradients or shadows. Guide outputs kept clean: bullet lists, HTML entities decoded, snippets cut at the first sentence, no messy nav lists in steps where possible.
+
+
+Final three items, 2026-10-31:
+- GitHub synced with production: unified merged search, Tavily integration, rate limiting, clean Composio-inspired style, and improved generated steps are all pushed to main, so a reviewer cloning the repo gets the exact version seen online.
+- Generated instructions improved: steps are now clear actions (open the console, create the app, add the exact redirect URI, request only listed scopes, send the user to the authorize endpoint then exchange at the token endpoint, test with a real account), with evidence quotes sentence-cut from fetched docs, junk snippets skipped, and authorize vs token endpoints listed separately. Where evidence is missing, the step says what to do next instead of inventing a fragment.
+- Tavily live: TAVILY_API_KEY is set in Vercel, Production, Sensitive. Live ClickUp test showed Tavily found_3 provider-specific URLs, official ClickUp docs, Medium confidence. Live Asana retest showed 3 official sources and 14 scopes in 13.8 seconds, after a first flaky run with 0 sources in 94.7 seconds, so fetching can still vary by run.
+- Rate limiting: 5 searches per minute per IP, 20 per hour per IP, 429 over the limit, no Tavily call on a limited request, per-instance Tavily cap 200 per day. Note: Vercel splits parallel requests across instances, so the in-memory limit is per-instance, not a true global limit.

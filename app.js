@@ -80,31 +80,15 @@ function card(g) {
     <p><span class="badge">${esc(g.difficulty)}</span><span class="badge ${esc(g.guideType)}">${esc(g.guideType)}</span></p>
     <p class="meta"><strong>Setup:</strong> ${esc(g.setupTime)}</p>
     <p class="meta"><strong>Approval wait:</strong> ${esc(g.approvalWait)}</p>
-    <p>${esc(g.difficultyWhy)}</p>
     <p class="meta">${esc(g.category)}</p>
   </article>`;
 }
 function render() {
   const q = (document.getElementById('search').value || '').toLowerCase();
-  const d = document.getElementById('difficulty').value;
-  const t = document.getElementById('guideType').value;
-  const list = guides.filter(g => {
-    return (!q || (g.name + ' ' + g.category).toLowerCase().includes(q)) &&
-      (!d || g.difficulty === d) &&
-      (!t || g.guideType === t);
-  });
+  const list = guides.filter(g => !q || (g.name + ' ' + g.category).toLowerCase().includes(q));
   document.getElementById('grid').innerHTML = list.map(card).join('');
   document.getElementById('empty').classList.toggle('hidden', list.length > 0);
-  const emptyBtn = document.getElementById('emptyResearch');
-  if (emptyBtn) {
-    emptyBtn.onclick = () => {
-      const q = document.getElementById('search').value.trim();
-      document.getElementById('liveApp').value = q;
-      document.getElementById('liveForm').scrollIntoView({behavior: 'smooth'});
-      document.getElementById('liveApp').focus();
-      updateLiveMatch();
-    };
-  }
+  updateSearchStatus();
   document.querySelectorAll('.card').forEach(el => {
     const open = () => {
       const g = guides.find(x => x.id === el.dataset.id);
@@ -151,15 +135,7 @@ function showDetail(g, isGenerated) {
         <li><strong>Managed app note:</strong> ${esc(g.managedAppNote)}</li>
       </ul>
     </div>
-    <div class="step"><h3>Managed or custom, first decision</h3>
-      <ul>
-        <li>Check Composio managed apps first</li>
-        <li>Stay managed if default scopes cover your needs and Composio branding fits</li>
-        <li>Go custom for own branding, custom scopes, dedicated quota, faster polling, a custom instance, or enterprise branding</li>
-        <li>You can mix approaches by toolkit</li>
-        <li>If you use Composio: create an auth config, take its redirect URI, add it in the provider portal, copy Client ID and Secret back into Composio, save the auth config ID, then pass that ID in the session</li>
-      </ul>
-    </div>
+    <p class="small">Managed or custom? Check managed first. Go custom only for own branding, custom scopes, dedicated quota, or a custom instance.</p>
     <h3>Step by step guide</h3>
     ${stepsHtml(g)}
     <h3>Review timeline card</h3>
@@ -188,82 +164,49 @@ function showDetail(g, isGenerated) {
   el.scrollIntoView({behavior: 'smooth'});
 }
 document.getElementById('search').addEventListener('input', render);
-document.getElementById('difficulty').addEventListener('change', render);
-document.getElementById('guideType').addEventListener('change', render);
-document.getElementById('copyJson').addEventListener('click', async () => {
-  const url = location.origin + location.pathname.replace(/index\.html$/, '') + 'guides.json';
-  try { await navigator.clipboard.writeText(url); document.getElementById('copyMsg').textContent = 'Copied: ' + url; } catch (e) { document.getElementById('copyMsg').textContent = url; }
-});
-function updateLiveMatch() {
-  const el = document.getElementById('liveMatch');
+function updateSearchStatus() {
+  const el = document.getElementById('searchStatus');
   if (!el) return;
-  const name = document.getElementById('liveApp').value.trim();
-  if (!name) { el.innerHTML = ''; return; }
+  const name = document.getElementById('search').value.trim();
+  if (!name) { el.textContent = ''; return; }
   const match = findGuideForInput(name);
   if (match) {
     const kind = String(match.id || '').startsWith('generated-') ? 'saved generated guide' : 'library guide';
-    el.innerHTML = 'Found in library: <strong>' + esc(match.name) + '</strong> (' + kind + '). <button id="openMatch" type="button">Open it, no generation needed</button>';
-    const btn = document.getElementById('openMatch');
-    if (btn) btn.onclick = () => showDetail(match, String(match.id || '').startsWith('generated-'));
+    el.textContent = 'Found: ' + match.name + ' (' + kind + '). Press Get guide to open it.';
   } else {
-    el.innerHTML = 'Not in the library yet. Research live will generate a draft for this app, once.';
+    el.textContent = 'Not in the library yet. Get guide will research it live, once.';
   }
 }
-document.getElementById('liveApp').addEventListener('input', updateLiveMatch);
-document.getElementById('liveForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const name = document.getElementById('liveApp').value.trim();
-  const resultEl = document.getElementById('liveResult');
-  const cached = findGuideForInput(name);
-  if (cached && !window.__forceResearch) {
-    const kind = String(cached.id || '').startsWith('generated-') ? 'saved generated guide' : 'library guide';
-    resultEl.innerHTML = '<p><strong>Already in the library, no generation needed.</strong> Showing the existing ' + kind + ' for ' + esc(cached.name) + ' instead of researching again. <button id="forceResearch" type="button">Generate fresh anyway</button></p>';
-    const fb = document.getElementById('forceResearch');
-    if (fb) fb.onclick = () => { window.__forceResearch = true; document.getElementById('liveForm').requestSubmit(); };
-    showDetail(cached, String(cached.id || '').startsWith('generated-'));
-    return;
-  }
-  window.__forceResearch = false;
-  resultEl.innerHTML = '<p>Researching ' + esc(name) + ' now. The research endpoint searches for official developer and OAuth docs, fetches candidate pages, and extracts registration, scope, and review claims with sources. This takes a few seconds.</p>';
+async function runResearch(name) {
+  const statusEl = document.getElementById('searchStatus');
+  if (statusEl) statusEl.textContent = 'Researching ' + name + ' now. This can take up to about a minute for an unfamiliar app.';
   try {
     const res = await fetch('/api/research?app=' + encodeURIComponent(name));
     if (!res.ok) throw new Error('Research endpoint returned ' + res.status);
     const data = await res.json();
     const g = data.guide;
-    const log = data.log || [];
-    g.executionLog = log;
+    g.executionLog = data.log || [];
     if (!guides.find(x => x.id === g.id)) guides.push(g);
     saveStoredGuide(g);
     render();
-    const logHtml = log.map(l => `<li>${esc(l.time || '')} - ${esc(l.action || '')} - ${esc(l.url || '')} - ${esc(l.status || '')} - ${esc(l.detail || '')}</li>`).join('');
-    resultEl.innerHTML = '<p><strong>Live research complete for ' + esc(name) + '.</strong> Confidence: ' + esc(g.confidence) + '. This guide is generated from the research log below, not from a static template. Check it against official docs before use.</p><p><strong>Research log:</strong></p><ul>' + logHtml + '</ul><p>Share link: copy it from the guide detail below. It survives refresh and sharing, because the guide data is encoded in the link and also saved in this browser.</p>';
+    if (statusEl) statusEl.textContent = 'Live research complete for ' + name + '. Confidence: ' + g.confidence + '. Check it against official docs before use.';
     showDetail(g, true);
   } catch (err) {
+    if (statusEl) statusEl.textContent = 'Live research could not run for ' + name + '. The guide below is Low confidence and Unknown, with no provider-specific claims.';
     const id = 'generated-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'generated-app';
-    const g = {
-      id: id, name: name, category: 'Generated, research endpoint unavailable', difficulty: 'Unknown',
-      difficultyWhy: 'Live research endpoint was unavailable, so no provider-specific claims could be verified. Do not use this as a verified guide.',
-      setupTime: 'Unknown', approvalWait: 'Unknown, do not promise a date until review docs are checked',
-      accountNeeded: 'Unknown, check the provider developer docs', cost: 'Unknown',
-      consoleName: 'Unknown, find the official developer console first', consoleUrl: 'Unknown',
-      guideType: 'draft', confidence: 'Low',
-      managedAppNote: 'Check first whether a managed app already covers this platform. If it does, you may not need your own app.',
-      nextStep: 'Find the official developer console and registration docs for ' + name + ', then list scopes and review triggers before building.',
-      steps: [{title: 'Research failed, do not use as a verified guide', detail: 'The live research endpoint could not be reached. No official docs were fetched in this attempt, so no provider-specific steps are claimed here.', who: 'human', time: 'Unknown', blockerTip: 'Retry live research, or research the official docs manually before building.'}],
-      timeline: [{stage: 'Investigation', wait: 'Unknown', note: 'Research endpoint unavailable.'}],
-      checklist: [{item: 'Official developer console identified', status: 'required', who: 'agent'}],
-      blockers: [{blocker: 'Research endpoint unavailable', fix: 'Retry, or research official docs manually and do not treat this draft as verified.'}],
-      agentCan: ['Research official docs', 'List scopes and review triggers'],
-      humanMust: ['Sign in to the provider console', 'Submit for review and reply to reviewers'],
-      sources: [], tested: 'Live research attempt failed in the browser. No provider docs were verified for this draft.',
-      notVerified: ['All details in this draft', 'Console URL', 'Scopes', 'Timeline', 'Approval requirements'],
-      executionLog: [{time: new Date().toISOString(), action: 'live_research', url: '/api/research', status: 'failed', detail: String(err && err.message ? err.message : err)}]
-    };
+    const g = { id: id, name: name, category: 'Generated, research endpoint unavailable', difficulty: 'Unknown', difficultyWhy: 'Live research endpoint was unavailable, so no provider-specific claims could be verified.', setupTime: 'Unknown', approvalWait: 'Unknown, do not promise a date until review docs are checked', accountNeeded: 'Unknown, check the provider developer docs', cost: 'Unknown', consoleName: 'Unknown, find the official developer console first', consoleUrl: 'Unknown', guideType: 'draft', confidence: 'Low', managedAppNote: 'Check first whether a managed app already covers this platform.', nextStep: 'Find the official developer console and registration docs for ' + name + ', then list scopes and review triggers before building.', steps: [{title: 'Research failed, do not use as a verified guide', detail: 'The live research endpoint could not be reached. No official docs were fetched in this attempt.', who: 'human', time: 'Unknown', blockerTip: 'Retry, or research the official docs manually before building.'}], timeline: [{stage: 'Investigation', wait: 'Unknown', note: 'Research endpoint unavailable.'}], checklist: [{item: 'Official developer console identified', status: 'required', who: 'agent'}], blockers: [{blocker: 'Research endpoint unavailable', fix: 'Retry, or research official docs manually.'}], agentCan: ['Research official docs'], humanMust: ['Sign in to the provider console', 'Submit for review'], sources: [], tested: 'Live research attempt failed in the browser.', notVerified: ['All details in this draft'], executionLog: [{time: new Date().toISOString(), action: 'live_research', url: '/api/research', status: 'failed', detail: String(err && err.message ? err.message : err)}] };
     if (!guides.find(x => x.id === g.id)) guides.push(g);
     saveStoredGuide(g);
     render();
-    resultEl.innerHTML = '<p><strong>Live research could not run for ' + esc(name) + '.</strong> The guide below is marked Low confidence and Unknown, with no provider-specific claims. This is a failure, not a verified guide.</p>';
     showDetail(g, true);
   }
+}
+document.getElementById('searchForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const name = document.getElementById('search').value.trim();
+  if (!name) return;
+  const cached = findGuideForInput(name);
+  if (cached) { showDetail(cached, String(cached.id || '').startsWith('generated-')); return; }
+  await runResearch(name);
 });
 load();
