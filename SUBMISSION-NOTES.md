@@ -96,3 +96,9 @@ Final three items, 2026-10-31:
 - Font: Inter is now loaded from Google Fonts on every load, weights 400, 500, 600, 700, and 800, matching the font Composio uses on composio.dev. Previously Inter was only first in the local font stack, so it fell back to system fonts when Inter was not installed. Mono labels stay in the system mono stack, as on Composio.
 - Prettier, same content: a top nav bar, a pill eyebrow, a hero stats row (13 library guides, 5 full guides, live research), a search card that sits over the hero with a soft shadow, platform cards with a hover lift and a View guide line, and guide detail and agent sections as pale rounded cards. No guide text, search flow, or sharing code changed.
 - Live deployment dpl_8MAXViF1STrfNAjpE3HTXZDPX2w4, verified on the alias: index loads the Inter stylesheet, style.css is the new 5020 byte file, app.js contains View guide, and guides.json loads.
+
+## Uniform background and category tags, 2026-10-31
+
+- Background is now uniform white across the whole page. The black hero was removed, so the header, body, cards, search card, and detail all sit on white, with borders and the blue accent doing the separation work instead of switching backgrounds.
+- Category is now a tag, not plain text. Platform cards and guide details show the category as a badge, so Salesforce, HubSpot, and Shopify show a Business tag, GitHub shows Developer tools, and so on.
+- Live deployment dpl_F67f2zxrbof2PPnyobC2oUUYLNxw, verified on the alias: hero background is white, and app.js renders the category badge.

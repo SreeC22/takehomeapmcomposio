@@ -80,7 +80,7 @@ function card(g) {
     <p><span class="badge">${esc(g.difficulty)}</span><span class="badge ${esc(g.guideType)}">${esc(g.guideType)}</span></p>
     <p class="meta"><strong>Setup:</strong> ${esc(g.setupTime)}</p>
     <p class="meta"><strong>Approval wait:</strong> ${esc(g.approvalWait)}</p>
-    <p class="meta">${esc(g.category)}</p>
+    <p><span class="badge">${esc(g.category)}</span></p>
     <p class="card-cta">View guide</p>
   </article>`;
 }
@@ -124,7 +124,7 @@ function showDetail(g, isGenerated) {
   el.classList.remove('hidden');
   el.innerHTML = `
     <p><a href="#grid">Back to all platforms</a> | <button id="shareBtn" type="button">Copy share link</button> | <button id="jsonBtn" type="button">Copy guide JSON</button>${(isGenerated || String(g.id || '').startsWith('generated-') || String(g.id || '').startsWith('draft-')) ? ' | <button id="refreshBtn" type="button">Refresh live research</button>' : ''}</p>
-    <h2>${esc(g.name)} <span class="badge">${esc(g.difficulty)}</span> <span class="badge ${esc(g.guideType)}">${esc(g.guideType)}</span></h2>
+    <h2>${esc(g.name)} <span class="badge">${esc(g.difficulty)}</span> <span class="badge ${esc(g.guideType)}">${esc(g.guideType)}</span>${g.category ? ` <span class="badge">${esc(g.category)}</span>` : ''}</h2>
     <p>${esc(g.difficultyWhy)}</p>
     <div class="step"><h3>At a glance</h3>
       <ul>
