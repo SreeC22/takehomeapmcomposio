@@ -81,6 +81,7 @@ function card(g) {
     <p class="meta"><strong>Setup:</strong> ${esc(g.setupTime)}</p>
     <p class="meta"><strong>Approval wait:</strong> ${esc(g.approvalWait)}</p>
     <p class="meta">${esc(g.category)}</p>
+    <p class="card-cta">View guide</p>
   </article>`;
 }
 function render() {

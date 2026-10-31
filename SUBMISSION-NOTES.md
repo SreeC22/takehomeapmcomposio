@@ -90,3 +90,9 @@ Final three items, 2026-10-31:
 
 - Zapier scopes were polluted by CSS tokens from styled docs pages, for example display:fallback and align:middle. Fixed by preferring colon and dot tokens that appear near a scope mention, which covers lists, tables, and JSON scope fields like Miro boards:write, and by filtering CSS selectors and pseudo-classes such as hover, not, last, and first.
 - Verified live on deployment dpl_HVvAYm6ypbtJkD4vVuDK5uQYRQW4: Zapier scopes are now zap:write, zap:update, zap:delete, zap:pause, zap:all, zap:account, zap:runs, action:run, authentication:write, connection:read, connection:write, connection:delete, mcp:run, with no CSS tokens. Miro scopes are back to boards:write, boards:read. Asana scopes are unchanged and clean. Zapier server time in that run was 493ms, Miro 111ms, Asana 463ms.
+
+## UI refresh, 2026-10-31
+
+- Font: Inter is now loaded from Google Fonts on every load, weights 400, 500, 600, 700, and 800, matching the font Composio uses on composio.dev. Previously Inter was only first in the local font stack, so it fell back to system fonts when Inter was not installed. Mono labels stay in the system mono stack, as on Composio.
+- Prettier, same content: a top nav bar, a pill eyebrow, a hero stats row (13 library guides, 5 full guides, live research), a search card that sits over the hero with a soft shadow, platform cards with a hover lift and a View guide line, and guide detail and agent sections as pale rounded cards. No guide text, search flow, or sharing code changed.
+- Live deployment dpl_8MAXViF1STrfNAjpE3HTXZDPX2w4, verified on the alias: index loads the Inter stylesheet, style.css is the new 5020 byte file, app.js contains View guide, and guides.json loads.
