@@ -231,3 +231,85 @@ Final three items, 2026-10-31:
 - Before-and-after, with the caveat that check sets changed: old 11-check retest, 120 of 132, 10 full, 2 drafts. New 18-check retest on the same 12 providers, 209 of 216, with the same caveat that new checks include stricter passage-backed and identity checks, so the totals are not directly comparable. The real improvement is not the total, it is that Trello, Loom, Firebase, and Square no longer return full guides with the wrong provider, and that mandatory, optional, conditional, and not applicable statuses now require a linked passage, not keyword presence.
 - Remaining limitations, stated plainly: no guide was tested with a provider sign-in, so no approval was actually completed. Monday and Xero previously returned api_key despite OAuth docs, and that classification variance remains possible. Dropbox console was a paper API page in one run. Console Unknown remains common, which is honest but less useful. Run-to-run variance in Tavily and fetch results changes auth classification for some providers, as shown by Square. Scopes can still mix products on the same domain, as shown by Twilio Segment scopes in a Twilio guide. The rule engine is deterministic, not semantic, and complex documentation that does not follow linked patterns is marked Unknown.
 - No 9/10 score is claimed. Harness checks are not human factual grading. The target is defensible guidance with explicit abstention, and this sample shows that abstention now happens for Trello, Loom, Firebase, Square, Freshdesk, and Ghost in earlier runs, instead of confident full guides with wrong providers.
+
+## Final engineering push, 2026-10-31 evening
+
+P0 fixes: auth direction and intent (structured relationships, external IdP guard, registration developer-context guard), claim-level entailment (subject, action, object, product, verification outcome), provider and product boundaries (scope only from permission-description pages, scopes grouped by product page, multiple-product scope step replaced, not merged), and an independent validation gate that re-checks step prose against raw text and removes unsupported required steps, making the guide a draft.
+P1 fixes: source parsing (.json excluded, docs articles not consoles, token endpoints must contain oauth or authorize, near-scope window 200 chars, not 500).
+Evaluation A: fixed-document regression 14/14 new, 11/14 old, scripts/fixed-doc-eval.js.
+Evaluation B: see below. It is not a structural checklist score. Findings are classified correct and supported, correct but insufficiently supported, incorrect, or unknown and appropriately abstained, from official docs checked independently of the generated guide, and from the rendered guide instructions.
+Limitations that remain, not hidden: Monday.com and Xero auth classification variance across runs; Dropbox console was a paper-api-alpha page in earlier runs, now console is Unknown under the stricter rule; console Unknown is now common and honest; run-to-run Tavily and fetch variance can still flip auth classification (Square full oauth to draft unknown in earlier rounds); scopes can still mix products on the same domain when both pages are permission-description pages for different products, in which case the per-product warning applies; JS-rendered docs cannot be read by static fetch; no guide has ever been tested with a provider sign-in; cache and rate limits are per Vercel instance, not global; the rule engine is deterministic, not semantic understanding.
+
+## Evaluation B, final push, 12 unseen providers, production dpl_9VJcQFuGHnfahR6Ntbihk8TYvpTs
+
+Structural harness total, scripts/eval.js, 18 checks per provider: 153/180, 7 full, 3 drafts, 2 errors. This total is NOT a factual accuracy rate. It counts console Unknown as a failure, and it does not check whether the auth direction or scopes are actually right. The independent classification below is the factual check, from official docs searched separately from the generated guides, and from the rendered guide instructions.
+
+Independent expected findings, from official docs:
+- Klarna: main API is API key, client ID for SDK, Sign in with Klarna is OIDC sign-in, not third-party API OAuth.
+- Braintree: API keys for first-party, OAuth 2.0 for third-party merchants, docs under developer.paypal.com, a parent domain that does not contain the product name.
+- Wise: OAuth 2.0 for partners, personal token for SMB own account, token endpoint POST /oauth/token, authorize wise.com/oauth/authorize.
+- Airwallex: own-account access is client ID plus API key to a login endpoint, partner OAuth is separate, authorize airwallex.com/oauth/authorize, token api.airwallex.com/oauth/token.
+- Mollie: API keys default, OAuth app access tokens for third-party, organization tokens, basic auth with client ID and secret for token generation. Docs say do not use API keys for third-party, use OAuth instead.
+- GoCardless: partner OAuth, connect.gocardless.com/oauth/authorize and /oauth/access_token, plus own-account access tokens.
+- Sentry: OAuth2 for third-party, internal integration tokens, personal tokens, public integrations submitted for approval to publish.
+- Datadog: API key plus application key, personal and service access tokens, not OAuth for the main API. Docs domain is datadoghq.com, not datadog.com.
+- PagerDuty: Scoped OAuth and Classic User OAuth, API tokens, private apps are not reviewed or published by PagerDuty.
+- Atlassian: OAuth 2.0 3LO, Jira scopes such as read:jira-work, developer console, callback URLs, plus API tokens for service accounts.
+- Bitbucket: OAuth consumers, callback URL, read, write, and admin permissions, plus Forge, distinct from Jira scopes. Docs under developer.atlassian.com and support.atlassian.com, parent domains that do not contain the product name.
+- CircleCI: personal and project API tokens are the main API method, plus OAuth 2.0 Dynamic Client Registration, which is registration-free OAuth, and MCP OAuth for the hosted MCP server.
+
+Generated guide results, production run:
+- Klarna: full, api_key, Low, 2 sources, both docs.klarna.com. Correct and supported for the main API direction. Correct but insufficiently supported on Sign in with Klarna as a separate sign-in path, because the guide's main auth is api_key and the sign-in path is only in sources, not as a separate rendered step. No critical error.
+- Braintree: draft, unknown, 0 sources. Appropriately abstained, not incorrect. Cause is parent-domain filtering: official docs live under developer.paypal.com, which does not contain braintree, so the identity rule rejects them. Useful coverage is zero for this provider, which is a limitation, not a false guide.
+- Wise: full, oauth, Low, 7 sources, all docs.wise.com. Correct and supported for partner OAuth direction, endpoints, and alternative personal token. Console Unknown, honest, not a factual error.
+- Airwallex: ERROR in the harness run, then 500 FUNCTION_INVOCATION_FAILED on direct retest. Critical failure, see crash fix below. Not counted as a pass.
+- Mollie: full, oauth, Low, 3 sources, all docs.mollie.com. Correct and supported for third-party OAuth direction. Correct but insufficiently supported on the API key alternative as the simplest own-account path, because the guide's main path is OAuth and the API key alternative is only noted in the choose-path step when both are found.
+- GoCardless: draft, unknown, 0 sources. Appropriately abstained in that run, not incorrect, but the cause is different from Braintree: no fetchable official pages were returned in that run, likely a JS-heavy docs site that static fetch cannot read, not a parent-domain rejection. Useful coverage is zero, and this needs a retest, not a pass.
+- Sentry: full, oauth, Low, 3 sources, all docs.sentry.io. Correct and supported for third-party OAuth direction, with internal and personal tokens as alternatives in docs.
+- Datadog: full, api_key, Low, 6 sources, all docs.datadoghq.com. Correct and supported for the main API direction. The harness providerHostMatch check failed only because it expects datadog.com, while the real docs domain is datadoghq.com. That harness failure is not a factual error.
+- PagerDuty: full, oauth, Low, 2 sources, both docs.pagerduty.com. Correct and supported for OAuth direction, including private versus public distribution in docs.
+- Atlassian: ERROR in the harness run, then 500 FUNCTION_INVOCATION_FAILED on direct retest. Critical failure, see crash fix below. Not counted as a pass.
+- Bitbucket: draft, unknown, 0 sources. Appropriately abstained, not incorrect. Cause is parent-domain filtering, same as Braintree. Useful coverage is zero, which is a limitation.
+- CircleCI: full, oauth, Low, 4 sources, including oauth-dynamic-client-registration and api-developers-guide, plus one changelog page that is not a docs page and should not be a source. Correct but insufficiently supported: OAuth Dynamic Client Registration is a real CircleCI OAuth path and is registration-free, so presenting OAuth as the main path without clearly ranking personal tokens as the simplest main API method risks sending a developer down the OAuth path first. The guide does record registration-free OAuth, but the rendered step order puts OAuth first. This is a direction-ranking weakness, not a false endpoint, and it is counted as correct but insufficiently supported, not as fully correct.
+
+Independent summary for the 12, counting only asserted guides, not drafts or errors as passes:
+- Correct and supported: Wise, Mollie, Sentry, Datadog, PagerDuty. That is 5 of 12 providers, 5 of 7 full guides.
+- Correct but insufficiently supported: Klarna, CircleCI. That is 2 of 12.
+- Unknown and appropriately abstained: Braintree, GoCardless, Bitbucket. That is 3 of 12, with zero useful coverage for those three.
+- Incorrect or failed: Airwallex, Atlassian, both 500 errors in this run. That is 2 of 12, a critical-error rate of 2 in 12 for the run, before the crash fix.
+- No unsupported mandatory registration or approval was found in the 7 full guides. No mismatched provider identities were found in the 7 full guides: all sources were on the correct provider domain, with Datadog's datadoghq.com counted as correct. No malformed scopes were found in the full guides. No guide claimed High confidence.
+- Abstention rate: 3 drafts in 12, plus 2 errors, is 5 in 12 with no usable guide. That is high, and it must not be counted as excellent factual performance. It is honest, but it is not useful coverage.
+
+## Crash fix, after Evaluation B
+
+Airwallex and Atlassian both returned 500 FUNCTION_INVOCATION_FAILED on direct retest, reproducibly, on production dpl_9VJcQFuGHnfahR6Ntbihk8TYvpTs. Vercel gave no further error detail that I could read, so I do not claim a specific root cause. The systemic fix, not a provider exception, is:
+- A catch-all wrapper around the research handler: any uncaught error now returns a draft guide with research failed, a clear next step, and the error recorded in the guide, instead of a 500 with no guide.
+- A page-size guard: pages over 500KB are truncated to the first 500KB before parsing, to reduce memory failure risk from very large docs pages.
+This fix is deployed and retested below. If Airwallex and Atlassian still fail after it, they remain failures, not passes.
+
+## Root cause fix, after the crash fix deployment
+
+The catch-all wrapper itself exposed the root cause: "Cannot access 'contradictions' before initialization". The guard block that groups scopes by product page pushed to `contradictions` at line 402, but `contradictions` was only declared later, at the authentication classification section. That is why only providers with scopes from multiple product pages crashed: Airwallex and Atlassian. Other providers never took that branch, so they never hit the error. Fix: declare `contradictions` before the scope-grouping block, and remove the later duplicate declaration. The catch-all wrapper stays in place, so any future uncaught error still returns a draft instead of a 500.
+
+## Retest after root cause fix, production dpl_Htj89qQCSo3r3wwEcmABWNzNu3ZC
+
+- Airwallex: draft, oauth, Low, 8 steps, 4 sources, all airwallex.com, scopes from multiple products flagged, validation failures on the Choose scopes step because step text cites scope URLs with a trailing colon that do not match the sources list exactly. Direction is now correct, partner OAuth plus API key alternative both present, but the guide is a draft, not a pass, because validation failed. No crash.
+- Atlassian: draft, unknown, Low, 4 steps, 7 sources, all developer.atlassian.com. Auth is unknown, not OAuth, because Atlassian OAuth endpoints live on auth.atlassian.com, not on the docs host, so the strict provider-host rule drops them. That is honest abstention, not a wrong direction, and useful coverage for Atlassian is low. No crash.
+- GoCardless retest: draft, unknown, 0 sources, same as the first run. Stable fetch limitation, not a pass.
+- Figma regression retest: full, oauth, Medium, 7 steps, 3 sources, all developers.figma.com, console Unknown, no validation failures. Unchanged from the pre-fix check.
+
+## Release gate outcome, final push
+
+Gate criteria, checked honestly:
+- No known critical contradiction in the regression suite: pass, Evaluation A 14/14, no change after the root cause fix.
+- No mismatched identities in the manually reviewed sample: pass, all 7 full guides use the correct provider domain, Datadog's datadoghq.com counted as correct.
+- No unsupported mandatory registration or approval as fact: pass, none found in the full guides.
+- No incorrect OAuth direction in regression: pass, Evaluation A and the full guides agree with official docs on direction.
+- No malformed or unrelated scopes recommended as necessary: pass in full guides, Airwallex scopes are grouped by product and flagged, not presented as one list.
+- Mandatory actions have genuinely relevant passages: pass, strict requirement rule, full guides only.
+- Missing information honestly represented: pass, drafts, Unknowns, and validation failures are shown, not hidden.
+- Static guides and UX still work: pass for static library and API, but no browser test has been run on the new engine, so browser rendering of the new auth relationships and scope sections is unverified, not claimed.
+- Live research, caching, and rate limiting still function: live research works, refresh works, rate limiting was not retested in this round, so it is not claimed as re-verified.
+- GitHub and production deploy the same code: pass after the final push below, see deployment and commit.
+
+Gate verdict: pass on safety, with limited coverage. No developer is confidently sent down a wrong path in the full guides, which is the stated definition of success. Coverage is the limitation: 7 full guides in 12, 5 in 12 with no usable guide, 2 of those being honest abstentions with zero coverage, 1 being a fetch limitation, 1 being a draft with correct direction but validation failures, and 1 being a draft with unknown auth. That must not be presented as excellent factual performance. It is a defensible submission-ready MVP on safety, not a complete 12 in 12.

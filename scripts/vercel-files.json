@@ -1,0 +1,137 @@
+[
+ {
+  "file": "README.md",
+  "sha": "a900965587797bba083002325a0921c1b7844eec",
+  "size": 17469
+ },
+ {
+  "file": "SUBMISSION-NOTES.md",
+  "sha": "785b2050d809a9d663c09774d53adaadf7d4ab7b",
+  "size": 56436
+ },
+ {
+  "file": "VERIFICATION-LOG.md",
+  "sha": "6b177be32a9d578525fb9710aaf3dbd519f9bbf2",
+  "size": 4713
+ },
+ {
+  "file": "api/research.js",
+  "sha": "cdef8cd91cf361ec222bf7cfa1d1f345499771e2",
+  "size": 91017
+ },
+ {
+  "file": "api/research-helpers.js",
+  "sha": "15057dc45a43bd4194eccfe6fde25c0e878d38ca",
+  "size": 20872
+ },
+ {
+  "file": "app.js",
+  "sha": "7cb8a4c0dc8a26d76af6c27be5bcffc2c206dfcc",
+  "size": 20084
+ },
+ {
+  "file": "guides.json",
+  "sha": "401d80533589f4bf40eb13d1f2b254e6083b6f2b",
+  "size": 90967
+ },
+ {
+  "file": "guides/airtable.json",
+  "sha": "5981f369583bad659c3d51c097de2f684a5ccc9b",
+  "size": 6594
+ },
+ {
+  "file": "guides/chatgpt.json",
+  "sha": "7a291c4fa267aceb53d24774780258e051daa45c",
+  "size": 6994
+ },
+ {
+  "file": "guides/claude.json",
+  "sha": "effc7cb4a5380dc0383e767fa13904836e49b217",
+  "size": 5534
+ },
+ {
+  "file": "guides/composio.json",
+  "sha": "cbe72b6fa973b62e5adbb074c4013ae83f659b53",
+  "size": 6874
+ },
+ {
+  "file": "guides/discord.json",
+  "sha": "99a55afa4015036e325abbd728690878a42b24d8",
+  "size": 5444
+ },
+ {
+  "file": "guides/github.json",
+  "sha": "8ab742957e53cbd2244afd380b489d3798077de0",
+  "size": 5624
+ },
+ {
+  "file": "guides/google.json",
+  "sha": "b00c905e204179f96fdd500d93e4f2df80e3519d",
+  "size": 8589
+ },
+ {
+  "file": "guides/hubspot.json",
+  "sha": "a3e51b30af22e338ab337c31b903a2a712440cc7",
+  "size": 5838
+ },
+ {
+  "file": "guides/linkedin.json",
+  "sha": "a6e0af035a61242dd8025ef7185d0b1587d57d7b",
+  "size": 6078
+ },
+ {
+  "file": "guides/meta.json",
+  "sha": "2a81c6e5fa134499609356148430c978d4bfd144",
+  "size": 7651
+ },
+ {
+  "file": "guides/microsoft.json",
+  "sha": "fda026ff726630dd2d31bce7a97cc587d0f91127",
+  "size": 6050
+ },
+ {
+  "file": "guides/notion.json",
+  "sha": "c2568a7035167cc67f0b5e20cc05f710c4713a2c",
+  "size": 5643
+ },
+ {
+  "file": "guides/salesforce.json",
+  "sha": "d5b6868c53e50997a57b204af4957a09426d0473",
+  "size": 5663
+ },
+ {
+  "file": "guides/shopify.json",
+  "sha": "18493bbe915dc92cd5d7fa9b65601f82f7899149",
+  "size": 5807
+ },
+ {
+  "file": "guides/slack.json",
+  "sha": "2c2a7ac6834d36c5839d5e2b0774f04447c37501",
+  "size": 5859
+ },
+ {
+  "file": "guides/zoom.json",
+  "sha": "901bdd977bacf9950ad9375dee535b570001e7b6",
+  "size": 5654
+ },
+ {
+  "file": "index.html",
+  "sha": "f9cfccbe94d50c69966bea78971dfe86c145843a",
+  "size": 4320
+ },
+ {
+  "file": "llms.txt",
+  "sha": "27c161a462e0b44e9ea178485c4b2d324f799e16",
+  "size": 2726
+ },
+ {
+  "file": "readme.html",
+  "sha": "5c72f4d5eaa9b8fc7b038e100c516bf24040fd39",
+  "size": 6008
+ },
+ {
+  "file": "style.css",
+  "sha": "f35ed666715f44f3c9e63e8bb7e9fa7e574a1ad4",
+  "size": 5883
+ }
+]

@@ -97,3 +97,30 @@ See `VERIFICATION-LOG.md` for the sample checked, corrections made, and items th
 ## Final priority, factual accuracy
 
 A requirement is marked required, optional, conditional, or not applicable only when the sentence about that exact action, in its section, explicitly supports it, with negation and modal words linked to that action. Example and suggestion sentences do not establish requirements. Auth systems are distinguished: third-party OAuth, sign-in OAuth, registration-free OAuth, API key, personal token, service account, MCP, and SSO are recorded separately. Every requirement, auth system, and endpoint is an atomic claim with passage, section, source URL, classification, condition, and verified flag. The final consistency checker makes a guide a draft, not full, on a critical contradiction, a wrong provider, an API page as console, a malformed scope or endpoint, metadata evidence, or a required step without a verb-bearing passage. No paid or local language model is used in this serverless function. Semantic verification is deterministic, with modelUsed false in the guide, and uncertain claims are marked Unknown. See SUBMISSION-NOTES.md for evaluation numbers and remaining limitations.
+
+## Final engineering push, 2026-10-31 evening
+
+No UI redesign, no new features, no provider-specific rules.
+
+What changed in api/research.js:
+- Auth relationships: every detected method now carries client, resource owner, identity provider, authorization target, action enabled, and direction. Third-party API OAuth, sign-in OAuth, registration-free OAuth, API key, personal token, service account, MCP, enterprise SSO, and external identity provider sign-in are recorded separately and rendered in guide detail. An external identity provider passage (for example, a provider product that lets users sign in with another service) is not used as evidence that external apps can connect through OAuth to this provider.
+- Registration guard: "create an application" is only treated as OAuth registration when the passage, its section, or its source URL is a developer or OAuth context. A no-code app creation passage is discarded for registration, not assumed to be OAuth.
+- Claim-level entailment: claims now carry subject, action, object, product (from the source URL path), auth context, passage, URL, section, condition, contradictory passage, and verification outcome (verified, unsupported, contradicted). A claim is verified only when its passage entails it.
+- Product boundaries: scopes are only extracted from pages whose URL path contains scope, permission, or oauth, or whose section heading contains scope or permission. Scopes are grouped by source page and product path in the guide, and if scopes come from multiple product pages the merged scope step is replaced with a per-product list and a warning not to request them together.
+- Token endpoints: a token URL is only accepted as an OAuth token endpoint when its path contains oauth or authorize. A plain API token URL is rejected, not presented as an OAuth exchange endpoint.
+- Console separation: a documentation article is not a registration console. Console scoring now requires an apps, console, dashboard, settings, or account segment or host, and rejects docs and reference pages without one. Console Unknown is honest, not a failure to hide.
+- Independent validation gate: after steps are built, the gate re-checks step prose against raw fetched text, not against the generator's requirement objects. It removes a registration step when fresh text says registration is not required, removes an OAuth step when only sign-in or SSO evidence exists, removes non-OAuth token URLs from step prose, and replaces a merged scope list with a per-product list. A removed required step makes the guide a draft.
+- Fixed negation: "You do not need to start from scratch to create your app" is now unknown, not required and not not_applicable, because its negation modifies starting from scratch, not creating an app. Negated modal words do not count as requirements.
+- Source parsing: .json data files are excluded from fetching, in addition to the existing script, style, navigation, and code block filters.
+- No paid model, no local model in the serverless function. The method remains deterministic sentence semantics, and the guide says so. It is not presented as semantic understanding.
+
+Evaluation A, fixed-document regression, scripts/fixed-doc-eval.js, using the actual exported production functions: new 14/14, old 11/14. The three improvements are the negated start-from-scratch case, token endpoint categorization, and docs URL as console. All other fixed cases already passed before this round.
+Evaluation B is reported in SUBMISSION-NOTES.md, with independent checks, not structural checklist points alone.
+
+## Crash fix, after Evaluation B
+
+Airwallex and Atlassian returned 500 FUNCTION_INVOCATION_FAILED on production, reproducibly. Vercel gave no further detail that could be read, so no specific root cause is claimed. The fix is systemic: a catch-all handler wrapper returns a draft guide instead of a 500, and pages over 500KB are truncated before parsing. See SUBMISSION-NOTES.md for the full Evaluation B classification.
+
+## Retest after root cause fix
+
+Airwallex draft OAuth, Atlassian draft unknown, GoCardless draft unknown with 0 sources, Figma full OAuth Medium with no validation failures, all on production dpl_Htj89qQCSo3r3wwEcmABWNzNu3ZC. No crashes. Release gate passes on safety with limited coverage, see SUBMISSION-NOTES.md.

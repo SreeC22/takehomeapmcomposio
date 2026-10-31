@@ -1,224 +1,10 @@
+const { stripHtml, sectionFor, isProviderHost, parseInput, canonicalUrl, baseDomain, validateScope, metadataTokenCount, extractScopes, extractEndpoints, extractRelativeEndpoints, findSnippet, cleanSnippet, timePhrase, classifyPassage, consoleScore, productPath, extractScopesFromPages , fetchText, fetchOnce } = require('./research-helpers');
 // Universal live research engine, deterministic, no LLM, no paid model.
 // Multi-stage, evidence-driven: discovery, independent tracks, structured
 // facts, requirement engine, evidence-built guides, quality gate.
 // Every claim needs a provider source and a passage. Unknown is a result,
 // not a gap to fill with a guessed step. No hardcoded provider directory.
 // Runs as a Vercel serverless function under /api.
-function stripHtml(html) {
-  let s = String(html || '');
-  // Remove navigation, headers, footers, scripts, styles, tracking, svg.
-  s = s.replace(/<nav[\s\S]*?<\/nav>/gi, ' ').replace(/<header[\s\S]*?<\/header>/gi, ' ').replace(/<footer[\s\S]*?<\/footer>/gi, ' ').replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ').replace(/<svg[\s\S]*?<\/svg>/gi, ' ');
-  // Drop code examples that are not about auth. A code block about an
-  // unrelated product feature must not supply scopes or endpoints.
-  s = s.replace(/<pre[\s\S]*?<\/pre>/gi, (m) => /oauth|authorize|token|scope|client[ _-]id|api[ _-]key/i.test(m) ? m : ' ');
-  // Preserve structure, so a passage keeps its section context.
-  s = s.replace(/<h[1-6][^>]*>/gi, '\nSECTION: ').replace(/<\/h[1-6]>/gi, '\n');
-  s = s.replace(/<li[^>]*>/gi, '\n- ').replace(/<\/li>/gi, '\n');
-  s = s.replace(/<tr[^>]*>/gi, '\n').replace(/<t[dh][^>]*>/gi, ' | ');
-  s = s.replace(/<p[^>]*>/gi, '\n').replace(/<\/p>/gi, '\n');
-  s = s.replace(/<[^>]+>/g, ' ');
-  s = s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#x27;/gi, "'").replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-  // Collapse spaces on a line, keep newlines as section boundaries.
-  s = s.split('\n').map(line => line.replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n');
-  return s;
-}
-function sectionFor(text, idx) {
-  const before = String(text || '').slice(0, idx);
-  const pos = before.lastIndexOf('SECTION: ');
-  if (pos < 0) return '';
-  const end = before.indexOf('\n', pos);
-  return before.slice(pos + 9, end < 0 ? before.length : end).trim();
-}
-function isProviderHost(host, slug, domainGuess) {
-  const h = String(host || '').toLowerCase();
-  if (domainGuess && (h === domainGuess || h.endsWith('.' + domainGuess))) return true;
-  const parts = h.split('.');
-  if (parts.length >= 2 && parts[parts.length - 2] === slug) return true;
-  if (parts[0] === slug) return true;
-  return false;
-}
-function parseInput(raw) {
-  const input = String(raw || '').trim();
-  let hostname = '';
-  try {
-    const withScheme = /^https?:\/\//i.test(input) ? input : (input.includes('.') && !input.includes(' ') ? 'https://' + input : '');
-    if (withScheme) { const u = new URL(withScheme); hostname = u.hostname.replace(/^www\./, ''); }
-  } catch (e) {}
-  if (hostname) {
-    if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) return { input, hostname, baseDomain: hostname, app: hostname, slug: 'ip', domain: hostname, isIp: true };
-    const clean = hostname.replace(/^(developers|docs|developer|api|help)\./, '');
-    const cp = clean.split('.');
-    const main = cp.length >= 2 ? cp[cp.length - 2] : cp[0];
-    return { input, hostname, baseDomain: clean, app: main.charAt(0).toUpperCase() + main.slice(1), slug: main.toLowerCase(), domain: clean.toLowerCase() };
-  }
-  const slug = input.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'app';
-  return { input, hostname: '', baseDomain: '', app: input, slug, domain: slug.replace(/-/g, '') };
-}
-function canonicalUrl(u) {
-  try {
-    const uu = new URL(u.split('#')[0]);
-    uu.hostname = uu.hostname.toLowerCase();
-    if (uu.pathname.length > 1 && uu.pathname.endsWith('/')) uu.pathname = uu.pathname.slice(0, -1);
-    for (const k of Array.from(uu.searchParams.keys())) { if (/^utm_|^fbclid$|^gclid$/.test(k)) uu.searchParams.delete(k); }
-    return uu.toString();
-  } catch (e) { return u; }
-}
-function baseDomain(host) {
-  const clean = String(host || '').toLowerCase().replace(/^www\./, '');
-  const parts = clean.split('.');
-  return parts.length >= 2 ? parts.slice(-2).join('.') : clean;
-}
-function validateScope(s) {
-  if (!s || typeof s !== 'string') return false;
-  if (s.length > 50 || s.length < 5) return false;
-  if (!/^[a-z][a-z0-9_-]+([:.][a-z][a-z0-9_-]+)+$/.test(s)) return false;
-  if (s.includes('..') || s.includes('::') || s.includes('._') || s.includes('_.')) return false;
-  const parts = s.split(/[:.]/);
-  if (parts.some(x => x.length < 3)) return false;
-  if (parts.some(x => /^(api|www|http|https|oauth|auth|login|signup|v1|v2|v3|js|css|png|jpg|svg|json|html|md|com|net|org|token|secret|client|id|code|pem|key|crt|cert|xml|yaml|yml|txt|pdf)$/.test(x))) return false;
-  if (parts.some(x => /^\d+$/.test(x))) return false;
-  return true;
-}
-function metadataTokenCount(s) {
-  return (String(s || '').toLowerCase().match(/\b(cookie|copyright|all rights reserved|newsletter|subscribe|follow us|sitemap|back to top|terms of use)\b/g) || []).length;
-}
-function extractScopes(text) {
-  const blocked = new Set(['client', 'client_id', 'client_secret', 'access_token', 'refresh_token', 'token', 'secret', 'id', 'code', 'authorization', 'grant', 'redirect_uri', 'urn', 'params', 'type', 'response', 'grant_type', 'device_code', 'display', 'src', 'style', 'width', 'transition', 'button', 'root', 'items', 'decoration', 'font', 'background', 'color', 'margin', 'padding', 'border', 'position', 'overflow', 'flex', 'grid', 'text', 'line', 'content', 'cursor', 'opacity', 'visibility', 'height', 'max', 'min']);
-  const blockedSecond = new Set(['hover', 'not', 'last', 'first', 'focus', 'active', 'visited', 'checked', 'disabled', 'enabled', 'before', 'after', 'nth', 'only', 'empty']);
-  const blockedFirst = new Set(['www', 'api', 'oauth', 'auth', 'login', 'signup', 'http', 'https']);
-  const dotAllowedLast = new Set(['read', 'write', 'info', 'metadata', 'content', 'member', 'delete', 'create', 'update']);
-  function collect(onlyNearScope) {
-    const found = new Set();
-    const patterns = [/\b[a-z][a-z0-9_]*:[a-z][a-z0-9_]*\b/g, /\b[a-z][a-z0-9_]*\.[a-z][a-z0-9_]+(?:\.[a-z][a-z0-9_]+)?\b/g];
-    for (const re of patterns) {
-      let m;
-      while ((m = re.exec(text)) !== null) {
-        const s = m[0].toLowerCase();
-        if (onlyNearScope) { const ctx = text.slice(Math.max(0, m.index - 500), Math.min(text.length, m.index + 500)).toLowerCase(); if (!ctx.includes('scope')) continue; }
-        const after = text.slice(m.index + m[0].length, m.index + m[0].length + 10);
-        if (after.trimStart().startsWith('{')) continue;
-        if (text.slice(Math.max(0, m.index - 100), m.index).includes('!important')) continue;
-        if (s.includes('http') || s.length > 60) continue;
-        if (s.endsWith('.com') || s.endsWith('.json') || s.endsWith('.md') || s.endsWith('.html') || s.endsWith('.txt') || s.endsWith('.pdf')) continue;
-        if (s.includes('.') && !onlyNearScope && !dotAllowedLast.has(s.split('.').pop())) continue;
-        if (s.includes('.') && (s.split('.')[0] === 'api' || s.split('.')[0] === 'www')) continue;
-        const parts = s.split(/[:.]/);
-        if (blockedFirst.has(parts[0])) continue;
-        if (parts.some(part => blocked.has(part))) continue;
-        if (parts.length > 1 && blockedSecond.has(parts[parts.length - 1])) continue;
-        if (parts[0].length < 3 || parts[parts.length - 1].length < 3) continue;
-        found.add(s);
-        if (found.size >= 14) break;
-      }
-      if (found.size >= 14) break;
-    }
-    return Array.from(found);
-  }
-  const near = collect(true).filter(validateScope);
-  if (near.length) return near;
-  return collect(false).filter(validateScope);
-}
-function extractEndpoints(text, slug, domainGuess) {
-  const found = new Set();
-  const re = /https:\/\/[^\s"'<>]+(?:authorize|token|oauth)[^\s"'<>]*/gi;
-  let m;
-  while ((m = re.exec(text)) !== null) {
-    let u = m[0];
-    while (/[\\.,):;`]$/.test(u)) u = u.slice(0, -1);
-    if (u.includes('&#')) u = u.split('&#')[0];
-    u = u.replace(/\):$/, '');
-    if (u.length >= 100) continue;
-    try {
-      const pp = new URL(u); const path = pp.pathname.toLowerCase(); const host = pp.hostname.toLowerCase();
-      if (path.includes('/docs/') || path.includes('/reference/') || path.endsWith('.md') || path.endsWith('.png') || path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.svg') || path.endsWith('.gif') || path.includes('/attachments') || host.includes('attachments')) continue;
-      if (!isProviderHost(host, slug, domainGuess)) continue;
-      // Strip query parameters, an endpoint with a sample query is not a clean endpoint.
-      pp.search = ''; pp.hash = '';
-      found.add(pp.toString());
-    } catch (e) { continue; }
-    if (found.size >= 6) break;
-  }
-  return Array.from(found);
-}
-function extractRelativeEndpoints(pageUrl, text, slug, domainGuess) {
-  const found = new Set();
-  const re = /(?:^|[\s"'`(])\/([a-z0-9_\-\/]*?(?:authorize|token)[a-z0-9_\-\/]*)/gi;
-  let m;
-  while ((m = re.exec(text)) !== null) {
-    const rel = '/' + m[1];
-    if (rel.includes('/docs/') || rel.includes('/reference/') || rel.endsWith('.md')) continue;
-    // A relative path is evidence that an authorize or token path exists.
-    // It is NOT a full URL. Resolving it against a docs host would invent
-    // an endpoint on the wrong host, so it is stored as a path only.
-    found.add(rel);
-    if (found.size >= 4) break;
-  }
-  return Array.from(found);
-}
-function findSnippet(text, keywords) {
-  const lower = text.toLowerCase();
-  for (const kw of keywords) {
-    let from = 0;
-    while (true) {
-      const idx = lower.indexOf(kw.toLowerCase(), from);
-      if (idx < 0) break;
-      // Word boundary after the phrase: "app review" must not match
-      // "app reviewer". A modal word attached to a different noun is
-      // not evidence for that requirement.
-      if (/[a-z]/i.test(text[idx + kw.length] || '')) { from = idx + 1; continue; }
-      let start = Math.max(0, idx - 60);
-      const lastNl = text.lastIndexOf('\n', idx - 1);
-      if (lastNl >= start) start = lastNl + 1;
-      else { const ns = text.indexOf(' ', start); if (ns >= 0 && ns < idx) start = ns + 1; }
-      let end = Math.min(text.length, idx + 180);
-      const period = text.indexOf('.', idx + 30);
-      if (period >= 0 && period < end) end = period + 1;
-      const ps = text.lastIndexOf(' ', end);
-      if (ps > idx) end = ps;
-      const rawSnippet = text.slice(start, end).trim();
-      if (!/\b(create|register|add|set|configure|submit|request|generate|include|must|required|optional|need|needs|use|log|sign|open|navigate|choose|select|provide|enter|review|approval|verification|publish|list)\b/i.test(rawSnippet)) { from = idx + kw.length; continue; }
-      const sec = sectionFor(text, idx);
-      const s = sec ? '[Section: ' + sec + '] ' + rawSnippet : rawSnippet;
-      if (metadataTokenCount(s) >= 1) { from = idx + kw.length; continue; }
-      const navTokens = (s.match(/\b(home|pricing|blog|careers|login|sign up|menu|support|about us)\b/gi) || []).length;
-      const hasActionVerb = /\b(create|register|add|configure|submit|set up|build|publish|request)\b/i.test(s);
-      const isNavOnly = navTokens >= 3 && !hasActionVerb;
-      const isUnrelatedVerification = /\b(email verification|phone verification|two-factor|domain verification)\b/i.test(s) && !/\b(app review|app approval|publish)\b/i.test(s);
-      if (s.length > 20 && !/try-it|api key to use|api key for/i.test(s) && !isNavOnly && !isUnrelatedVerification) return s;
-      from = idx + kw.length;
-    }
-  }
-  return '';
-}
-function cleanSnippet(s) {
-  if (!s) return '';
-  const cut = s.slice(0, 280); const lp = cut.lastIndexOf('.');
-  return (lp > 80 ? cut.slice(0, lp + 1) : cut).trim();
-}
-function timePhrase(snippetText) {
-  const m = String(snippetText || '').match(/(\d+\s*(?:business\s+)?days?|\d+\s*weeks?|several\s+weeks|up to\s+\d+\s+\w+)/i);
-  return m ? m[0] : '';
-}
-async function fetchOnce(url, timeoutMs) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, { signal: controller.signal, headers: { 'User-Agent': 'OAuth-Guides-Research/1.0', Accept: 'text/html,application/json' } });
-    const body = await res.text();
-    return { status: res.status, body, ok: res.ok };
-  } catch (e) { return { status: 0, body: '', ok: false, error: String(e && e.message ? e.message : e) }; } finally { clearTimeout(timer); }
-}
-async function fetchText(url, timeoutMs, allowProxy) {
-  const direct = await fetchOnce(url, timeoutMs);
-  if (direct.ok && direct.body && direct.body.length > 200) return direct;
-  if (direct.status === 404) return direct;
-  if (!allowProxy) return direct;
-  try {
-    const proxy = await fetchOnce('https://api.allorigins.win/raw?url=' + encodeURIComponent(url), 5000);
-    if (proxy.ok && proxy.body && proxy.body.length > 200) return { status: 200, body: proxy.body, ok: true, viaProxy: true, directStatus: direct.status };
-  } catch (e) {}
-  return direct;
-}
 const rateStore = globalThis.__researchRateStore || (globalThis.__researchRateStore = new Map());
 function rateCheck(ip) {
   const now = Date.now();
@@ -232,7 +18,8 @@ globalThis.__tavilyCallsToday = tavilyCallsToday;
 const guideCache = globalThis.__researchGuideCache || (globalThis.__researchGuideCache = new Map());
 const docCache = globalThis.__researchDocCache || (globalThis.__researchDocCache = new Map());
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-module.exports = async (req, res) => {
+  
+async function researchHandler(req, res) {
   const t0 = Date.now();
   // Query parsing is robust to Vercel routing variants: req.query first,
   // then the request URL itself. A missing query must not be guessed.
@@ -326,7 +113,7 @@ module.exports = async (req, res) => {
         const uu = new URL(url);
         if (!isProviderHost(uu.hostname.toLowerCase(), slug, domainGuess)) return null;
         const path = uu.pathname.toLowerCase();
-        if (url.includes('#content') || /\.(ico|png|jpg|jpeg|svg|css|js|webmanifest|pdf)(\?|$)/.test(path) || path.startsWith('/apps/')) return null;
+        if (url.includes('#content') || /\.(ico|png|jpg|jpeg|svg|css|js|json|webmanifest|pdf)(\?|$)/.test(path) || path.startsWith('/apps/')) return null;
         if (uu.hostname.startsWith('community.') || uu.hostname.startsWith('forum.') || path.includes('/blog/') || path.includes('/forums/') || path.includes('/forum/') || path.includes('/community/')) return null;
       } catch (e) { return null; }
       const cachedDoc = docCache.get(canonicalUrl(url) + '|v2');
@@ -338,7 +125,9 @@ module.exports = async (req, res) => {
       // fresh fetch, so a short JS shell cached earlier cannot poison later runs.
       const page = await fetchText(url, 3000, allowProxy);
       if (page.ok && page.body) {
-        const text = stripHtml(page.body);
+        const bodyForParse = page.body.length > 500000 ? page.body.slice(0, 500000) : page.body;
+        if (page.body.length > 500000) logPush('fetch_page', url, 'truncated', 'Page body over 500KB, truncated to first 500KB to avoid memory failure.');
+        const text = stripHtml(bodyForParse);
         if (/oauth/i.test(text) || /client[ _-]id/i.test(text) || /scope/i.test(text)) docCache.set(canonicalUrl(url) + '|v2', { text, at: Date.now() });
         const hasOAuth = /oauth/i.test(text); const hasClient = /client[ _-]id/i.test(text); const hasScope = /scope/i.test(text);
         logPush('fetch_page', url, 'ok_' + page.status + (page.viaProxy ? '_via_proxy' : ''), 'Fetched. OAuth: ' + hasOAuth + ', client ID: ' + hasClient + ', scope: ' + hasScope + '. Text length: ' + text.length + '.');
@@ -369,7 +158,8 @@ module.exports = async (req, res) => {
         } catch (e) { return null; }
         const page = await fetchText(url, 3000, false);
         if (page.ok && page.body) {
-          const text = stripHtml(page.body);
+          const bodyForParse = page.body.length > 500000 ? page.body.slice(0, 500000) : page.body;
+          const text = stripHtml(bodyForParse);
           const hasOAuth = /oauth/i.test(text); const hasClient = /client[ _-]id/i.test(text); const hasScope = /scope/i.test(text);
           logPush('fetch_page', url, 'ok_' + page.status + '_md_variant', 'Fetched .md variant for a short JS shell. OAuth: ' + hasOAuth + ', client ID: ' + hasClient + ', scope: ' + hasScope + '. Text length: ' + text.length + '.');
           if (hasOAuth || hasClient || hasScope) { addSource(url); return { url, text }; }
@@ -386,7 +176,7 @@ module.exports = async (req, res) => {
     for (const pg of pages) { for (const e of extractRelativeEndpoints(pg.url, pg.text, slug, domainGuess)) if (!perPageEndpoints.includes(e)) perPageEndpoints.push(e); }
     return {
       text,
-      scopes: extractScopes(text),
+      scopes: extractScopesFromPages(pages),
       endpoints: extractEndpoints(text, slug, domainGuess),
       endpointPaths: perPageEndpoints,
       hasClient: /client[ _-]id/i.test(text),
@@ -430,7 +220,7 @@ module.exports = async (req, res) => {
         try {
           const absUrl = new URL(href, p.url); const abs = absUrl.toString(); const path = absUrl.pathname.toLowerCase();
           if (!abs.startsWith('https://') || !isProviderHost(absUrl.hostname.toLowerCase(), slug, domainGuess)) continue;
-          if (/\.(ico|png|jpg|jpeg|svg|css|js|webmanifest|xml|pdf)(\?|$)/.test(path)) continue;
+          if (/\.(ico|png|jpg|jpeg|svg|css|js|json|webmanifest|xml|pdf)(\?|$)/.test(path)) continue;
           if (absUrl.hostname.startsWith('community.') || absUrl.hostname.startsWith('forum.') || path.includes('/blog/')) continue;
           if (path.includes('/oauth') || path.includes('/scopes') || path.includes('/review') || path.includes('/marketplace') || path.includes('/publish') || path.includes('/verification') || path.includes('/authentication')) linkUrls.push(abs);
         } catch (e) {}
@@ -457,7 +247,7 @@ module.exports = async (req, res) => {
           try {
             const absUrl = new URL(href, baseUrl); const abs = absUrl.toString(); const path = absUrl.pathname.toLowerCase();
             if (abs.startsWith('https://') && isProviderHost(absUrl.hostname.toLowerCase(), slug, domainGuess)) {
-              if (/\.(ico|png|jpg|jpeg|svg|css|js|webmanifest|xml|pdf)(\?|$)/.test(path)) continue;
+              if (/\.(ico|png|jpg|jpeg|svg|css|js|json|webmanifest|xml|pdf)(\?|$)/.test(path)) continue;
               if (path.startsWith('/apps/') || path.includes('/login') || path.includes('/signup') || path.includes('/pricing') || path.includes('/blog/')) continue;
               if (absUrl.hostname.startsWith('community.') || absUrl.hostname.startsWith('forum.')) continue;
               if (path.includes('/oauth') || path.includes('/developer') || path.includes('/docs/') || path.includes('/api/')) navUrls.push(abs);
@@ -555,7 +345,7 @@ module.exports = async (req, res) => {
     for (const p of pages) if (p.text.includes(clean.slice(0, 40))) return p.url;
     return '';
   }
-  const registerSnippet = findSnippet(allText, ['register an oauth', 'register a new oauth', 'create an oauth app', 'create a new app', 'register your app', 'register an application', 'create your app', 'create a developer app', 'create an application']);
+  let registerSnippet = findSnippet(allText, ['register an oauth', 'register a new oauth', 'create an oauth app', 'create a new app', 'register your app', 'register an application', 'create your app', 'create a developer app', 'create an application', 'registration is not required']);
   const redirectSnippet = findSnippet(allText, ['redirect uri', 'redirect url', 'callback url']);
   const approvalSnippet = findSnippet(allText, ['app review', 'app approval', 'submit for review', 'marketplace review', 'security review', 'admin consent', 'business verification', 'publisher verification']);
   const apiKeySnippet = findSnippet(allText, ['api key', 'personal access token']);
@@ -572,75 +362,53 @@ module.exports = async (req, res) => {
   const adminConsentSnippet = findSnippet(allText, ['admin consent']);
   const privateSnippet = findSnippet(allText, ['private app', 'private integration', 'internal app', 'do not need review', 'no review required']);
   const privacySnippet = findSnippet(allText, ['privacy policy']);
+  // Authentication direction guard, P0: OAuth docs about configuring
+  // an external identity provider for the provider's own product are NOT
+  // evidence that external apps can connect through OAuth to this provider.
+  // Likewise, "create an application" in a no-code product is NOT OAuth app
+  // registration unless the passage, its section, or its source URL is a
+  // developer or OAuth context. These checks are generic, not provider rules.
+  let registerSnippetRaw = registerSnippet;
+  let externalIdpName = '';
+  {
+    const idpMatch = allText.match(/(?:authenticate through|sign in with|configure)\s+([A-Z][A-Za-z]+)\s+(?:as|for)\s+(?:an?\s+)?(?:identity provider|idp)/i) || allText.match(/([A-Z][A-Za-z]+)\s+(?:as|for)\s+(?:an?\s+)?identity provider/i);
+    if (idpMatch) {
+      const cand = (idpMatch[1] || '').toLowerCase();
+      if (cand && cand !== slug && cand !== (app || '').toLowerCase() && cand.length >= 3) externalIdpName = cand;
+    }
+    if (externalIdpName && registerSnippet && /identity provider/i.test(registerSnippet) && registerSnippet.toLowerCase().includes(externalIdpName)) {
+      registerSnippet = '';
+    }
+    if (registerSnippet) {
+      const regSection = registerSnippet.startsWith('[Section: ') ? registerSnippet.slice(10, registerSnippet.indexOf(']')) : '';
+      const regSource = sourceFor(registerSnippet);
+      const devCtx = /oauth|developer|client/i.test(registerSnippet.replace(/^\[Section: [^\]]+\]\s*/, '')) || /oauth|developer/i.test(regSection) || /developer|oauth/i.test(regSource || '');
+      if (!devCtx) registerSnippet = '';
+    }
+  }
+  // Scopes grouped by product page, not merged across subproducts.
+  // A scope list from one product page must not be presented as the
+  // scope list for a different product on the same company domain.
+  // Declared here, before any code that pushes to it, so a multi-product
+  // scope list cannot hit a used-before-declared error.
+  const contradictions = [];
+  const scopeSources = [];
+  for (const pg of pages) {
+    const pgPath = (() => { try { return new URL(pg.url).pathname.toLowerCase(); } catch (e) { return ''; } })();
+    const pgSectionScope = /SECTION: [^\n]*(scope|permission)/i.test(pg.text);
+    if (!(pgPath.includes('scope') || pgPath.includes('permission') || pgPath.includes('oauth') || pgSectionScope)) continue;
+    const pgScopes = extractScopes(pg.text).filter(x => scopes.includes(x));
+    if (pgScopes.length) scopeSources.push({ url: pg.url, product: productPath(pg.url), scopes: pgScopes });
+  }
+  const scopeProductPaths = Array.from(new Set(scopeSources.map(x => x.product)));
+  const scopesFromMultipleProducts = scopeProductPaths.length > 1;
+  if (scopesFromMultipleProducts) contradictions.push('Scopes were found on multiple product pages (' + scopeProductPaths.join(', ') + '), not one product. They are listed per source below and must not be requested together without checking which product the feature uses.');
+
   // Final reasoning layer: passage meaning, not keyword presence.
   // A requirement is mandatory only if its passage says so, in context.
   // Optional, conditional, and unnecessary language overrides a generic
   // template. This is the last check before requirements and steps are built.
-  function classifyPassage(snippetText, keywords) {
-    const raw = String(snippetText || '').replace(/^\[Section: [^\]]+\]\s*/, '');
-    if (!raw) return { status: 'unknown', condition: '' };
-    const sentences = raw.match(/[^.!?]+[.!?]/g) || [raw];
-    const kws = (keywords || []).map(k => k.toLowerCase());
-    // Find the sentence that mentions the requirement as a phrase, not
-    // a different noun that happens to contain a keyword substring.
-    let hit = '';
-    for (const sen of sentences) {
-      const low = sen.toLowerCase();
-      for (const kw of kws) {
-        let pos = low.indexOf(kw);
-        while (pos >= 0) {
-          if (!/[a-z]/.test(low[pos + kw.length] || '')) { hit = sen; break; }
-          pos = low.indexOf(kw, pos + 1);
-        }
-        if (hit) break;
-      }
-      if (hit) break;
-    }
-    if (!hit) return { status: 'unknown', condition: '' };
-    const s = hit.toLowerCase();
-    const words = s.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
-    // Action position: first keyword word in the sentence.
-    let actionIdx = -1;
-    for (const kw of kws) {
-      const kwWords = kw.split(/\s+/);
-      for (let i = 0; i <= words.length - kwWords.length; i++) {
-        if (kwWords.every((w, j) => words[i + j] === w)) { actionIdx = i; break; }
-      }
-      if (actionIdx >= 0) break;
-    }
-    if (actionIdx < 0) return { status: 'unknown', condition: '' };
-    const window = (from, to) => words.slice(Math.max(0, from), Math.min(words.length, to));
-    const hasInWindow = (list, from, to) => window(from, to).some(w => list.includes(w));
-    const negWords = ['not', 'no', 'never', 'without'];
-    const modalWords = ['must', 'required', 'need', 'needs', 'necessary', 'required'];
-    // Example or suggestion sentences do not establish a requirement.
-    if (/for example|e\.g\.|such as/i.test(hit) && !hasInWindow(modalWords, actionIdx - 6, actionIdx + 6)) return { status: 'unknown', condition: '' };
-    // Linked negation: negation within 6 words before the action, or
-    // action followed by "not required/necessary/needed", or "no" + action.
-    const negLinked = hasInWindow(negWords, actionIdx - 6, actionIdx) || /\b(not|no)\s+(required|necessary|needed)\b/.test(s.slice(s.indexOf(kws[0]) >= 0 ? s.indexOf(kws[0]) : 0, s.indexOf(kws[0]) >= 0 ? s.indexOf(kws[0]) + 60 : s.length)) || words[actionIdx - 1] === 'no' || /\bdoes not (support|use|require)\b|\bnot supported\b|\bdo not (register|submit|create)\b|\bmust not\b/.test(s);
-    // The classic false negation: "you don't need to start from scratch
-    // to create your app" - negation modifies "start", not "create app".
-    // If the negation word is followed by a different verb before the
-    // action, and that verb is not the action itself, do not apply it.
-    const negPos = words.findIndex((w, i) => i < actionIdx && negWords.includes(w));
-    if (negPos >= 0) {
-      const between = words.slice(negPos + 1, actionIdx);
-      if (between.length && ['start', 'begin', 'use', 'install', 'download'].includes(between[0]) && !between.includes('register') && !between.includes('submit')) {
-        // Negation is about a different action, ignore it for this claim.
-      } else if (negLinked) {
-        return { status: 'not_applicable', condition: 'Docs say this is not required, in the sentence about this action: ' + cleanSnippet(hit) };
-      }
-    } else if (negLinked && /\b(not required|not necessary|not needed|no .* required)\b/.test(s)) {
-      return { status: 'not_applicable', condition: 'Docs say this is not required, in the sentence about this action: ' + cleanSnippet(hit) };
-    }
-    if (/required only for|only required for|only if|only when|only for|required before|required for (public|marketplace|enterprise|restricted|paid|pro|team|business)/.test(s) && hasInWindow(['required', 'only'], actionIdx - 6, actionIdx + 6)) return { status: 'conditional', condition: 'Docs say this is required only in a specific case: ' + cleanSnippet(hit) };
-    if (/can (bypass|skip)|bypass|without (review|approval|verification)|exception|exempt/.test(s)) return { status: 'conditional', condition: 'Docs describe an exception or bypass: ' + cleanSnippet(hit) };
-    if (/\boptional\b|recommended but not (mandatory|required)|not mandatory|may (use|choose)|either|or (api key|oauth)/.test(s)) return { status: 'optional', condition: 'Docs say this is optional or an alternative: ' + cleanSnippet(hit) };
-    if (/you can|you may|recommended|consider/.test(s) && !hasInWindow(modalWords, actionIdx - 6, actionIdx + 6)) return { status: 'optional', condition: 'Docs present this as a suggestion, not a mandatory step: ' + cleanSnippet(hit) };
-    if (hasInWindow(modalWords, actionIdx - 6, actionIdx + 6) || /^\s*(create|register|add|set|configure|provide|enter|submit|request|generate|include|list)\b/.test(hit.trim().toLowerCase())) return { status: 'required', condition: '' };
-    return { status: 'unknown', condition: '' };
-  }
-  let registerMeaning = classifyPassage(registerSnippet, ['register', 'create', 'oauth app', 'application']);
+  let registerMeaning = classifyPassage(registerSnippet, ['register', 'registration', 'create', 'oauth app', 'application']);
   const approvalMeaning = classifyPassage(approvalSnippet, ['app review', 'app approval', 'submit for review', 'marketplace review', 'security review', 'publisher verification', 'business verification', 'verification']);
   const redirectMeaning = classifyPassage(redirectSnippet, ['redirect', 'callback']);
   const accountMeaning = classifyPassage(accountSnippet, ['developer account', 'account']);
@@ -679,33 +447,39 @@ module.exports = async (req, res) => {
   authSystem('service_account', finalTr.hasServiceAccount, '');
   authSystem('mcp_authentication', !!mcpSnippet, mcpSnippet);
   authSystem('sso_enterprise', !!ssoSnippet, ssoSnippet);
+  // Structured authentication relationships, P0: who is the client, who
+  // owns the resource, who is the identity provider, what is authorized.
+  // These are not interchangeable, and a sign-in relationship is not
+  // third-party API access, even when both use OAuth words.
+  const authRelationships = [];
+  function relFor(system, client, resourceOwner, idp, target, actionEnabled, direction, evidenceText) {
+    const ev = evidenceText ? cleanSnippet(evidenceText) : '';
+    authRelationships.push({ method: system, client, resourceOwner, identityProvider: idp, authorizationTarget: target, actionEnabled, direction, useCase: direction, evidence: ev, evidenceUrl: sourceFor(evidenceText) });
+  }
+  relFor('third_party_oauth', 'developer application', 'end user', app, 'provider API', 'access end user data through the provider API', 'third-party API access', registerSnippet);
+  relFor('sign_in_oauth', 'developer application', 'end user', app, 'user identity', 'let a user sign in to the developer application', 'sign-in to developer app, not API access', signInSnippet);
+  relFor('registration_free_oauth', 'developer application', 'end user', app, 'provider API', 'access provider API without pre-registering an app', 'third-party API access without pre-registration', regFreeSnippet);
+  relFor('api_key', 'developer application or own account', 'developer or account owner', 'none, key based', 'provider API', 'access provider API as the key owner', 'own-account API access', apiKeySnippet);
+  relFor('personal_access_token', 'developer application', 'token owner', 'none, token based', 'provider API', 'access provider API as the token owner', 'own-account API access', apiKeySnippet);
+  relFor('service_account', 'server service', 'organization or service account', app, 'provider API', 'server to server API access', 'server-to-server API access', '');
+  relFor('mcp_authentication', 'AI agent or MCP client', 'end user or developer', app, 'MCP tools', 'let an agent call provider tools', 'MCP connection', mcpSnippet);
+  relFor('sso_enterprise', 'organization users', 'organization', 'enterprise identity provider', 'provider product login and administration', 'sign users into the provider product and administer the organization', 'enterprise sign-in and administration, not API OAuth', ssoSnippet);
+  if (externalIdpName) authRelationships.push({ method: 'external_idp_for_signin', client: 'provider product', resourceOwner: 'end user', identityProvider: externalIdpName, authorizationTarget: 'provider product login', actionEnabled: 'sign users into the provider product using ' + externalIdpName, direction: 'sign-in to provider product using an external identity provider, NOT third-party API access to this provider', useCase: 'sign-in to provider product using an external identity provider, NOT third-party API access to this provider', evidence: '', evidenceUrl: '' });
+  // If the only OAuth evidence is sign-in or SSO, third-party OAuth is
+  // not established, even if the word OAuth appears in those pages.
+  if (authType === 'oauth' && !oauthStrong && (signInSnippet || ssoSnippet)) authType = 'sign_in_oauth';
+
   if (authType === 'oauth' && authorizeEndpoints.length === 0 && tokenEndpoints.length === 0 && apiScopes.length === 0) {
     authType = 'sign_in_oauth';
   }
   if (regFreeSnippet) {
     registerMeaning = { status: 'not_applicable', condition: 'Docs say registration is not required or dynamic registration is used: ' + cleanSnippet(regFreeSnippet) };
   }
-  const contradictions = [];
   if (oauthStrong && finalTr.hasApiKey) contradictions.push('Docs mention both OAuth and API keys. This guide treats OAuth as the main path only if OAuth endpoints or scopes were found, and lists API keys as a separate check, not as the same flow.');
   if (oauthStrong && noOAuthSnippet) contradictions.push('HARD: Source says OAuth is not supported or API key only, but OAuth endpoints or scopes were also found. Authentication cannot be trusted as OAuth alone.');
   if (finalTr.hasApiKey && finalTr.hasOAuth && !oauthStrong) contradictions.push('Docs mention both OAuth and API keys, but neither path is strong. The simplest supported path cannot be chosen from fetched pages alone.');
   if (/no review required|no approval required/i.test(allText) && finalTr.hasApproval) contradictions.push('Docs contain both review language and no review language. Approval is therefore treated as conditional, not as a universal requirement.');
   // Console selection: score, never use an API reference page as the registration URL.
-  function consoleScore(u) {
-    try {
-      const uu = new URL(u); const host = uu.hostname.toLowerCase(); const path = uu.pathname.toLowerCase();
-      if (path.includes('/api-reference/') || path.includes('/api/')) return -10;
-      const segments = path.split('/').filter(Boolean);
-      if (segments.some(s => /events|pricing|blog|community|support|changelog|status/.test(s))) return -10;
-      let s = 0;
-      if (host.startsWith('developers.') || host.startsWith('developer.') || host.startsWith('docs.')) s += 2;
-      if (path === '/' || path === '') s += 3;
-      if (segments.some(s => ['apps', 'console', 'dashboard', 'register', 'oauth-apps', 'create-app'].includes(s))) s += 3;
-      if (segments.length && ['developers', 'developer'].includes(segments[0])) s += 2;
-      if (segments.some(s => ['oauth', 'getting-started', 'get-started', 'developer', 'developers', 'docs'].includes(s))) s += 1;
-      return s;
-    } catch (e) { return -10; }
-  }
   const consoleCandidates = sources.map(u => ({ url: u, score: consoleScore(u) })).sort((a, b) => b.score - a.score);
   const consolePick = consoleCandidates.length && consoleCandidates[0].score >= 3 ? consoleCandidates[0].url : '';
   let consoleUrl = consolePick || 'Unknown';
@@ -729,6 +503,10 @@ module.exports = async (req, res) => {
     tracks,
     contradictions,
     providerIdentity: { canonicalDomain: canonicalProviderDomain, discardedDomains: discardedProviderDomains, ambiguous: providerIdentityAmbiguous },
+    authRelationships,
+    scopeSources,
+    scopesFromMultipleProducts,
+    externalIdp: externalIdpName || '',
     semanticMethod: 'deterministic sentence semantics, no paid model, no local model in this serverless function. See README for the model evaluation. Model claims, if ever added, must pass the same passage validation or the guide becomes a draft.'
   };
   // Requirement engine.
@@ -798,10 +576,10 @@ module.exports = async (req, res) => {
   const claims = [];
   for (const r of requirements) {
     const verified = r.status !== 'unknown' && !!(r.evidence && r.evidenceUrl && sources.includes(r.evidenceUrl));
-    claims.push({ proposition: r.name + ' is ' + r.status, provider: canonicalProviderDomain || domainGuess || app, product: '', authContext: authType, sourceUrl: r.evidenceUrl || '', passage: r.evidence || '', section: r.evidence && r.evidence.startsWith('[Section: ') ? r.evidence.slice(10, r.evidence.indexOf(']')) : '', classification: r.status, condition: r.condition || '', confidence: verified ? 'Medium' : 'Low', verified, contradictoryEvidence: contradictions.slice(0, 2) });
+    claims.push({ proposition: r.name + ' is ' + r.status, subject: app, action: r.name, object: r.name, provider: canonicalProviderDomain || domainGuess || app, product: r.evidenceUrl ? productPath(r.evidenceUrl) : '', authContext: authType, sourceUrl: r.evidenceUrl || '', passage: r.evidence || '', section: r.evidence && r.evidence.startsWith('[Section: ') ? r.evidence.slice(10, r.evidence.indexOf(']')) : '', classification: r.status, condition: r.condition || '', confidence: verified ? 'Medium' : 'Low', verified, verificationOutcome: verified ? 'verified' : (contradictions.length ? 'contradicted' : 'unsupported'), contradictoryPassage: contradictions.length ? contradictions[0] : '', contradictoryEvidence: contradictions.slice(0, 2) });
   }
   for (const sys of authSystems) {
-    claims.push({ proposition: 'Authentication system ' + sys.system + ' is ' + (sys.found ? 'supported' : 'not found in fetched pages'), provider: canonicalProviderDomain || domainGuess || app, product: '', authContext: sys.system, sourceUrl: sys.evidenceUrl || '', passage: sys.evidence || '', section: '', classification: sys.found ? 'supported' : 'unknown', condition: '', confidence: sys.verified ? 'Medium' : 'Low', verified: sys.verified, contradictoryEvidence: [] });
+    claims.push({ proposition: 'Authentication system ' + sys.system + ' is ' + (sys.found ? 'supported' : 'not found in fetched pages'), subject: app, action: sys.system, object: sys.system, provider: canonicalProviderDomain || domainGuess || app, product: sys.evidenceUrl ? productPath(sys.evidenceUrl) : '', authContext: sys.system, sourceUrl: sys.evidenceUrl || '', passage: sys.evidence || '', section: '', classification: sys.found ? 'supported' : 'unknown', condition: '', confidence: sys.verified ? 'Medium' : 'Low', verified: sys.verified, verificationOutcome: sys.verified ? 'verified' : 'unsupported', contradictoryPassage: '', contradictoryEvidence: [] });
   }
   for (const ep of endpoints) {
     let epSource = '';
@@ -901,10 +679,65 @@ module.exports = async (req, res) => {
   }
   if (templateViolations === 0) qualityGate.checksPassed.push('Template override check: no step is marked required when its requirement is not applicable or optional');
   else qualityGate.checksFailed.push('Template override check: ' + templateViolations + ' step(s) were downgraded to match docs, see step details');
+  // Independent validation gate, P0: re-derive checks from raw fetched
+  // text and step prose, NOT from the generator's own requirement objects.
+  // The generator and the checker must not agree on the same wrong
+  // interpretation by sharing a status field. If a required step is
+  // removed here, the guide becomes a draft, with verified steps retained.
+  const independentRemovals = [];
+  const independentCorrections = [];
+  {
+    const thirdPartySys = authSystems.find(x => x.system === 'third_party_oauth');
+    const signInSys = authSystems.find(x => x.system === 'sign_in_oauth');
+    const ssoSys = authSystems.find(x => x.system === 'sso_enterprise');
+    const freshRegNeg = findSnippet(allText, ['no registration required', 'registration is not required', 'registration not required', 'do not need to register']);
+    const freshApprovalOpt = findSnippet(allText, ['verification is optional', 'review is not required', 'approval is not required', 'no approval required', 'no review required']);
+    for (let i = steps.length - 1; i >= 0; i--) {
+      const st = steps[i];
+      if (/^Register the app/i.test(st.title) && freshRegNeg) {
+        independentRemovals.push('Independent gate removed Register step: fresh source text says registration is not required, but the generator built a registration step.');
+        steps.splice(i, 1); continue;
+      }
+      if (/submit for review/i.test(st.title) && freshApprovalOpt && !/only if/i.test(st.detail || '')) {
+        independentRemovals.push('Independent gate removed review step: fresh source text says review is optional or not required, but the step told the developer to submit for review.');
+        steps.splice(i, 1); continue;
+      }
+      if ((/^Register the app/i.test(st.title) || /authorize and token flow/i.test(st.title)) && thirdPartySys && !thirdPartySys.found && (signInSys && signInSys.found || ssoSys && ssoSys.found)) {
+        independentRemovals.push('Independent gate removed OAuth step "' + st.title + '": only sign-in or SSO evidence was found, not third-party API OAuth, so an OAuth step would send the developer down the wrong path.');
+        steps.splice(i, 1); continue;
+      }
+    }
+    for (const st of steps) {
+      const mainD = String(st.detail || '').split('Evidence from docs:')[0];
+      const urls = mainD.match(/https:\/\/[^\s,;]+/g) || [];
+      for (const u of urls) {
+        const cu = u.replace(/[\.,)\]]+$/, '');
+        if (cu.includes('token') && !cu.includes('oauth') && !cu.includes('authorize')) {
+          st.detail = st.detail.replace(cu, '[token endpoint removed, it was not an OAuth token endpoint]');
+          independentCorrections.push('Independent gate removed a non-OAuth token URL from step "' + st.title + '".');
+        }
+      }
+      if (/^Register the app/i.test(st.title) && consolePick && /\/docs\//.test(consolePick) && !/apps|console|dashboard|settings|account/.test(consolePick)) {
+        st.detail = st.detail.replace(consolePick, 'the official developer portal in sources below');
+        consoleUrl = 'Unknown';
+        independentCorrections.push('Independent gate removed a documentation URL presented as a registration console.');
+      }
+    }
+    if (scopesFromMultipleProducts) {
+      const scopeStep = steps.find(x => /^Choose scopes/i.test(x.title));
+      if (scopeStep) {
+        scopeStep.detail = 'What: do NOT request all scopes below together. Scopes found, grouped by product page, are: ' + scopeSources.map(x => x.url + ': ' + x.scopes.join(', ')).join(' ; ') + '. Where: official docs in sources below. Why: these scopes come from different product pages on the same company domain, and a scope for one product is not necessarily valid for another. Check which product your feature uses, then request only its scopes.';
+        scopeStep.requirement = 'unknown';
+        independentCorrections.push('Independent gate replaced a merged scope list with a per-product scope list, because scopes came from multiple product pages.');
+      }
+    }
+  }
+  if (independentCorrections.length) qualityGate.checksFailed.push('Independent gate corrections: ' + independentCorrections.join(' '));
   // Final factual consistency checker. This is not a downgrade pass.
   // A critical contradiction makes the guide a draft, not a full guide,
   // even if the rest of the guide looks complete.
   const validationFailures = [];
+  for (const f of independentRemovals) validationFailures.push(f);
   let broadScopeWarning = false;
   if (providerIdentityAmbiguous) validationFailures.push('Provider identity ambiguous: multiple same-name providers with equal evidence, not merged, so no full guide can be trusted.');
   if (noOAuthSnippet && authType === 'oauth') validationFailures.push('Source says OAuth is not supported or API key only, but the guide classified auth as OAuth.');
@@ -1010,3 +843,34 @@ module.exports = async (req, res) => {
   if (guideType === 'full' && confidence === 'Medium' && sources.length >= 2) guideCache.set(slug, { guide, log, at: Date.now() });
   res.status(200).json({ guide, log, timings, cached: false });
 };
+// Catch-all failure handling, P1: a research crash must never become
+// a 500 with no guide. If anything in the handler throws, return a draft
+// guide that says research failed, with verified information only, which
+// here is none, and a clear next step. This does not hide the failure:
+// the error is recorded in the guide's tested field and in notVerified.
+module.exports = async (req, res) => {
+  try {
+    await researchHandler(req, res);
+  } catch (e) {
+    try {
+      if (res.headersSent) return;
+      const appName = String((req.query && req.query.app) || '').trim() || 'Unknown provider';
+      const errMsg = String(e && e.message ? e.message : e).slice(0, 200);
+      res.status(200).json({ guide: { id: 'generated-' + appName.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name: appName, category: 'Generated, from live research', difficulty: 'Unknown', difficultyWhy: 'Research failed, so difficulty cannot be set.', setupTime: 'Unknown', approvalWait: 'Unknown', accountNeeded: 'Unknown', cost: 'Unknown', consoleName: 'Unknown', consoleUrl: 'Unknown', guideType: 'draft', verificationStatus: 'Unverified, research failed, see quality gate', confidence: 'Low', authType: 'unknown', decisions: [], claims: [], evidenceSummary: {}, requirements: [], qualityGate: { completeness: 'draft', factualVerification: 'unverified', validationFailures: ['Research handler failed: ' + errMsg] }, nextStep: 'Research failed for this provider. Do not use this draft as a verified guide. Check official docs manually, then research again.', steps: [{ title: 'Find the official developer portal', detail: 'What: find the official developer console and registration docs, then list scopes and review triggers before building. Where: official docs, not a tutorial site. Why: research failed, so no flow can be recommended yet.', who: 'human', time: 'Unknown', blockerTip: 'Do not build on an unverified portal.', requirement: 'unknown', condition: '', destinationUrl: '', evidence: '', evidenceUrl: '' }], timeline: [], checklist: [], blockers: [{ blocker: 'Research failed', fix: 'See quality gate. Check official docs manually.' }], agentCan: [], humanMust: ['Confirm the official portal', 'Sign in to the provider console'], sources: [], tested: 'Live research failed with an uncaught error: ' + errMsg + '. No account sign-in, app creation, or provider approval was completed.', notVerified: ['All provider-specific details', 'Research handler failed, see quality gate'], executionLog: [] }, log: [], timings: { cached: false }, cached: false });
+    } catch (e2) {
+      try { res.status(200).json({ error: 'Research failed, draft guide could not be built.' }); } catch (e3) {}
+    }
+  }
+};
+
+// Exported for the fixed-document regression test only. The Vercel
+// handler above is still module.exports as a function; these properties
+// are how the regression script calls the actual production logic
+// against captured passages, instead of a copy of the logic.
+module.exports.classifyPassage = classifyPassage;
+module.exports.consoleScore = consoleScore;
+module.exports.validateScope = validateScope;
+module.exports.extractEndpoints = extractEndpoints;
+module.exports.extractScopes = extractScopes;
+module.exports.productPath = productPath;
+module.exports.extractScopesFromPages = extractScopesFromPages;

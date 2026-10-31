@@ -39,3 +39,11 @@ Fixes on 2026-10-31, from reviewer critique:
 - Sampled verification report added to home page for GitHub, Slack, Google, Meta, and Airtable, comparing initial claim, source check, and result.
 - Per-guide execution records added to guide detail, with sources checked, tested notes, and not verified lists.
 - Airtable added as a full guide from Nango, Formbricks, and Pipedream sources, with official page limits noted.
+
+## Final engineering push, 2026-10-31 evening
+
+- Evaluation A, fixed documents: new logic 14/14, old logic 11/14, on identical captured passages. Improvements: negated "start from scratch", token endpoint categorization, docs URL rejected as console.
+- Evaluation B, 12 unseen providers, production dpl_9VJcQFuGHnfahR6Ntbihk8TYvpTs, structural harness 153/180, not a factual rate. Independent classification: correct and supported Wise, Mollie, Sentry, Datadog, PagerDuty; correct but insufficiently supported Klarna, CircleCI; appropriately abstained Braintree, GoCardless, Bitbucket; errors Airwallex, Atlassian, both 500s.
+- Root cause of the 500s: `contradictions` used before declaration, in the multi-product scope grouping block. Only providers with scopes from multiple product pages crashed. Fixed by declaring it before that block. Catch-all handler wrapper and 500KB page truncation remain in place.
+- Retest, production dpl_Htj89qQCSo3r3wwEcmABWNzNu3ZC: Airwallex draft oauth, Atlassian draft unknown, GoCardless draft unknown 0 sources, Figma full oauth Medium, no validation failures. No crashes.
+- Release gate: pass on safety, limited coverage, see SUBMISSION-NOTES.md for the full gate check and its caveats. Browser rendering of the new engine sections is unverified, rate limiting was not retested in this round.
