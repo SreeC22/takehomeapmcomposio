@@ -122,7 +122,7 @@ function showDetail(g, isGenerated) {
   const el = document.getElementById('detail');
   el.classList.remove('hidden');
   el.innerHTML = `
-    <p><a href="#grid">Back to all platforms</a> | <button id="shareBtn" type="button">Copy share link</button> | <button id="jsonBtn" type="button">Copy guide JSON</button></p>
+    <p><a href="#grid">Back to all platforms</a> | <button id="shareBtn" type="button">Copy share link</button> | <button id="jsonBtn" type="button">Copy guide JSON</button>${(isGenerated || String(g.id || '').startsWith('generated-') || String(g.id || '').startsWith('draft-')) ? ' | <button id="refreshBtn" type="button">Refresh live research</button>' : ''}</p>
     <h2>${esc(g.name)} <span class="badge">${esc(g.difficulty)}</span> <span class="badge ${esc(g.guideType)}">${esc(g.guideType)}</span></h2>
     <p>${esc(g.difficultyWhy)}</p>
     <div class="step"><h3>At a glance</h3>
@@ -161,6 +161,8 @@ function showDetail(g, isGenerated) {
     const json = JSON.stringify(g, null, 2);
     try { await navigator.clipboard.writeText(json); alert('Guide JSON copied.'); } catch (e) { alert('Copy failed, use guides.json instead.'); }
   });
+  const refreshBtn = document.getElementById('refreshBtn');
+  if (refreshBtn) refreshBtn.addEventListener('click', async () => { await runResearch(g.name, true); });
   el.scrollIntoView({behavior: 'smooth'});
 }
 document.getElementById('search').addEventListener('input', render);
@@ -177,21 +179,33 @@ function updateSearchStatus() {
     el.textContent = 'Not in the library yet. Get guide will research it live, once.';
   }
 }
-async function runResearch(name) {
+async function runResearch(name, forceRefresh) {
   const statusEl = document.getElementById('searchStatus');
-  if (statusEl) statusEl.textContent = 'Researching ' + name + ' now. This can take up to about a minute for an unfamiliar app.';
+  const timers = [];
+  if (statusEl) statusEl.textContent = 'Searching for official docs for ' + name + '...';
+  timers.push(setTimeout(() => { if (statusEl) statusEl.textContent = 'Reading documentation for ' + name + '...'; }, 2000));
+  timers.push(setTimeout(() => { if (statusEl) statusEl.textContent = 'Generating guide for ' + name + '...'; }, 6000));
   try {
-    const res = await fetch('/api/research?app=' + encodeURIComponent(name));
+    const url = '/api/research?app=' + encodeURIComponent(name) + (forceRefresh ? '&refresh=1' : '');
+    const res = await fetch(url);
     if (!res.ok) throw new Error('Research endpoint returned ' + res.status);
     const data = await res.json();
     const g = data.guide;
     g.executionLog = data.log || [];
-    if (!guides.find(x => x.id === g.id)) guides.push(g);
+    if (data.timings) g.timings = data.timings;
+    const existing = guides.findIndex(x => x.id === g.id);
+    if (existing >= 0) guides[existing] = g; else guides.push(g);
     saveStoredGuide(g);
     render();
-    if (statusEl) statusEl.textContent = 'Live research complete for ' + name + '. Confidence: ' + g.confidence + '. Check it against official docs before use.';
+    timers.forEach(t => clearTimeout(t));
+    if (statusEl) {
+      const t = data.timings;
+      const timeText = t ? ' in ' + (t.totalMs / 1000).toFixed(1) + 's (search ' + (t.searchMs / 1000).toFixed(1) + 's, docs ' + (t.retrievalMs / 1000).toFixed(1) + 's)' + (data.cached ? ', cached guide, returned instantly' : '') + '.' : '.';
+      statusEl.textContent = 'Live research complete for ' + name + timeText + ' Confidence: ' + g.confidence + '. Check it against official docs before use.';
+    }
     showDetail(g, true);
   } catch (err) {
+    timers.forEach(t => clearTimeout(t));
     if (statusEl) statusEl.textContent = 'Live research could not run for ' + name + '. The guide below is Low confidence and Unknown, with no provider-specific claims.';
     const id = 'generated-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'generated-app';
     const g = { id: id, name: name, category: 'Generated, research endpoint unavailable', difficulty: 'Unknown', difficultyWhy: 'Live research endpoint was unavailable, so no provider-specific claims could be verified.', setupTime: 'Unknown', approvalWait: 'Unknown, do not promise a date until review docs are checked', accountNeeded: 'Unknown, check the provider developer docs', cost: 'Unknown', consoleName: 'Unknown, find the official developer console first', consoleUrl: 'Unknown', guideType: 'draft', confidence: 'Low', managedAppNote: 'Check first whether a managed app already covers this platform.', nextStep: 'Find the official developer console and registration docs for ' + name + ', then list scopes and review triggers before building.', steps: [{title: 'Research failed, do not use as a verified guide', detail: 'The live research endpoint could not be reached. No official docs were fetched in this attempt.', who: 'human', time: 'Unknown', blockerTip: 'Retry, or research the official docs manually before building.'}], timeline: [{stage: 'Investigation', wait: 'Unknown', note: 'Research endpoint unavailable.'}], checklist: [{item: 'Official developer console identified', status: 'required', who: 'agent'}], blockers: [{blocker: 'Research endpoint unavailable', fix: 'Retry, or research official docs manually.'}], agentCan: ['Research official docs'], humanMust: ['Sign in to the provider console', 'Submit for review'], sources: [], tested: 'Live research attempt failed in the browser.', notVerified: ['All details in this draft'], executionLog: [{time: new Date().toISOString(), action: 'live_research', url: '/api/research', status: 'failed', detail: String(err && err.message ? err.message : err)}] };

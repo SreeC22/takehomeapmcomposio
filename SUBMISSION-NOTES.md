@@ -65,3 +65,23 @@ Final three items, 2026-10-31:
 - Generated instructions improved: steps are now clear actions (open the console, create the app, add the exact redirect URI, request only listed scopes, send the user to the authorize endpoint then exchange at the token endpoint, test with a real account), with evidence quotes sentence-cut from fetched docs, junk snippets skipped, and authorize vs token endpoints listed separately. Where evidence is missing, the step says what to do next instead of inventing a fragment.
 - Tavily live: TAVILY_API_KEY is set in Vercel, Production, Sensitive. Live ClickUp test showed Tavily found_3 provider-specific URLs, official ClickUp docs, Medium confidence. Live Asana retest showed 3 official sources and 14 scopes in 13.8 seconds, after a first flaky run with 0 sources in 94.7 seconds, so fetching can still vary by run.
 - Rate limiting: 5 searches per minute per IP, 20 per hour per IP, 429 over the limit, no Tavily call on a limited request, per-instance Tavily cap 200 per day. Note: Vercel splits parallel requests across instances, so the in-memory limit is per-instance, not a true global limit.
+
+## Latency optimization, 2026-10-31
+
+- Tavily first: when Tavily returns provider URLs, Ecosia, DuckDuckGo, and Brave are no longer tried. DuckDuckGo Lite is only a last resort, direct only, no proxy, and only when Tavily returned fewer than 3 provider URLs.
+- Official docs ranking: Tavily URLs are ranked so developers, developer, and docs hosts come first. Community, forum, and blog URLs are excluded from the primary list, so Miro, Asana, and Zapier guides now cite official docs only, not forum pages.
+- Parallel retrieval: top 4 docs are fetched in parallel with 3 second timeouts, instead of sequentially with proxy retries. Proxy retries are now only for Tavily URLs, with a 5 second cap, not for guessed patterns or search engines.
+- Early stopping: fetching stops once sources, client ID, redirect, scopes, and endpoints are present. Site navigation (base, developers, developer, docs hosts in parallel) and generic OAuth patterns run only when evidence is still incomplete.
+- Reduced waste: no speculative .md URLs for every candidate, only for short JS shells. No sitemap crawling for every host, only base and developers hosts, in parallel, and only as a fallback.
+- Caching: successful guides (Medium confidence, at least 2 sources) are cached per instance for 24 hours. A cached hit returns before rate limiting, with cached true and 0ms timings. Force refresh is available as ?refresh=1 on the API and as Refresh live research in a generated guide detail.
+- Progress feedback: the search status now shows Searching for official docs, then Reading documentation, then Generating guide, and on completion shows total, search, and docs times, plus cached when applicable.
+- Observability: the API returns timings with searchMs, retrievalMs, extractionMs, totalMs, and cached, and logs the same breakdown. The guide also carries timings.
+- Measured live on deployment dpl_3q2KijTjVbaT1sQFKSuurqmhtKWa, 2026-10-31, with refresh=1, so these are uncached except the last row:
+  - Miro: server 230ms, wall 1.0s, Medium, Medium to Hard, 3 official sources
+  - Asana: server 506ms, wall 0.9s, Medium, Medium to Hard, 6 official sources
+  - Trello: server 783ms, wall 1.5s, Low, Medium to Hard, 6 official sources, scopes not colon tokens so confidence stays Low, honestly
+  - Zapier: server 151ms, wall 0.6s, Medium, Medium to Hard, 3 official sources
+  - ClickUp: server 842ms, wall 1.3s, Medium, Unknown difficulty, 4 official sources, scopes Unknown as before
+  - Miro cached repeat: server 0ms, wall 0.48s, cached true
+- All uncached results are under the 5 second typical target in this run. Times will vary with provider docs speed and Tavily, and per-instance caching and rate limiting are not global across Vercel instances, as noted before.
+- Guide sharing is unchanged: encode and decode of the guide JSON are the same, timings is just an extra field in the encoded guide.

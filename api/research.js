@@ -124,17 +124,18 @@ async function fetchOnce(url, timeoutMs) {
     return { status: 0, body: '', ok: false, error: String(e && e.message ? e.message : e) };
   } finally { clearTimeout(timer); }
 }
-async function fetchText(url, timeoutMs) {
+async function fetchText(url, timeoutMs, allowProxy) {
   const direct = await fetchOnce(url, timeoutMs);
   if (direct.ok && direct.body && direct.body.length > 200) return direct;
   if (direct.status === 404) return direct;
+  if (!allowProxy) return direct;
   // Proxy retry: search engines and some docs sites block datacenter IPs with 403 or 429.
   // AllOrigins is a public proxy whose IP is not the Vercel server IP, so it can
   // fetch pages that direct fetch cannot. The source URL is still the original URL,
   // the proxy is only transport, and the retry is logged by the caller via status.
   try {
     const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-    const proxy = await fetchOnce(proxyUrl, Math.max(timeoutMs, 8000));
+    const proxy = await fetchOnce(proxyUrl, 5000);
     if (proxy.ok && proxy.body && proxy.body.length > 200) {
       return { status: 200, body: proxy.body, ok: true, viaProxy: true, directStatus: direct.status };
     }
@@ -161,277 +162,257 @@ function rateCheck(ip) {
 }
 let tavilyCallsToday = globalThis.__tavilyCallsToday || { day: new Date().toISOString().slice(0, 10), count: 0 };
 globalThis.__tavilyCallsToday = tavilyCallsToday;
+// Cache, per instance, 24 hours, successful guides only. Vercel serverless
+// functions are stateless across instances, so this is a per-instance cache,
+// not a global guarantee. It still makes repeat requests on a warm instance
+// near instant, and it costs no Tavily credits on a cache hit.
+const guideCache = globalThis.__researchGuideCache || (globalThis.__researchGuideCache = new Map());
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 module.exports = async (req, res) => {
+  const t0 = Date.now();
   const rawApp = String((req.query && req.query.app) || '').trim();
   if (!rawApp) { res.status(400).json({ error: 'Missing app name' }); return; }
-  const clientIp = String((req.headers && (req.headers['x-forwarded-for'] || '')) || '').split(',')[0].trim() || 'unknown';
-  const rateError = rateCheck(clientIp);
-  if (rateError) { res.status(429).json({ error: rateError }); return; }
+  const forceRefresh = String((req.query && (req.query.refresh || req.query.force)) || '') === '1';
   const parsed = parseInput(rawApp);
   const app = parsed.app;
   const slug = parsed.slug;
+  const domainGuess = parsed.baseDomain || (parsed.domain + '.com');
+  const domainGuessForSearch = domainGuess;
+  // Cache first, before rate limiting and before any Tavily call.
+  if (!forceRefresh) {
+    const cached = guideCache.get(slug);
+    if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+      const timings = { searchMs: 0, retrievalMs: 0, extractionMs: 0, totalMs: Date.now() - t0, cached: true };
+      res.status(200).json({ guide: cached.guide, log: cached.log, timings, cached: true });
+      return;
+    }
+  }
+  const clientIp = String((req.headers && (req.headers['x-forwarded-for'] || '')) || '').split(',')[0].trim() || 'unknown';
+  const rateError = rateCheck(clientIp);
+  if (rateError) { res.status(429).json({ error: rateError }); return; }
   const log = [];
   const now = () => new Date().toISOString();
   log.push({ time: now(), action: 'start_research', url: '', status: 'started', detail: 'Researching ' + app + ' for official developer and OAuth docs.' });
   log.push({ time: now(), action: 'parse_input', url: '', status: parsed.hostname ? 'hostname_' + parsed.hostname : 'name_only', detail: 'Input ' + parsed.input + ' parsed to app ' + app + ', slug ' + slug + (parsed.hostname ? ', hostname ' + parsed.hostname : '') + '. Website URLs are parsed to hostname first, never turned into a guessed domain.' });
-  // Step 1: try public search pages, with candidate URL fallbacks.
-  // DuckDuckGo lite works from some IPs and is blocked with 403 from others,
-  // including Vercel datacenter IPs in live testing, so Brave search is tried next.
-  const domainGuessForSearch = parsed.baseDomain || (slug + '.com');
-  const searchSources = [
-    { name: 'ecosia', url: 'https://www.ecosia.org/search?q=' + encodeURIComponent(app + ' OAuth developer docs register app scopes') },
-    { name: 'duckduckgo_lite', url: 'https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(app + ' OAuth developer docs register app scopes') },
-    { name: 'brave', url: 'https://search.brave.com/search?q=' + encodeURIComponent(app + ' OAuth developer docs register app scopes') }
-  ];
-  let candidateUrls = [];
-  // Tavily, single simple search source, if a key is set in Vercel.
-  // One official API call replaces scraping 3 search pages, which Vercel IPs get blocked from.
-  // If no key is set, this step is skipped and the existing navigation fallback runs.
-  if (process.env.TAVILY_API_KEY && tavilyCallsToday.day === new Date().toISOString().slice(0, 10) && tavilyCallsToday.count >= 200) {
-    log.push({ time: now(), action: 'search', url: 'https://api.tavily.com/search', status: 'skipped_rate_limit', detail: 'Per-instance Tavily daily cap reached, using site navigation fallback instead, so the key is not burned.' });
-  } else if (process.env.TAVILY_API_KEY) {
+  // Search stage, timed. Tavily first, and only Tavily when it returns enough.
+  const tSearch0 = Date.now();
+  let tavilyUrls = [];
+  let tavilyOk = false;
+  if (process.env.TAVILY_API_KEY && !(tavilyCallsToday.day === new Date().toISOString().slice(0, 10) && tavilyCallsToday.count >= 200)) {
     if (tavilyCallsToday.day !== new Date().toISOString().slice(0, 10)) { tavilyCallsToday.day = new Date().toISOString().slice(0, 10); tavilyCallsToday.count = 0; }
     tavilyCallsToday.count += 1;
     try {
-      const tavRes = await fetch('https://api.tavily.com/search', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + process.env.TAVILY_API_KEY }, body: JSON.stringify({ query: app + ' OAuth developer docs register app scopes', search_depth: 'basic', max_results: 8 }) });
-      const tavJson = await tavRes.json().catch(() => ({}));
-      const tavUrls = (tavJson.results || []).map(r => r.url).filter(u => typeof u === 'string' && u.startsWith('http'));
-      const tavFound = tavUrls.filter(u => { try { return isProviderHost(new URL(u).hostname.toLowerCase(), slug, domainGuessForSearch); } catch (e) { return false; } }).slice(0, 8);
-      log.push({ time: now(), action: 'search', url: 'https://api.tavily.com/search', status: tavRes.ok ? 'found_' + tavFound.length : 'failed_' + tavRes.status, detail: 'Tavily search returned ' + tavUrls.length + ' URLs, ' + tavFound.length + ' provider-specific.' });
-      candidateUrls = candidateUrls.concat(tavFound.filter(u => !candidateUrls.includes(u)));
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      let tavRes, tavJson;
+      try {
+        tavRes = await fetch('https://api.tavily.com/search', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + process.env.TAVILY_API_KEY }, body: JSON.stringify({ query: app + ' OAuth developer docs register app scopes', search_depth: 'basic', max_results: 8 }), signal: controller.signal });
+        tavJson = await tavRes.json().catch(() => ({}));
+      } finally { clearTimeout(timer); }
+      const allUrls = (tavJson.results || []).map(r => r.url).filter(u => typeof u === 'string' && u.startsWith('http'));
+      const providerUrls = allUrls.filter(u => { try { return isProviderHost(new URL(u).hostname.toLowerCase(), slug, domainGuessForSearch); } catch (e) { return false; } });
+      const rankUrl = (u) => {
+        try {
+          const uu = new URL(u);
+          const host = uu.hostname.toLowerCase();
+          const path = uu.pathname.toLowerCase();
+          if (host.startsWith('community.') || host.startsWith('forum.') || path.includes('/blog/')) return 100;
+          if (host.startsWith('developers.') || host.startsWith('developer.') || host.startsWith('docs.')) return 0;
+          if (path.includes('/oauth') || path.includes('/docs/') || path.includes('/developer')) return 1;
+          return 2;
+        } catch (e) { return 3; }
+      };
+      const officialUrls = providerUrls.filter(u => rankUrl(u) < 100).sort((a, b) => rankUrl(a) - rankUrl(b));
+      tavilyUrls = (officialUrls.length ? officialUrls : providerUrls.sort((a, b) => rankUrl(a) - rankUrl(b))).slice(0, 8);
+      tavilyOk = !!(tavRes && tavRes.ok);
+      log.push({ time: now(), action: 'search', url: 'https://api.tavily.com/search', status: tavilyOk ? 'found_' + tavilyUrls.length : 'failed_' + (tavRes ? tavRes.status : 0), detail: 'Tavily search returned ' + allUrls.length + ' URLs, ' + tavilyUrls.length + ' provider-specific.' });
     } catch (e) {
       log.push({ time: now(), action: 'search', url: 'https://api.tavily.com/search', status: 'failed', detail: 'Tavily search failed, falling back to site navigation. ' + String(e && e.message ? e.message : e) });
     }
+  } else if (process.env.TAVILY_API_KEY) {
+    log.push({ time: now(), action: 'search', url: 'https://api.tavily.com/search', status: 'skipped_rate_limit', detail: 'Per-instance Tavily daily cap reached, using site navigation fallback instead, so the key is not burned.' });
   } else {
     log.push({ time: now(), action: 'search', url: 'https://api.tavily.com/search', status: 'skipped_no_key', detail: 'No TAVILY_API_KEY set, skipping Tavily and using site navigation fallback.' });
   }
-  for (const src of searchSources) {
-    log.push({ time: now(), action: 'search', url: src.url, status: 'attempted', detail: 'Searching ' + src.name + ' for official developer and OAuth docs.' });
-    const search = await fetchText(src.url, 4000);
-    if (search.ok && search.body) {
-      const wrapped = Array.from(search.body.matchAll(/uddg=([^&"']+)/g)).map(m => { try { return decodeURIComponent(m[1]); } catch (e) { return ''; } }).filter(u => u && u.startsWith('http'));
-      const direct = Array.from(search.body.matchAll(/href="([^"]+)"/g)).map(m => m[1]).filter(u => u && u.startsWith('http') && !u.includes('brave.com') && !u.includes('duckduckgo.com') && !u.includes('ecosia.org') && !u.includes('s3.amazonaws.com'));
-      const foundAll = wrapped.concat(direct).filter((u, i, a) => a.indexOf(u) === i);
-      const found = foundAll.filter(u => {
-        try {
-          const host = new URL(u).hostname.toLowerCase();
-          return isProviderHost(host, slug, domainGuessForSearch);
-        } catch (e) { return false; }
-      }).slice(0, 8);
-      if (found.length < foundAll.length) {
-        log.push({ time: now(), action: 'search', url: src.url, status: 'filtered_' + (foundAll.length - found.length), detail: 'Filtered out ' + (foundAll.length - found.length) + ' generic OAuth pages that are not specific to ' + app + '.' });
-      }
-      candidateUrls = candidateUrls.concat(found.filter(u => !candidateUrls.includes(u)));
-      log.push({ time: now(), action: 'search', url: src.url, status: 'found_' + found.length, detail: 'Search ' + src.name + ' returned ' + found.length + ' direct candidate links.' });
-      if (candidateUrls.length >= 4) break;
-    } else {
-      log.push({ time: now(), action: 'search', url: src.url, status: 'failed_' + search.status, detail: 'Search page could not be fetched. ' + (search.error || '') });
-    }
+  const searchMs = Date.now() - tSearch0;
+  // Retrieval stage, timed. Parallel batches, early stopping, no speculative waste.
+  const tRetrieval0 = Date.now();
+  const docsDirectory = {
+    typeform: ['https://www.typeform.com/developers/get-started/scopes/', 'https://www.typeform.com/developers/get-started/applications/'],
+    linear: ['https://linear.app/developers/oauth-2-0-authentication'],
+    dropbox: ['https://docs.dropboxapi.com/dropbox-api/docs/oauth', 'https://dropbox.tech/developers/customizing-scopes-in-oauth-flow'],
+    github: ['https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app', 'https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps'],
+    figma: ['https://developers.figma.com/docs/rest-api/oauth-apps/'],
+    airtable: ['https://airtable.com/developers/web/guides/oauth-integrations.md']
+  };
+  const directoryUrls = docsDirectory[slug] || [];
+  const sources = [];
+  const pages = [];
+  const visited = new Set();
+  function evidenceSoFar() {
+    const text = pages.map(p => p.text).join(' ');
+    return {
+      text,
+      scopes: extractScopes(text),
+      endpoints: extractEndpoints(text, slug, domainGuess),
+      hasClient: /client[ _-]id/i.test(text),
+      hasRedirect: /redirect/i.test(text),
+      hasApproval: /app review|app approval|submit for review|review process|approval process|publish.*app|public app|distribution/i.test(text)
+    };
   }
-  const mdCandidates = candidateUrls.filter(u => u.includes('/developers/') || u.includes('/docs/')).map(u => u.endsWith('.md') ? u : u + '.md');
-  candidateUrls = candidateUrls.concat(mdCandidates.filter(u => !candidateUrls.includes(u))).slice(0, 10);
-  const domainGuess = parsed.baseDomain || (parsed.domain + '.com');
-  // Site navigation discovery, for genuinely unfamiliar providers.
-  // This does not use a hardcoded provider directory. It goes to the provider's
-  // own site, follows developer and docs links from the homepage, and reads
-  // sitemap and robots files, then filters for OAuth, developer, and API pages.
-  // This is the step that must work when search engines block the server.
-  const siteHosts = [];
-  if (domainGuess) {
-    siteHosts.push(domainGuess);
-    if (!domainGuess.startsWith('developers.') && !domainGuess.startsWith('docs.')) {
-      siteHosts.push('developers.' + domainGuess);
-      siteHosts.push('developer.' + domainGuess);
-      siteHosts.push('docs.' + domainGuess);
-    }
+  function sufficient(ev) {
+    return sources.length >= 2 && ev.hasClient && ev.hasRedirect && ev.scopes.length > 0 && ev.endpoints.length > 0;
   }
-  const navUrls = [];
-  for (const host of siteHosts.slice(0, 3)) {
-    const homeUrl = 'https://' + host + '/';
-    const home = await fetchText(homeUrl, 4000);
-    if (home.ok && home.body) {
-      const hrefs = Array.from(home.body.matchAll(/href=["']([^"']+)["']/g)).map(m => m[1]);
-      const links = [];
-      for (const href of hrefs) {
-        try {
-          const absUrl = new URL(href, homeUrl);
-          const abs = absUrl.toString();
-          const path = absUrl.pathname.toLowerCase();
-          if (abs.startsWith('https://') && (absUrl.hostname.includes(host) || absUrl.hostname.includes(domainGuess))) {
-            if (/\.(ico|png|jpg|jpeg|svg|css|js|webmanifest|xml|pdf)(\?|$)/.test(path)) continue;
-            if (path.startsWith('/apps/') || path.includes('/capabilities/') || path.includes('/login') || path.includes('/signup') || path.includes('/pricing') || path.includes('/blog/')) continue;
-            const isDoc = path.includes('/oauth') || path.includes('/developer') || path.includes('/docs/') || path === '/docs' || path.includes('/api/');
-            if (isDoc && !links.includes(abs)) links.push(abs);
-          }
-        } catch (e) {}
+  async function fetchBatch(urls, allowProxy) {
+    const batch = urls.filter(u => !visited.has(u)).slice(0, 4);
+    batch.forEach(u => visited.add(u));
+    if (!batch.length) return [];
+    const results = await Promise.allSettled(batch.map(async (url) => {
+      try {
+        const pp = new URL(url).pathname.toLowerCase();
+        if (url.includes('#content') || /\.(ico|png|jpg|jpeg|svg|css|js|webmanifest|pdf)(\?|$)/.test(pp) || pp.startsWith('/apps/')) return null;
+        try { const hu = new URL(url); if (hu.hostname.startsWith('community.') || hu.hostname.startsWith('forum.') || hu.pathname.toLowerCase().includes('/blog/')) return null; } catch (e) { return null; }
+      } catch (e) { return null; }
+      const page = await fetchText(url, 3000, allowProxy);
+      if (page.ok && page.body) {
+        const text = stripHtml(page.body);
+        const hasOAuth = /oauth/i.test(text);
+        const hasClient = /client[ _-]id/i.test(text);
+        const hasScope = /scope/i.test(text);
+        log.push({ time: now(), action: 'fetch_page', url: url, status: 'ok_' + page.status + (page.viaProxy ? '_via_proxy' : ''), detail: 'Fetched. OAuth mention: ' + hasOAuth + ', client ID mention: ' + hasClient + ', scope mention: ' + hasScope + '. Text length: ' + text.length + '.' });
+        if (hasOAuth || hasClient || hasScope) {
+          const cleanUrl = url.split('#')[0];
+          if (!sources.includes(cleanUrl)) sources.push(cleanUrl);
+          return { url, text };
+        }
+        // Short JS shell only: try the .md variant once, in the next batch, not speculatively for every URL.
+        if (text.length < 2000 && (url.includes('/docs/') || url.includes('/developer')) && !url.endsWith('.md')) {
+          return { url, text, mdCandidate: url + '.md' };
+        }
+        return null;
       }
-      links.sort((a, b) => {
-        const score = u => u.toLowerCase().includes('/oauth') ? 0 : u.toLowerCase().includes('/docs/') ? 1 : u.toLowerCase().includes('/developer') ? 2 : 3;
-        return score(a) - score(b);
-      });
-      log.push({ time: now(), action: 'site_navigation', url: homeUrl, status: 'found_' + links.length, detail: 'Homepage navigation found ' + links.length + ' developer, docs, or API links.' });
-      navUrls.push(...links.slice(0, 6));
-    } else {
-      log.push({ time: now(), action: 'site_navigation', url: homeUrl, status: 'failed_' + home.status, detail: 'Homepage could not be fetched. ' + (home.error || '') });
+      log.push({ time: now(), action: 'fetch_page', url: url, status: 'failed_' + page.status, detail: 'Could not fetch page. ' + (page.error || '') });
+      return null;
+    }));
+    const out = [];
+    const mdNext = [];
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value) {
+        if (r.value.mdCandidate) mdNext.push(r.value.mdCandidate);
+        else out.push(r.value);
+      }
     }
-    // Sitemap and robots, for each host, limited to one sitemap per host to save time.
-    for (const path of ['/sitemap.xml']) {
-      const smUrl = 'https://' + host + path;
-      const sm = await fetchText(smUrl, 4000);
-      if (sm.ok && sm.body) {
-        const locs = Array.from(sm.body.matchAll(/<loc>([^<]+)<\/loc>/g)).map(m => m[1].trim());
-        const filtered = locs.filter(u => {
+    pages.push(...out);
+    return mdNext;
+  }
+  // Batch 1: Tavily top 4, plus directory URLs if any, in parallel.
+  let mdCandidates = await fetchBatch(tavilyUrls.slice(0, 4).concat(directoryUrls).slice(0, 4), true);
+  // Batch 2: remaining Tavily URLs, if evidence is not yet sufficient.
+  if (!sufficient(evidenceSoFar())) {
+    mdCandidates = mdCandidates.concat(await fetchBatch(tavilyUrls.slice(4), true));
+  }
+  // Batch 3: .md variants only for short JS shells found above, parallel, no proxy.
+  if (!sufficient(evidenceSoFar()) && mdCandidates.length) {
+    await fetchBatch(mdCandidates.slice(0, 3), false);
+  }
+  // Batch 4: site navigation fallback, only if evidence is still incomplete.
+  // Homepages for base, developers, developer, and docs hosts in parallel,
+  // plus sitemaps for base and developers hosts in parallel, then top 4
+  // nav links in parallel. This restores providers like Trello, whose
+  // docs live on developers.trello.com, not on trello.com itself.
+  if (!sufficient(evidenceSoFar()) && domainGuess) {
+    const homeUrl = 'https://' + domainGuess + '/';
+    const navHosts = [domainGuess, 'developers.' + domainGuess, 'developer.' + domainGuess, 'docs.' + domainGuess];
+    const navFetches = navHosts.map(h => fetchText('https://' + h + '/', 3000, false));
+    navFetches.push(fetchText('https://' + domainGuess + '/sitemap.xml', 3000, false));
+    navFetches.push(fetchText('https://developers.' + domainGuess + '/sitemap.xml', 3000, false));
+    const navResults = await Promise.allSettled(navFetches);
+    const navUrls = [];
+    for (let hi = 0; hi < navHosts.length; hi++) {
+      const home = navResults[hi];
+      if (home.status === 'fulfilled' && home.value.ok && home.value.body) {
+        const baseUrl = 'https://' + navHosts[hi] + '/';
+        const hrefs = Array.from(home.value.body.matchAll(/href=["']([^"']+)["']/g)).map(m => m[1]);
+        for (const href of hrefs) {
           try {
-            const path = new URL(u).pathname.toLowerCase();
-            if (/\.(ico|png|jpg|jpeg|svg|css|js|webmanifest|pdf)(\?|$)/.test(path)) return false;
-            if (path.startsWith('/apps/')) return false;
-            return path.includes('/oauth') || path.includes('/developer') || path.includes('/docs/oauth') || path.includes('/docs/auth') || path.includes('/docs/scopes') || path.includes('/api/oauth') || path.includes('/getting-started-with-oauth');
-          } catch (e) { return false; }
-        });
-        if (filtered.length) {
-          log.push({ time: now(), action: 'sitemap', url: smUrl, status: 'found_' + filtered.length, detail: 'Sitemap or robots file listed ' + filtered.length + ' OAuth, developer, or API pages.' });
-          navUrls.push(...filtered.slice(0, 6));
+            const absUrl = new URL(href, baseUrl);
+            const abs = absUrl.toString();
+            const path = absUrl.pathname.toLowerCase();
+            if (abs.startsWith('https://') && isProviderHost(absUrl.hostname.toLowerCase(), slug, domainGuess)) {
+              if (/\.(ico|png|jpg|jpeg|svg|css|js|webmanifest|xml|pdf)(\?|$)/.test(path)) continue;
+              if (path.startsWith('/apps/') || path.includes('/login') || path.includes('/signup') || path.includes('/pricing') || path.includes('/blog/')) continue;
+              if (absUrl.hostname.startsWith('community.') || absUrl.hostname.startsWith('forum.')) continue;
+              if (path.includes('/oauth') || path.includes('/developer') || path.includes('/docs/') || path.includes('/api/')) navUrls.push(abs);
+            }
+          } catch (e) {}
         }
       }
     }
-    if (navUrls.length >= 4) break;
-  }
-  candidateUrls = navUrls.concat(candidateUrls.filter(u => !navUrls.includes(u)));
-
-  // Verified docs directory, checked via search on 2026-10-31. This is not a guess:
-  // these URLs were found in official docs search results for each provider.
-  // It is tried first, because search engines block datacenter IPs with 403 and 429,
-  // while fetching official docs pages directly from Vercel works.
-  const docsDirectory = {
-    typeform: ['https://www.typeform.com/developers/get-started/scopes/', 'https://www.typeform.com/developers/get-started/applications/', 'https://www.typeform.com/developers/get-started/'],
-    linear: ['https://linear.app/developers/oauth-2-0-authentication', 'https://linear.app/developers'],
-    dropbox: ['https://docs.dropboxapi.com/dropbox-api/docs/oauth', 'https://dropbox.tech/developers/customizing-scopes-in-oauth-flow', 'https://www.dropbox.com/developers/apps', 'https://www.dropbox.com/developers'],
-    github: ['https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app', 'https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps', 'https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps'],
-    figma: ['https://developers.figma.com/docs/rest-api/oauth-apps/', 'https://developers.figma.com/docs/rest-api/scopes/'],
-    airtable: ['https://airtable.com/developers/web/guides/oauth-integrations.md', 'https://support.airtable.com/articles/6811769763-third-party-integrations-via-oauth-overview']
-  };
-  const directoryUrls = docsDirectory[slug] || [];
-  if (directoryUrls.length) {
-    log.push({ time: now(), action: 'directory_lookup', url: '', status: 'found_' + directoryUrls.length, detail: 'Verified docs directory has ' + directoryUrls.length + ' official docs URLs for ' + app + '. These will be fetched directly.' });
-    candidateUrls = directoryUrls.concat(candidateUrls.filter(u => !directoryUrls.includes(u)));
-  } else {
-    log.push({ time: now(), action: 'directory_lookup', url: '', status: 'miss', detail: 'No verified docs directory entry for ' + app + '. Falling back to search and domain guesses.' });
-  }
-  const fallbacks = [];
-  const fallbackExpanded = [];
-  for (const u of fallbacks) {
-    fallbackExpanded.push(u);
-    if (u.includes('/developers/') || u.includes('/docs/')) fallbackExpanded.push(u + '.md');
-  }
-  candidateUrls = candidateUrls.concat(fallbackExpanded.filter(u => !candidateUrls.includes(u)));
-  // Generic OAuth docs patterns, not provider-specific hardcoded entries.
-  // Most developer docs sites use one of these structures, so trying them
-  // gives a deterministic discovery path that does not depend on search
-  // results or homepage link order.
-  const hosts = ['developers.' + domainGuess, 'developer.' + domainGuess];
-  const paths = ['/docs/getting-started-with-oauth', '/docs/oauth', '/docs/oauth-2-0-authentication', '/docs/authentication', '/docs/authorization', '/docs/oauth-scopes', '/docs/scopes', '/reference/scopes', '/docs/add-permission-scopes-to-your-app', '/api/oauth'];
-  for (const h of hosts) {
-    for (const pa of paths) {
-      const u = 'https://' + h + pa;
-      if (!candidateUrls.includes(u)) candidateUrls.push(u);
-    }
-  }
-  const sources = [];
-  const pages = [];
-  const directorySet = new Set(Object.values(docsDirectory).flat());
-  candidateUrls = candidateUrls.filter((u, i, a) => a.indexOf(u) === i);
-  candidateUrls.sort((a, b) => {
-    const score = u => {
-      const low = u.toLowerCase();
-      let s = 0;
-      if (low.includes('oauth')) s = 0;
-      else if (low.includes('scopes') || low.includes('permissions')) s = 1;
-      else if (low.includes('authentication') || low.includes('authorization')) s = 2;
-      else if (low.includes('/developer') || low.includes('/docs/')) s = 3;
-      else s = 4;
-      if (low.includes('community.') || low.includes('/forum') || low.includes('reddit.com') || low.includes('/blog/')) s += 10;
-      return s;
-    };
-    return score(a) - score(b);
-  });
-  // Readme.io docs, used by Miro, Pipedrive, and others, publish a full markdown version
-  // at the same URL plus .md, which contains the real guide text that the JS page hides.
-  // Try the .md variant right after the original docs page.
-  const expanded = candidateUrls.slice();
-  for (const u of candidateUrls) {
-    if ((u.includes('/docs/') || u.includes('/developer')) && !u.endsWith('.md')) {
-      const md = u + '.md';
-      if (!candidateUrls.includes(md)) expanded.push(md);
-    }
-  }
-  candidateUrls = expanded;
-  const fetchQueue = candidateUrls.slice(0, 20);
-  const visited = new Set();
-  for (let qi = 0; qi < fetchQueue.length && qi < 20; qi++) {
-    const url = fetchQueue[qi];
-    if (visited.has(url)) continue;
-    visited.add(url);
-    try { const pp = new URL(url).pathname.toLowerCase(); if (url.includes('#content') || /\.(ico|png|jpg|jpeg|svg|css|js|webmanifest|pdf)(\?|$)/.test(pp) || pp.startsWith('/apps/')) continue; } catch (e) {}
-    if (!directorySet.has(url)) {
-      try {
-        const host = new URL(url).hostname.toLowerCase();
-        const isProvider = isProviderHost(host, slug, domainGuess);
-        if (!isProvider) { log.push({ time: now(), action: 'fetch_page', url: url, status: 'skipped_not_provider', detail: 'Skipped generic page, not specific to ' + app + '.' }); continue; }
-      } catch (e) {}
-    }
-    const page = await fetchText(url, 4000);
-    if (page.ok && page.body) {
-      const text = stripHtml(page.body);
-      const hasOAuth = /oauth/i.test(text);
-      const hasClient = /client[ _-]id/i.test(text);
-      const hasRedirect = /redirect/i.test(text);
-      const hasScope = /scope/i.test(text);
-      log.push({ time: now(), action: 'fetch_page', url: url, status: 'ok_' + page.status + (page.viaProxy ? '_via_proxy' : ''), detail: 'Fetched' + (page.viaProxy ? ' via AllOrigins proxy after direct fetch failed with ' + page.directStatus : '') + '. OAuth mention: ' + hasOAuth + ', client ID mention: ' + hasClient + ', redirect mention: ' + hasRedirect + ', scope mention: ' + hasScope + '. Text length: ' + text.length + '.' });
-      if (hasOAuth || hasClient || hasScope) {
-        const cleanUrl = url.split('#')[0];
-        if (!sources.includes(cleanUrl)) sources.push(cleanUrl); else { log.push({ time: now(), action: 'fetch_page', url: url, status: 'skipped_duplicate', detail: 'Duplicate source without fragment, already counted.' }); }
-        pages.push({ url, text });
-        // Follow scopes and OAuth links from this docs page, for example Miro's
-        // scopes page links to its scopes reference page, which lists the actual tokens.
-        try {
-          const hrefs = Array.from(page.body.matchAll(/href=["']([^"']+)["']/g)).map(m => m[1]).concat(Array.from(page.body.matchAll(/\[[^\]]+\]\((https:[^)]+)\)/g)).map(m => m[1]));
-          for (const href of hrefs) {
-            try {
-              const abs = new URL(href, url).toString();
-              const path = new URL(abs).pathname.toLowerCase();
-              if ((path.includes('scope') || path.includes('oauth')) && !visited.has(abs) && !fetchQueue.includes(abs) && fetchQueue.length < 25) {
-                const host = new URL(abs).hostname.toLowerCase();
-                if (isProviderHost(host, slug, domainGuess)) fetchQueue.push(abs);
-              }
-            } catch (e) {}
-          }
-        } catch (e) {}
-      } else {
-        log.push({ time: now(), action: 'fetch_page', url: url, status: 'skipped', detail: 'Page fetched but contained no OAuth, client ID, or scope claims, so it was not used as a source.' });
+    for (let si = navHosts.length; si < navResults.length; si++) {
+      const sm = navResults[si];
+      if (sm.status === 'fulfilled' && sm.value.ok && sm.value.body) {
+        const locs = Array.from(sm.value.body.matchAll(/<loc>([^<]+)<\/loc>/g)).map(m => m[1].trim());
+        for (const u of locs) {
+          try {
+            const uu = new URL(u);
+            const path = uu.pathname.toLowerCase();
+            if (!isProviderHost(uu.hostname.toLowerCase(), slug, domainGuess)) continue;
+            if (uu.hostname.startsWith('community.') || uu.hostname.startsWith('forum.') || path.includes('/blog/')) continue;
+            if (path.includes('/oauth') || path.includes('/developer') || path.includes('/docs/oauth') || path.includes('/docs/auth') || path.includes('/docs/scopes') || path.includes('/api/oauth')) navUrls.push(u);
+          } catch (e) {}
+        }
       }
-    } else {
-      log.push({ time: now(), action: 'fetch_page', url: url, status: 'failed_' + page.status, detail: 'Could not fetch page. ' + (page.error || '') });
     }
-    if (sources.length >= 5) break;
-    if (sources.length >= 3) {
-      const soFar = pages.map(p => p.text).join(' ');
-      const hasScopeSoFar = /[a-z][a-z0-9_]*:[a-z][a-z0-9_]*/.test(soFar);
-      const hasEndpointSoFar = /https:\/\/[^\s"'<>]+(?:authorize|token)/i.test(soFar);
-      if (hasScopeSoFar && hasEndpointSoFar) break;
+    log.push({ time: now(), action: 'site_navigation', url: homeUrl, status: 'found_' + navUrls.length, detail: 'Homepages and sitemaps for base, developers, developer, and docs hosts found ' + navUrls.length + ' developer, docs, or API links.' });
+    const rankNav = (u) => {
+      try {
+        const uu = new URL(u);
+        const path = uu.pathname.toLowerCase();
+        if (path.includes('/oauth')) return 0;
+        if (path.includes('/docs/') || path.includes('/developer')) return 1;
+        return 2;
+      } catch (e) { return 3; }
+    };
+    const uniqueNav = navUrls.filter((u, i, a) => a.indexOf(u) === i).sort((a, b) => rankNav(a) - rankNav(b)).slice(0, 4);
+    if (uniqueNav.length) await fetchBatch(uniqueNav, false);
+  }
+  // Batch 4b: generic OAuth docs patterns, parallel, no proxy, only if
+  // evidence is still incomplete. This restores the Asana oauth page,
+  // which navigation links may not surface directly.
+  if (!sufficient(evidenceSoFar()) && domainGuess) {
+    const patternUrls = [
+      'https://developers.' + domainGuess + '/docs/oauth',
+      'https://developer.' + domainGuess + '/docs/oauth',
+      'https://developers.' + domainGuess + '/docs/authentication',
+      'https://developer.' + domainGuess + '/docs/authentication'
+    ];
+    await fetchBatch(patternUrls, false);
+  }
+  // Batch 5: one backup search engine, direct only, no proxy, only if still incomplete.
+  if (!sufficient(evidenceSoFar()) && tavilyUrls.length < 3) {
+    const searchUrl = 'https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(app + ' OAuth developer docs register app scopes');
+    log.push({ time: now(), action: 'search', url: searchUrl, status: 'attempted', detail: 'Searching duckduckgo_lite as a last resort, direct only, no proxy.' });
+    const search = await fetchText(searchUrl, 3000, false);
+    if (search.ok && search.body) {
+      const direct = Array.from(search.body.matchAll(/href="([^"]+)"/g)).map(m => m[1]).filter(u => u && u.startsWith('http') && !u.includes('duckduckgo.com'));
+      const found = direct.filter(u => { try { return isProviderHost(new URL(u).hostname.toLowerCase(), slug, domainGuessForSearch); } catch (e) { return false; } }).slice(0, 3);
+      log.push({ time: now(), action: 'search', url: searchUrl, status: 'found_' + found.length, detail: 'Backup search returned ' + found.length + ' provider-specific links.' });
+      if (found.length) await fetchBatch(found, false);
+    } else {
+      log.push({ time: now(), action: 'search', url: searchUrl, status: 'failed_' + search.status, detail: 'Backup search page could not be fetched.' });
     }
   }
-  const allText = pages.map(p => p.text).join(' ');
-  const scopes = extractScopes(allText);
-  const endpoints = extractEndpoints(allText, slug, domainGuess);
-  const authorizeEndpoints = endpoints.filter(u => /authorize/i.test(u));
-  const tokenEndpoints = endpoints.filter(u => /token/i.test(u));
-  const cleanSnippet = s => { if (!s) return ''; const cut = s.slice(0, 280); const lastPeriod = cut.lastIndexOf('.'); return (lastPeriod > 80 ? cut.slice(0, lastPeriod + 1) : cut).trim(); };
-  const hasApproval = /app review|app approval|submit for review|review process|approval process|publish.*app|public app|distribution/i.test(allText);
-  const hasRedirect = /redirect/i.test(allText);
-  const hasClient = /client[ _-]id/i.test(allText);
+  const retrievalMs = Date.now() - tRetrieval0;
+  // Extraction stage, timed.
+  const tExtraction0 = Date.now();
+  const ev = evidenceSoFar();
+  const allText = ev.text;
+  const scopes = ev.scopes;
+  const endpoints = ev.endpoints;
+  const hasApproval = ev.hasApproval;
+  const hasRedirect = ev.hasRedirect;
+  const hasClient = ev.hasClient;
   const hasBusiness = /business verification|company verification/i.test(allText);
-  const hasSensitive = /sensitive scope|restricted scope/i.test(allText);
-  const hasWrite = scopes.some(s => s.endsWith(':write') || s.includes('.write') || s.includes(':write'));
   const registerSnippet = snippetFor(allText, ['register an oauth', 'register a new oauth', 'create an oauth app', 'create a new app', 'register your app', 'register an application', 'create your app', 'created your app', 'create a developer team', 'created a developer team']);
   const redirectSnippet = snippetFor(allText, ['redirect uri', 'redirect url', 'callback url']);
   const reviewSnippet = snippetFor(allText, ['app review', 'approval', 'verification']);
@@ -461,6 +442,9 @@ module.exports = async (req, res) => {
   }
   const confidence = (sources.length >= 2 && hasClient && (scopes.length > 0 || endpoints.length > 0)) || (sources.length >= 1 && hasClient && endpoints.length > 0) ? 'Medium' : 'Low';
   const consoleUrl = sources[0] || 'Unknown';
+  const cleanSnippet = s => { if (!s) return ''; const cut = s.slice(0, 280); const lastPeriod = cut.lastIndexOf('.'); return (lastPeriod > 80 ? cut.slice(0, lastPeriod + 1) : cut).trim(); };
+  const authorizeEndpoints = endpoints.filter(u => /authorize/i.test(u));
+  const tokenEndpoints = endpoints.filter(u => /token/i.test(u));
   const guide = {
     id: 'generated-' + slug,
     name: app,
@@ -489,7 +473,7 @@ module.exports = async (req, res) => {
       { stage: 'Provider review, if required', wait: 'Unknown', note: 'Check official review docs before promising a date.' }
     ],
     checklist: [
-      { item: 'Official developer console identified from a fetched source', status: sources.length ? 'required' : 'required', who: 'agent' },
+      { item: 'Official developer console identified from a fetched source', status: 'required', who: 'agent' },
       { item: 'Registration fields and redirect URIs listed from official docs', status: 'required', who: 'agent' },
       { item: 'Scopes verified against official docs', status: 'required', who: 'agent' },
       { item: 'Privacy policy URL live', status: 'required', who: 'human' },
@@ -511,7 +495,14 @@ module.exports = async (req, res) => {
     guide.blockers.push({ blocker: 'Platform may use API keys instead of OAuth', fix: 'Fetched docs mention API keys and no valid OAuth scopes were found. Confirm OAuth support on official docs before building an OAuth flow, and do not present API key access as OAuth.' });
     guide.nextStep = 'Confirm whether ' + app + ' supports OAuth at all. Fetched docs mention API keys, and no valid OAuth scopes were found in this run.';
   }
-  log.push({ time: now(), action: 'generate_guide', url: '', status: 'complete', detail: 'Generated guide with ' + sources.length + ' sources, ' + scopes.length + ' scope-like tokens, confidence ' + confidence + '.' });
+  const extractionMs = Date.now() - tExtraction0;
+  const totalMs = Date.now() - t0;
+  const timings = { searchMs, retrievalMs, extractionMs, totalMs, cached: false };
+  log.push({ time: now(), action: 'generate_guide', url: '', status: 'complete', detail: 'Generated guide with ' + sources.length + ' sources, ' + scopes.length + ' scope-like tokens, confidence ' + confidence + '. Timings: search ' + searchMs + 'ms, retrieval ' + retrievalMs + 'ms, extraction ' + extractionMs + 'ms, total ' + totalMs + 'ms.' });
   guide.executionLog = log;
-  res.status(200).json({ guide: guide, log: log });
+  guide.timings = timings;
+  if (confidence === 'Medium' && sources.length >= 2) {
+    guideCache.set(slug, { guide, log, at: Date.now() });
+  }
+  res.status(200).json({ guide: guide, log: log, timings, cached: false });
 };
