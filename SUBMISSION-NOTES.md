@@ -1,6 +1,6 @@
 OAuth Setup Guides - submission notes, paste ready
 
-Live site: https://takehomeapmcomposio-pfl93qpux-sreekaree-chityalas-projects.vercel.app/
+Live site: https://takehomeapmcomposio-sreekaree-chityalas-projects.vercel.app/
 Repo: https://github.com/SreeC22/takehomeapmcomposio
 Verified live on 2026-10-31: home page loads without sign-in, 13 guide cards show, searching GitHub filters to the GitHub card, and opening that card shows the step by step guide, review timeline card, and approval checklist card.
 Fixes, 2026-10-31: live research endpoint replaces the static live generation template, generated guides are shareable via encoded links and local storage, user text is escaped before HTML insertion, drafts appear in search immediately, a rendered README page and visible GitHub link replace the broken raw README link, a sampled verification report and per-guide execution records are added, Managed or Custom is the first decision in every guide, a Pick your agent section is added for Claude Code, Codex, Cursor, Copilot, Gemini CLI, OpenClaw, OpenCode, Cline, and Grok Build, and Airtable is added as a full guide. Design redesign to docs style in Composio style is still pending approval and is not in this live build, to keep functional fixes separate from unapproved design changes.

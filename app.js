@@ -91,7 +91,7 @@ function render() {
   });
 }
 function stepsHtml(g) {
-  return g.steps.map((s, i) => `<div class="step"><h3>Step ${i + 1}: ${esc(s.title)}</h3><p>${esc(s.detail)}</p><p class="meta">Who: ${esc(s.who)} | Time: ${esc(s.time)}</p><p><strong>Watch out:</strong> ${esc(s.blockerTip)}</p></div>`).join('');
+  return '<ul>' + g.steps.map((s, i) => `<li><strong>Step ${i + 1}: ${esc(s.title)}</strong> - ${esc(s.detail)}<br><span class="meta">Who: ${esc(s.who)} | Time: ${esc(s.time)} | Watch out: ${esc(s.blockerTip)}</span></li>`).join('') + '</ul>';
 }
 function executionHtml(g) {
   const sources = (g.sources || []).map(s => `<li><a href="${esc(safeUrl(s))}">${esc(s)}</a></li>`).join('');
@@ -118,34 +118,41 @@ function showDetail(g, isGenerated) {
     <h2>${esc(g.name)} <span class="badge">${esc(g.difficulty)}</span> <span class="badge ${esc(g.guideType)}">${esc(g.guideType)}</span></h2>
     <p>${esc(g.difficultyWhy)}</p>
     <div class="step"><h3>At a glance</h3>
-      <p><strong>Setup time:</strong> ${esc(g.setupTime)}</p>
-      <p><strong>Approval wait:</strong> ${esc(g.approvalWait)}</p>
-      <p><strong>Account needed:</strong> ${esc(g.accountNeeded)}</p>
-      <p><strong>Cost to register:</strong> ${esc(g.cost)}</p>
-      <p><strong>Console:</strong> ${esc(g.consoleName)} - ${esc(g.consoleUrl)}</p>
-      <p><strong>Managed app note:</strong> ${esc(g.managedAppNote)}</p>
+      <ul>
+        <li><strong>Setup time:</strong> ${esc(g.setupTime)}</li>
+        <li><strong>Approval wait:</strong> ${esc(g.approvalWait)}</li>
+        <li><strong>Account needed:</strong> ${esc(g.accountNeeded)}</li>
+        <li><strong>Cost to register:</strong> ${esc(g.cost)}</li>
+        <li><strong>Console:</strong> ${esc(g.consoleName)} - ${esc(g.consoleUrl)}</li>
+        <li><strong>Managed app note:</strong> ${esc(g.managedAppNote)}</li>
+      </ul>
     </div>
     <div class="step"><h3>Managed or custom, first decision</h3>
-      <p>Check Composio managed apps first. Stay managed if default scopes cover your needs and Composio branding fits. Go custom if you need your own branding, custom scopes, dedicated quota, faster polling, a custom instance, or enterprise end-to-end branding. You can mix approaches by toolkit.</p>
-      <p><strong>If you use Composio:</strong> Create an auth config in the Composio dashboard, take the redirect URI it shows, add that URI in the provider portal, copy the Client ID and Client Secret back into Composio, save and copy the auth config ID, then pass that ID in the session for that toolkit. Toolkits left out keep using managed auth.</p>
+      <ul>
+        <li>Check Composio managed apps first</li>
+        <li>Stay managed if default scopes cover your needs and Composio branding fits</li>
+        <li>Go custom for own branding, custom scopes, dedicated quota, faster polling, a custom instance, or enterprise branding</li>
+        <li>You can mix approaches by toolkit</li>
+        <li>If you use Composio: create an auth config, take its redirect URI, add it in the provider portal, copy Client ID and Secret back into Composio, save the auth config ID, then pass that ID in the session</li>
+      </ul>
     </div>
     <h3>Step by step guide</h3>
     ${stepsHtml(g)}
     <h3>Review timeline card</h3>
-    ${g.timeline.map(t => `<div class="timeline-item"><h3>${esc(t.stage)}</h3><p><strong>Wait:</strong> ${esc(t.wait)}</p><p>${esc(t.note)}</p></div>`).join('')}
+    <ul>${g.timeline.map(t => `<li><strong>${esc(t.stage)}:</strong> ${esc(t.wait)} - ${esc(t.note)}</li>`).join('')}</ul>
     <h3>Approval checklist card</h3>
     <div class="checklist">
       ${g.checklist.map(c => `<label><input type="checkbox"> <span><strong>${esc(c.item)}</strong> - ${esc(c.status)} - ${esc(c.who)}</span></label>`).join('')}
     </div>
     <p class="small">Check items as you complete them. This checklist is a local browser check only, it does not submit anything to the provider.</p>
     <h3>Blockers and fixes</h3>
-    ${g.blockers.map(b => `<div class="blocker"><h3>${esc(b.blocker)}</h3><p>${esc(b.fix)}</p></div>`).join('')}
+    <ul>${g.blockers.map(b => `<li><strong>${esc(b.blocker)}:</strong> ${esc(b.fix)}</li>`).join('')}</ul>
     <h3>What an agent can do, and where you take over</h3>
-    <p><strong>Agent can:</strong> ${esc(g.agentCan.join(', '))}.</p>
-    <p><strong>You must:</strong> ${esc(g.humanMust.join(', '))}.</p>
+    <p><strong>Agent can:</strong></p><ul>${g.agentCan.map(a => `<li>${esc(a)}</li>`).join('')}</ul>
+    <p><strong>You must:</strong></p><ul>${g.humanMust.map(a => `<li>${esc(a)}</li>`).join('')}</ul>
     ${executionHtml(g)}
     <h3>Next step</h3>
-    <p><strong>${esc(g.nextStep)}</strong></p>
+    <ul><li><strong>${esc(g.nextStep)}</strong></li></ul>
   `;
   document.getElementById('shareBtn').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(location.href); alert('Share link copied.'); } catch (e) { alert(location.href); }
