@@ -1,7 +1,8 @@
 OAuth Setup Guides - submission notes, paste ready
 
-Live site: deploy this folder to Vercel as a static site, then paste the deployed link here before uploading.
+Live site: https://takehomeapmcomposio-id63hym83-sreekaree-chityalas-projects.vercel.app/
 Repo: https://github.com/SreeC22/takehomeapmcomposio
+Verified live on 2026-10-31: home page loads without sign-in, 12 guide cards show, searching GitHub filters to the GitHub card, and opening that card shows the card-by-card steps, review timeline card, and approval checklist card.
 
 What was built:
 A searchable website for developers building AI agents. A developer picks an app they want their agent to connect to and gets a full card-by-card setup guide, with difficulty, active setup time separate from approval wait time, a review timeline card, an approval checklist card, blockers with fixes, agent vs human steps, sources, and uncertainty labels. Guides are also available as structured JSON for agents, from the same data as the human cards.
