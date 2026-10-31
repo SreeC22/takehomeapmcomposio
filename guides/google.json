@@ -1,0 +1,177 @@
+{
+  "accountNeeded": "Google Cloud account with a Cloud project",
+  "agentCan": [
+    "Classify scopes and draft justifications",
+    "Draft consent screen text and privacy policy outline",
+    "Draft a verification submission checklist",
+    "Draft a demo video script"
+  ],
+  "approvalWait": "Brand verification typically 2 to 3 business days if branding changed, sensitive scope verification can take up to around 10 days after a complete submission in some Google guidance, and restricted scope verification can take several weeks, plus a security assessment. Treat all of these as ranges, not guarantees.",
+  "blockers": [
+    {
+      "blocker": "Unverified app warning and 100 user cap",
+      "fix": "Complete verification for production use. The warning and cap are expected in Testing mode for sensitive or restricted scopes."
+    },
+    {
+      "blocker": "Scope list in code does not match the consent screen declaration",
+      "fix": "List every scope from code, then make the declaration match exactly. Trimming a scope from the declaration that code still requests will fail review."
+    },
+    {
+      "blocker": "Demo video does not show a scope in use",
+      "fix": "Re-record with that exact feature, with the same app name and branding as the submission."
+    },
+    {
+      "blocker": "Restricted scope needs a security assessment",
+      "fix": "Budget for assessment time and cost separately, and consider whether a narrower sensitive scope can ship first."
+    }
+  ],
+  "category": "Productivity",
+  "checklist": [
+    {
+      "item": "Cloud project and only the APIs you need are enabled",
+      "status": "required",
+      "who": "human"
+    },
+    {
+      "item": "Consent screen branding matches the real app exactly",
+      "status": "required",
+      "who": "human"
+    },
+    {
+      "item": "Privacy policy and homepage URLs are live and accurate",
+      "status": "required",
+      "who": "human"
+    },
+    {
+      "item": "Redirect URIs match the code exactly",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Every scope classified as non-sensitive, sensitive, or restricted",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Scope justifications written for each sensitive or restricted scope",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Demo video shows the full consent flow and each scope in use",
+      "status": "required",
+      "who": "human"
+    },
+    {
+      "item": "Test users added and full flow tested in Testing mode",
+      "status": "required",
+      "who": "human"
+    },
+    {
+      "item": "Third party security assessment planned, for restricted scopes with server access",
+      "status": "required",
+      "who": "human"
+    }
+  ],
+  "confidence": "Medium",
+  "consoleName": "Google Cloud Console, APIs and Services, OAuth consent screen",
+  "consoleUrl": "https://console.cloud.google.com/apis/credentials",
+  "cost": "Free to register. A third party security assessment for restricted scopes can be paid, amount varies by assessor and is not stated here.",
+  "difficulty": "Medium to Hard",
+  "difficultyWhy": "Basic setup is fast, but sensitive and restricted scopes trigger verification, a demo video, and in restricted cases a third party security assessment.",
+  "guideType": "full",
+  "humanMust": [
+    "Create the Cloud project and consent screen",
+    "Record the demo video",
+    "Submit for verification",
+    "Book and complete a security assessment if required",
+    "Reply to reviewer questions"
+  ],
+  "id": "google",
+  "managedAppNote": "If a managed directory already covers the Google scopes you need, use it for a first version. Register your own app when you need your own branding, client ID, or restricted scopes.",
+  "name": "Google",
+  "nextStep": "Classify your Google scopes first, then configure the consent screen with matching branding, and test in Testing mode before you submit for verification.",
+  "notVerified": [
+    "Exact current Google Cloud Console layout",
+    "Exact assessment cost, which varies by assessor",
+    "Exact review time for a specific app, which varies by submission quality"
+  ],
+  "setupTime": "2 to 4 hours for basic setup, plus 1 to 3 days to prepare a clean verification submission",
+  "sources": [
+    "https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification"
+  ],
+  "steps": [
+    {
+      "blockerTip": "Enabling every Google API at once makes scope review harder later. Enable only what the feature uses.",
+      "detail": "Create a project, enable only the APIs your agent will call, for example Gmail, Drive, or Calendar APIs.",
+      "time": "20 minutes",
+      "title": "Create a Cloud project and enable the APIs you need",
+      "who": "human"
+    },
+    {
+      "blockerTip": "Branding mismatches are a common verification failure. The name, logo, and URLs on screen must match the real app.",
+      "detail": "Choose External for outside users or Internal for your own organization only. Add app name, support email, homepage, and privacy policy URLs that match the real app.",
+      "time": "30 minutes",
+      "title": "Configure the OAuth consent screen",
+      "who": "human"
+    },
+    {
+      "blockerTip": "Redirect URIs must match exactly. Test with the exact URI your code uses.",
+      "detail": "Create a Web application client, add your exact authorized redirect URIs, and store the client ID and secret securely.",
+      "time": "15 minutes",
+      "title": "Create OAuth client credentials and redirect URIs",
+      "who": "human"
+    },
+    {
+      "blockerTip": "Adding a new sensitive or restricted scope later requires a new verification request. Get the scope list right before you submit.",
+      "detail": "List every scope your code requests, then check Google's classification: non-sensitive, sensitive, or restricted. For example, full Gmail or Drive content is restricted, while some narrower scopes are sensitive. Do not request a broad scope if a narrower one works.",
+      "time": "30 minutes",
+      "title": "Classify every scope before you request it",
+      "who": "agent"
+    },
+    {
+      "blockerTip": "Unverified apps show a warning and are capped at about 100 new users for sensitive or restricted scopes. That cap is a signal you still need verification for production.",
+      "detail": "In Testing mode, add test users, run the full consent flow, and confirm the consent screen shows the correct app name, scopes, and client ID in the browser address bar.",
+      "time": "30 minutes",
+      "title": "Test in Testing mode with test users",
+      "who": "human"
+    },
+    {
+      "blockerTip": "Record the video with the same app name and branding as the submission, and show each scope actually being used. A generic demo is a common rejection reason.",
+      "detail": "For sensitive scopes, prepare scope justifications, a demo video in English showing the full consent flow and the feature using each scope, and accurate branding. For restricted scopes, plan for a third party security assessment as well.",
+      "time": "1 to 3 days",
+      "title": "Prepare the verification submission",
+      "who": "agent"
+    },
+    {
+      "blockerTip": "Changing scopes or consent screen branding after submission can require a new verification request. Freeze the scope list during review.",
+      "detail": "Submit for brand verification first if needed, then for scope verification. Answer reviewer questions quickly and with the exact scope list from your code.",
+      "time": "Ongoing during review",
+      "title": "Submit and respond to reviewer questions",
+      "who": "human"
+    }
+  ],
+  "tested": "Docs read on 2026-10-31 from Google Developers search results. No Google Cloud sign-in, project creation, or verification submission was completed for this guide.",
+  "timeline": [
+    {
+      "note": "Source: Google restricted scope verification guidance, summarized in search results on 2026-10-31.",
+      "stage": "Brand verification, if branding changed",
+      "wait": "Typically 2 to 3 business days"
+    },
+    {
+      "note": "Treat as a range. Clean submissions move faster, questions add rounds.",
+      "stage": "Sensitive scope verification, after a complete submission",
+      "wait": "Up to around 10 days in some Google guidance, varies with back and forth"
+    },
+    {
+      "note": "Source: Google guidance that restricted verification can potentially take several weeks. Assessment time is separate and assessor dependent.",
+      "stage": "Restricted scope verification, plus security assessment",
+      "wait": "Several weeks, plus assessment scheduling"
+    },
+    {
+      "note": "Fix the exact issue named by the reviewer, do not resubmit unchanged.",
+      "stage": "If rejected",
+      "wait": "Additional round, timeline resets in practice"
+    }
+  ]
+}

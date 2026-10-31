@@ -1,0 +1,80 @@
+{
+  "accountNeeded": "HubSpot developer account and a test account",
+  "agentCan": [
+    "Draft scope lists"
+  ],
+  "approvalWait": "None for private app testing. Public listing review varies and is not confirmed here.",
+  "blockers": [
+    {
+      "blocker": "Wrong app type for OAuth",
+      "fix": "Use a public app for OAuth user connections, not a private app token flow."
+    }
+  ],
+  "category": "Business",
+  "checklist": [
+    {
+      "item": "Redirect URL matches the code",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Scopes are minimum needed",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Test account used",
+      "status": "required",
+      "who": "human"
+    }
+  ],
+  "confidence": "Low",
+  "consoleName": "HubSpot developer account, Apps",
+  "consoleUrl": "https://developers.hubspot.com/",
+  "cost": "Free to register",
+  "difficulty": "Medium",
+  "difficultyWhy": "Summary card only. HubSpot private vs public apps, scopes, and redirect URLs affect setup, and public app listing adds review.",
+  "guideType": "summary",
+  "humanMust": [
+    "Create the app",
+    "Install in a test account"
+  ],
+  "id": "hubspot",
+  "managedAppNote": "Use a managed app first if it covers HubSpot. Register your own app for your own scopes or listing.",
+  "name": "HubSpot",
+  "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official HubSpot docs.",
+  "notVerified": [
+    "All details in this summary card"
+  ],
+  "setupTime": "1 to 3 hours",
+  "sources": [],
+  "steps": [
+    {
+      "blockerTip": "Private apps use a different auth model. Use a public app for OAuth user connections.",
+      "detail": "Create an app, add redirect URL, and choose scopes.",
+      "time": "20 minutes",
+      "title": "Create a public app",
+      "who": "human"
+    },
+    {
+      "blockerTip": "Test with a test account, not a production CRM.",
+      "detail": "Install the app in a test account, complete OAuth, and test one API call.",
+      "time": "20 minutes",
+      "title": "Install in a test account and test",
+      "who": "human"
+    }
+  ],
+  "tested": "Summary card only, not verified against official docs in this build.",
+  "timeline": [
+    {
+      "note": "Summary only.",
+      "stage": "Create and test",
+      "wait": "Immediate"
+    },
+    {
+      "note": "Not confirmed here.",
+      "stage": "Public listing, if needed",
+      "wait": "Varies"
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "accountNeeded": "LinkedIn developer account and a Company Page if required",
+  "agentCan": [
+    "Draft product and scope lists"
+  ],
+  "approvalWait": "Varies by product. Some products require access requests and review, not confirmed as a fixed number here.",
+  "blockers": [
+    {
+      "blocker": "Product not available",
+      "fix": "Check product access in the developer portal and request access with a clear use case."
+    }
+  ],
+  "category": "Social",
+  "checklist": [
+    {
+      "item": "Redirect URLs match the code",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Products and scopes match the feature",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Company Page linked, if required",
+      "status": "required",
+      "who": "human"
+    }
+  ],
+  "confidence": "Low",
+  "consoleName": "LinkedIn Developers, My Apps",
+  "consoleUrl": "https://www.linkedin.com/developers/apps",
+  "cost": "Free to register",
+  "difficulty": "Medium to Hard",
+  "difficultyWhy": "Summary card only. LinkedIn developer apps, products, and verification for some APIs can make access harder than basic sign in.",
+  "guideType": "summary",
+  "humanMust": [
+    "Create the app",
+    "Request product access"
+  ],
+  "id": "linkedin",
+  "managedAppNote": "Use a managed app first if it covers LinkedIn. Register your own app for your own products or Company Page access.",
+  "name": "LinkedIn",
+  "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official LinkedIn docs.",
+  "notVerified": [
+    "All details in this summary card"
+  ],
+  "setupTime": "1 to 3 hours, plus product access time if required",
+  "sources": [],
+  "steps": [
+    {
+      "blockerTip": "Redirect URLs must match exactly.",
+      "detail": "Create an app, add redirect URLs, and note client ID and secret.",
+      "time": "20 minutes",
+      "title": "Create an app and add redirect URLs",
+      "who": "human"
+    },
+    {
+      "blockerTip": "Some products are not available by default. Check product access before building on that API.",
+      "detail": "Request the products your feature needs, for example Sign In with LinkedIn, and check which products need extra access.",
+      "time": "30 minutes or more",
+      "title": "Request products and scopes",
+      "who": "human"
+    }
+  ],
+  "tested": "Summary card only, not verified against official docs in this build.",
+  "timeline": [
+    {
+      "note": "Summary only.",
+      "stage": "Create app and test sign in",
+      "wait": "Immediate to hours"
+    },
+    {
+      "note": "Not confirmed here.",
+      "stage": "Product access, if required",
+      "wait": "Varies"
+    }
+  ]
+}

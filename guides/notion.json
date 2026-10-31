@@ -1,0 +1,80 @@
+{
+  "accountNeeded": "Notion account with a workspace",
+  "agentCan": [
+    "Draft capabilities list"
+  ],
+  "approvalWait": "None for private testing in your workspace. Public distribution review varies and is not confirmed here.",
+  "blockers": [
+    {
+      "blocker": "Integration cannot see a page",
+      "fix": "Share that page with the integration from the page menu."
+    }
+  ],
+  "category": "Productivity",
+  "checklist": [
+    {
+      "item": "Redirect URI matches the code",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Capabilities are minimum needed",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Test page shared with the integration",
+      "status": "required",
+      "who": "human"
+    }
+  ],
+  "confidence": "Low",
+  "consoleName": "Notion integrations dashboard",
+  "consoleUrl": "https://www.notion.so/my-account/integrations",
+  "cost": "Free to register",
+  "difficulty": "Easy to Medium",
+  "difficultyWhy": "Summary card only. Notion public integrations use OAuth, with workspace sharing and capability choices that affect what an agent can read or write.",
+  "guideType": "summary",
+  "humanMust": [
+    "Create the integration",
+    "Share test pages"
+  ],
+  "id": "notion",
+  "managedAppNote": "Use a managed app first if it covers Notion. Register your own integration for your own branding or capabilities.",
+  "name": "Notion",
+  "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official Notion docs.",
+  "notVerified": [
+    "All details in this summary card"
+  ],
+  "setupTime": "30 to 90 minutes",
+  "sources": [],
+  "steps": [
+    {
+      "blockerTip": "Capabilities decide read vs write access. Choose the minimum.",
+      "detail": "Create an integration, set redirect URI, and choose capabilities.",
+      "time": "20 minutes",
+      "title": "Create a public integration",
+      "who": "human"
+    },
+    {
+      "blockerTip": "An integration cannot see a page until that page is shared with it.",
+      "detail": "Share a test page with the integration, complete OAuth, and test one read or write call.",
+      "time": "20 minutes",
+      "title": "Share pages with the integration and test",
+      "who": "human"
+    }
+  ],
+  "tested": "Summary card only, not verified against official docs in this build.",
+  "timeline": [
+    {
+      "note": "Summary only.",
+      "stage": "Create and test in your workspace",
+      "wait": "Immediate"
+    },
+    {
+      "note": "Not confirmed here.",
+      "stage": "Public distribution, if needed",
+      "wait": "Varies"
+    }
+  ]
+}

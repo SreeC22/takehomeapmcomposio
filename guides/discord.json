@@ -1,0 +1,75 @@
+{
+  "accountNeeded": "Discord account",
+  "agentCan": [
+    "Draft scope lists"
+  ],
+  "approvalWait": "None for basic OAuth app testing. Verification for bots in many servers is separate and not confirmed here.",
+  "blockers": [
+    {
+      "blocker": "Redirect URI mismatch",
+      "fix": "Copy the exact redirect URI from the Developer Portal into your code."
+    }
+  ],
+  "category": "Communication",
+  "checklist": [
+    {
+      "item": "Redirect URIs match the code",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Scopes are minimum needed",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Client secret stored securely",
+      "status": "required",
+      "who": "human"
+    }
+  ],
+  "confidence": "Low",
+  "consoleName": "Discord Developer Portal",
+  "consoleUrl": "https://discord.com/developers/applications",
+  "cost": "Free to register",
+  "difficulty": "Easy to Medium",
+  "difficultyWhy": "Summary card only. Discord developer applications, OAuth2 redirect URIs, and scopes are straightforward for basic use, with bot permissions adding complexity.",
+  "guideType": "summary",
+  "humanMust": [
+    "Create the application",
+    "Test OAuth"
+  ],
+  "id": "discord",
+  "managedAppNote": "Use a managed app first if it covers Discord. Register your own application for your own bot or OAuth scopes.",
+  "name": "Discord",
+  "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official Discord docs.",
+  "notVerified": [
+    "All details in this summary card"
+  ],
+  "setupTime": "30 to 90 minutes",
+  "sources": [],
+  "steps": [
+    {
+      "blockerTip": "Redirect URIs must match exactly.",
+      "detail": "Create an application, copy client ID and secret, and add redirect URIs under OAuth2.",
+      "time": "15 minutes",
+      "title": "Create an application",
+      "who": "human"
+    },
+    {
+      "blockerTip": "Bot scope and permissions are separate from user OAuth scopes.",
+      "detail": "Choose scopes, for example identify, and test the OAuth flow with a test account.",
+      "time": "20 minutes",
+      "title": "Choose scopes and test OAuth",
+      "who": "human"
+    }
+  ],
+  "tested": "Summary card only, not verified against official docs in this build.",
+  "timeline": [
+    {
+      "note": "Summary only.",
+      "stage": "Create and test",
+      "wait": "Immediate"
+    }
+  ]
+}

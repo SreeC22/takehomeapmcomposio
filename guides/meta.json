@@ -1,0 +1,166 @@
+{
+  "accountNeeded": "Meta developer account and, for Advanced Access, a Meta Business account",
+  "agentCan": [
+    "Draft permission lists from code",
+    "Draft use case descriptions",
+    "Draft screen recording scripts",
+    "Draft an App Review submission checklist"
+  ],
+  "approvalWait": "Varies by permission and by review round. No single published fixed timeline was confirmed for this guide. Treat any timeline you see elsewhere as unverified unless Meta publishes it for that permission.",
+  "blockers": [
+    {
+      "blocker": "Reviewers cannot get into the app",
+      "fix": "Provide a working test account, clear login steps, and a feature that works without extra setup."
+    },
+    {
+      "blocker": "Permission requested but not shown in use",
+      "fix": "Re-record showing that exact permission in that exact feature, and make a real API call with it before resubmission."
+    },
+    {
+      "blocker": "Business Verification blocked",
+      "fix": "Check legal name, address, phone, and document type against Meta's current Business Verification requirements, and resubmit with a matching document."
+    },
+    {
+      "blocker": "Team can use it but outside users cannot",
+      "fix": "That is Standard Access. You still need Advanced Access and App Review for outside users."
+    }
+  ],
+  "category": "Social",
+  "checklist": [
+    {
+      "item": "1024 by 1024 icon, privacy policy URL, terms URL, category, and contact are complete",
+      "status": "required",
+      "who": "human"
+    },
+    {
+      "item": "App connected to a verified business, for Advanced Access",
+      "status": "required",
+      "who": "human"
+    },
+    {
+      "item": "Every permission listed is actually called by the code",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "At least one successful API call per permission, recent",
+      "status": "required",
+      "who": "human"
+    },
+    {
+      "item": "Use case description written per permission",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Screen recording per permission, showing it in use",
+      "status": "required",
+      "who": "human"
+    },
+    {
+      "item": "Test account reviewers can use, with access to the feature",
+      "status": "required",
+      "who": "human"
+    },
+    {
+      "item": "Data handling answers prepared, if Meta asks them",
+      "status": "optional",
+      "who": "human"
+    }
+  ],
+  "confidence": "Low to Medium",
+  "consoleName": "Meta for Developers, My Apps",
+  "consoleUrl": "https://developers.facebook.com/apps",
+  "cost": "Free to register. Business documents and any legal costs are separate and vary.",
+  "difficulty": "Hard",
+  "difficultyWhy": "Public use requires Advanced Access for each permission, plus Business Verification, use case descriptions, and screen recordings that reviewers actually test.",
+  "guideType": "full",
+  "humanMust": [
+    "Create the app and Business account",
+    "Complete Business Verification",
+    "Make real API calls",
+    "Record screen recordings",
+    "Submit for App Review and reply to reviewers"
+  ],
+  "id": "meta",
+  "managedAppNote": "If a managed directory already covers the Meta permissions you need, use it first. Register your own app when you need your own permissions, Pages, or Instagram business access.",
+  "name": "Meta",
+  "nextStep": "Complete Basic settings and start Business Verification early, then list only the permissions your code actually calls.",
+  "notVerified": [
+    "Exact current Meta App Review timeline, which was not confirmed from an official Meta page in this check",
+    "Exact current Meta dashboard layout and document list",
+    "Whether a specific permission requires Business Verification in your case"
+  ],
+  "setupTime": "3 to 6 hours for basic setup, plus 1 to 5 days to prepare a clean App Review submission",
+  "sources": [
+    "https://socialift.uz/en/blog/meta-app-review",
+    "https://www.loginradius.com/docs/authentication/identity-providers/social-login/app-reviews/facebook-app-review"
+  ],
+  "steps": [
+    {
+      "blockerTip": "Meta shows the privacy policy URL to users in login dialogs. A dead or mismatched policy URL is an easy rejection.",
+      "detail": "Create an app, add a 1024 by 1024 icon, privacy policy URL, terms URL, category, app purpose, and a primary contact.",
+      "time": "30 minutes",
+      "title": "Create the app and complete Basic settings",
+      "who": "human"
+    },
+    {
+      "blockerTip": "Start Business Verification early. It can block Advanced Access even if your code is ready.",
+      "detail": "Connect the app to a verified business. Business Verification checks legal name, address or phone, and supporting documents, depending on the path Meta shows you.",
+      "time": "1 to 5 days, varies",
+      "title": "Connect a Business account and complete Business Verification",
+      "who": "human"
+    },
+    {
+      "blockerTip": "Every permission requested from an outside user needs Advanced Access and App Review. Do not request a permission you do not actually call.",
+      "detail": "Add only the products you need, for example Facebook Login or Instagram, and list the exact permissions your code calls, for example pages_show_list or instagram_basic, depending on your feature.",
+      "time": "30 minutes",
+      "title": "Add products and permissions, one permission at a time",
+      "who": "agent"
+    },
+    {
+      "blockerTip": "Reviewers test the app itself. If they cannot get in, or cannot see a permission in use, that permission can be rejected.",
+      "detail": "Before submission, make at least one successful API call with each permission you will request, within the recent window Meta requires. Keep a record of what you called.",
+      "time": "30 minutes",
+      "title": "Make a real API call with each permission",
+      "who": "human"
+    },
+    {
+      "blockerTip": "A generic app tour is not enough. Show the specific permission, in the specific feature, end to end.",
+      "detail": "For each permission, write a clear use case: why you need it and how it is used in the app. Record a screen recording showing that permission in use, with a test account reviewers can use.",
+      "time": "1 to 3 days",
+      "title": "Prepare use case descriptions and screen recordings",
+      "who": "agent"
+    },
+    {
+      "blockerTip": "Standard Access is automatic for your own team, but it does not allow requesting permissions from outside users. Do not mistake team access for public approval.",
+      "detail": "Submit Permissions and Features for review. If one permission is rejected, fix only that permission and resubmit it. Do not resubmit unchanged.",
+      "time": "Ongoing during review",
+      "title": "Submit for App Review and respond per permission",
+      "who": "human"
+    }
+  ],
+  "tested": "Docs read on 2026-10-31 from third party guides summarizing Meta App Review, not from Meta official docs directly in this check. No Meta developer sign-in, app creation, or App Review submission was completed for this guide.",
+  "timeline": [
+    {
+      "note": "App creation itself is immediate.",
+      "stage": "Create app and Basic settings",
+      "wait": "Immediate"
+    },
+    {
+      "note": "Start early. Document and contact checks can add rounds.",
+      "stage": "Business Verification",
+      "wait": "Varies, days in many cases, not confirmed as a fixed number here"
+    },
+    {
+      "note": "Treat as unknown until Meta responds. A clean submission with real calls and recordings moves faster.",
+      "stage": "App Review, per permission",
+      "wait": "Varies by permission and review round, not confirmed as a fixed number here"
+    },
+    {
+      "note": "Fix the exact issue, re-record if needed, and resubmit that permission.",
+      "stage": "If a permission is rejected",
+      "wait": "Additional round for that permission"
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "accountNeeded": "Zoom account with Marketplace access",
+  "agentCan": [
+    "Draft scope lists"
+  ],
+  "approvalWait": "None for private testing. Publish review varies and is not confirmed here.",
+  "blockers": [
+    {
+      "blocker": "Wrong app type",
+      "fix": "Use an OAuth Marketplace app for user connections."
+    }
+  ],
+  "category": "Communication",
+  "checklist": [
+    {
+      "item": "Redirect URL matches the code",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Scopes are minimum needed",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Test account used",
+      "status": "required",
+      "who": "human"
+    }
+  ],
+  "confidence": "Low",
+  "consoleName": "Zoom Marketplace, Build App",
+  "consoleUrl": "https://marketplace.zoom.us/",
+  "cost": "Free to register",
+  "difficulty": "Medium",
+  "difficultyWhy": "Summary card only. Zoom Marketplace apps, scopes, and publish review affect setup.",
+  "guideType": "summary",
+  "humanMust": [
+    "Create the app",
+    "Submit for publish if listing"
+  ],
+  "id": "zoom",
+  "managedAppNote": "Use a managed app first if it covers Zoom. Register your own app for your own scopes or listing.",
+  "name": "Zoom",
+  "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official Zoom docs.",
+  "notVerified": [
+    "All details in this summary card"
+  ],
+  "setupTime": "1 to 3 hours, plus publish review if listing",
+  "sources": [],
+  "steps": [
+    {
+      "blockerTip": "Choose General vs Server-to-Server correctly. OAuth user connections need the OAuth app type.",
+      "detail": "Create an OAuth app, add redirect URL, and choose scopes.",
+      "time": "20 minutes",
+      "title": "Create a Marketplace app",
+      "who": "human"
+    },
+    {
+      "blockerTip": "Test with a test Zoom account.",
+      "detail": "Complete OAuth in a test account and test one API call.",
+      "time": "20 minutes",
+      "title": "Test OAuth and one API call",
+      "who": "human"
+    }
+  ],
+  "tested": "Summary card only, not verified against official docs in this build.",
+  "timeline": [
+    {
+      "note": "Summary only.",
+      "stage": "Create and test",
+      "wait": "Immediate"
+    },
+    {
+      "note": "Not confirmed here.",
+      "stage": "Publish review, if listing",
+      "wait": "Varies"
+    }
+  ]
+}

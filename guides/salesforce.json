@@ -1,0 +1,80 @@
+{
+  "accountNeeded": "Salesforce org with Connected App access",
+  "agentCan": [
+    "Draft scope lists"
+  ],
+  "approvalWait": "Varies. AppExchange security review can take weeks and is not confirmed here.",
+  "blockers": [
+    {
+      "blocker": "Org admin blocks the Connected App",
+      "fix": "Ask the org admin to allow the Connected App and scopes for that org."
+    }
+  ],
+  "category": "Business",
+  "checklist": [
+    {
+      "item": "Callback URL matches the code",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Scopes are minimum needed",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Test org used before production",
+      "status": "required",
+      "who": "human"
+    }
+  ],
+  "confidence": "Low",
+  "consoleName": "Salesforce Setup, App Manager, Connected Apps",
+  "consoleUrl": "https://login.salesforce.com/",
+  "cost": "Free to register",
+  "difficulty": "Medium to Hard",
+  "difficultyWhy": "Summary card only. Salesforce Connected Apps, org settings, and security review for AppExchange can make this harder than a single org test.",
+  "guideType": "summary",
+  "humanMust": [
+    "Create the Connected App",
+    "Submit for security review if listing"
+  ],
+  "id": "salesforce",
+  "managedAppNote": "Use a managed app first if it covers Salesforce. Register your own Connected App for your own org or listing.",
+  "name": "Salesforce",
+  "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official Salesforce docs.",
+  "notVerified": [
+    "All details in this summary card"
+  ],
+  "setupTime": "2 to 4 hours, plus security review time if listing publicly",
+  "sources": [],
+  "steps": [
+    {
+      "blockerTip": "Callback URL must match exactly.",
+      "detail": "Create a Connected App, add callback URL, and choose OAuth scopes.",
+      "time": "30 minutes",
+      "title": "Create a Connected App",
+      "who": "human"
+    },
+    {
+      "blockerTip": "Test in a sandbox first, not production.",
+      "detail": "Complete OAuth in a test org and make one API call.",
+      "time": "30 minutes",
+      "title": "Test OAuth in a sandbox or dev org",
+      "who": "human"
+    }
+  ],
+  "tested": "Summary card only, not verified against official docs in this build.",
+  "timeline": [
+    {
+      "note": "Summary only.",
+      "stage": "Create and test in an org",
+      "wait": "Immediate to hours"
+    },
+    {
+      "note": "Summary only.",
+      "stage": "AppExchange security review, if listing",
+      "wait": "Varies, weeks in many cases, not confirmed here"
+    }
+  ]
+}

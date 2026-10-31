@@ -1,0 +1,23 @@
+# OAuth Setup Guides
+
+> A searchable library of OAuth app setup and approval guides for developers building AI agents. Each guide gives difficulty, setup time separate from approval wait time, card-by-card steps, a review timeline card, an approval checklist card, blockers, agent vs human steps, sources, and uncertainty.
+
+## Full guides
+
+- [GitHub](guides/github.json): Easy, setup 30 to 60 minutes, approval wait none for standard OAuth app registration.
+- [Slack](guides/slack.json): Medium, setup 1 to 2 hours, approval wait none for own workspace install, varies for public distribution.
+- [Google](guides/google.json): Medium to Hard, setup 2 to 4 hours plus verification preparation, approval wait brand verification typically 2 to 3 business days, sensitive scope up to around 10 days in some guidance, restricted scope several weeks plus assessment.
+- [Meta](guides/meta.json): Hard, setup 3 to 6 hours plus App Review preparation, approval wait varies by permission and review round, not confirmed as a fixed number here.
+
+## Summary guides
+
+- Microsoft, Notion, Salesforce, HubSpot, Shopify, Zoom, Discord, LinkedIn: summary cards in guides.json, not verified, expand with live generation and official docs before use.
+
+## Machine readable index
+
+- [guides.json](guides.json): full index, same schema as the human cards.
+- [guides/github.json](guides/github.json), [guides/slack.json](guides/slack.json), [guides/google.json](guides/google.json), [guides/meta.json](guides/meta.json): one guide each.
+
+## Optional
+
+- Use live generation on the home page to create a draft for an app outside the library. Drafts are labeled Agent draft, Low confidence, and must be checked against official docs before use.

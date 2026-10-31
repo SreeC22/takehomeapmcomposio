@@ -1,0 +1,81 @@
+{
+  "accountNeeded": "Microsoft Entra account with app registration access",
+  "agentCan": [
+    "Draft permission lists",
+    "Draft redirect URIs"
+  ],
+  "approvalWait": "Varies. Admin consent can add days in managed tenants. No fixed timeline confirmed here.",
+  "blockers": [
+    {
+      "blocker": "Admin consent required",
+      "fix": "Ask the tenant admin for consent for the exact permissions, with a clear use description."
+    }
+  ],
+  "category": "Productivity",
+  "checklist": [
+    {
+      "item": "Redirect URIs match the code",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Minimum API permissions only",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Admin consent obtained, if required",
+      "status": "required",
+      "who": "human"
+    }
+  ],
+  "confidence": "Low",
+  "consoleName": "Microsoft Entra admin center, App registrations",
+  "consoleUrl": "https://entra.microsoft.com/",
+  "cost": "Free to register",
+  "difficulty": "Medium",
+  "difficultyWhy": "Summary card only. Full guide can be generated live. Microsoft Entra app registration, redirect URIs, and API permissions vary by tenant and admin consent.",
+  "guideType": "summary",
+  "humanMust": [
+    "Register the app",
+    "Get admin consent if required"
+  ],
+  "id": "microsoft",
+  "managedAppNote": "Use a managed app first if it covers your Microsoft scopes. Register your own app for your own branding or tenant-specific permissions.",
+  "name": "Microsoft",
+  "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official Microsoft docs.",
+  "notVerified": [
+    "All details in this summary card"
+  ],
+  "setupTime": "1 to 3 hours, plus admin consent time if required",
+  "sources": [],
+  "steps": [
+    {
+      "blockerTip": "Redirect URIs and account type, single tenant vs multi tenant, must match your agent use.",
+      "detail": "Create an app registration, add redirect URIs, and note the client ID and tenant ID.",
+      "time": "20 minutes",
+      "title": "Register the app in Entra",
+      "who": "human"
+    },
+    {
+      "blockerTip": "Admin consent is a common blocker in managed tenants. Ask the tenant admin early.",
+      "detail": "Add delegated permissions for the APIs you call, then get admin consent if your tenant requires it.",
+      "time": "30 minutes or more",
+      "title": "Add API permissions and admin consent",
+      "who": "human"
+    }
+  ],
+  "tested": "Summary card only, not verified against official docs in this build.",
+  "timeline": [
+    {
+      "note": "Summary only.",
+      "stage": "Register and test",
+      "wait": "Immediate to hours"
+    },
+    {
+      "note": "Not confirmed as a fixed number here.",
+      "stage": "Admin consent, if required",
+      "wait": "Varies by tenant"
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "accountNeeded": "Shopify Partner account and a dev store",
+  "agentCan": [
+    "Draft scope lists"
+  ],
+  "approvalWait": "None for a custom app in your own store. App Store review varies and is not confirmed here.",
+  "blockers": [
+    {
+      "blocker": "App cannot access store data",
+      "fix": "Check access scopes and whether the app is installed in that store."
+    }
+  ],
+  "category": "Business",
+  "checklist": [
+    {
+      "item": "Redirect URL matches the code",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Access scopes are minimum needed",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Dev store used for testing",
+      "status": "required",
+      "who": "human"
+    }
+  ],
+  "confidence": "Low",
+  "consoleName": "Shopify Partners dashboard, Apps",
+  "consoleUrl": "https://partners.shopify.com/",
+  "cost": "Free to register",
+  "difficulty": "Medium",
+  "difficultyWhy": "Summary card only. Shopify custom vs public apps, access scopes, and App Store review affect setup.",
+  "guideType": "summary",
+  "humanMust": [
+    "Create the app",
+    "Install in a dev store"
+  ],
+  "id": "shopify",
+  "managedAppNote": "Use a managed app first if it covers Shopify. Register your own app for your own scopes or listing.",
+  "name": "Shopify",
+  "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official Shopify docs.",
+  "notVerified": [
+    "All details in this summary card"
+  ],
+  "setupTime": "1 to 3 hours, plus App Store review if listing",
+  "sources": [],
+  "steps": [
+    {
+      "blockerTip": "Scopes decide what store data the app can read or write.",
+      "detail": "Create an app, add redirect URL, and choose access scopes.",
+      "time": "20 minutes",
+      "title": "Create an app in Partners",
+      "who": "human"
+    },
+    {
+      "blockerTip": "Test in a dev store, not a live merchant store.",
+      "detail": "Install in a dev store, complete OAuth, and test one API call.",
+      "time": "20 minutes",
+      "title": "Install in a dev store and test",
+      "who": "human"
+    }
+  ],
+  "tested": "Summary card only, not verified against official docs in this build.",
+  "timeline": [
+    {
+      "note": "Summary only.",
+      "stage": "Create and test in a dev store",
+      "wait": "Immediate"
+    },
+    {
+      "note": "Not confirmed here.",
+      "stage": "App Store review, if listing",
+      "wait": "Varies"
+    }
+  ]
+}

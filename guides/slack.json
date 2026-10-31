@@ -1,0 +1,141 @@
+{
+  "accountNeeded": "Slack workspace where you can create and install apps",
+  "agentCan": [
+    "Draft scope lists for a feature",
+    "Draft redirect URLs and install links",
+    "Draft token exchange code",
+    "Draft a test plan"
+  ],
+  "approvalWait": "None for installing in your own workspace. Public distribution and Slack Marketplace listing can add review time, which varies and is not published as a single fixed number.",
+  "blockers": [
+    {
+      "blocker": "Redirect URL mismatch on install",
+      "fix": "Compare the URL in the install link, the app settings, and your server route character by character."
+    },
+    {
+      "blocker": "Scope conflict with Sign in with Slack",
+      "fix": "Split the flows. Do not combine Sign in with Slack user scopes with other scopes in one authorize request."
+    },
+    {
+      "blocker": "App works in your workspace but not in another",
+      "fix": "Check distribution settings and whether the other workspace admin approved the install. A private test install does not prove public distribution works."
+    }
+  ],
+  "category": "Communication",
+  "checklist": [
+    {
+      "item": "App name and workspace are correct",
+      "status": "required",
+      "who": "human"
+    },
+    {
+      "item": "Redirect URL saved and matches the code exactly",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Bot scopes and user scopes are separate and minimal",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Client ID, client secret, and signing secret stored securely",
+      "status": "required",
+      "who": "human"
+    },
+    {
+      "item": "Test install completed in a real workspace",
+      "status": "required",
+      "who": "human"
+    },
+    {
+      "item": "Distribution description and support contact, for public use",
+      "status": "optional",
+      "who": "human"
+    }
+  ],
+  "confidence": "Medium",
+  "consoleName": "Slack API apps dashboard",
+  "consoleUrl": "https://api.slack.com/apps",
+  "cost": "Free to register",
+  "difficulty": "Medium",
+  "difficultyWhy": "Setup is quick, but distribution, workspace install rules, and scope choices make the full launch harder than a single workspace test.",
+  "guideType": "full",
+  "humanMust": [
+    "Create the app and pick the workspace",
+    "Copy and store secrets",
+    "Install and approve scopes in Slack",
+    "Submit for public distribution if needed"
+  ],
+  "id": "slack",
+  "managedAppNote": "If a managed directory already covers Slack, use it for a first version. Register your own app when you need your own scopes, bot identity, or distribution.",
+  "name": "Slack",
+  "nextStep": "Create a blank Slack app in your development workspace, add your exact redirect URL, then install it and test one API call.",
+  "notVerified": [
+    "Current Slack Marketplace review time, which is not published as a single fixed number",
+    "Exact current Slack dashboard layout"
+  ],
+  "setupTime": "1 to 2 hours",
+  "sources": [
+    "https://docs.slack.dev/authentication/installing-with-oauth/",
+    "https://docs.slack.dev/authentication/authorizing-with-postman/",
+    "https://docs.slack.dev/tools/bolt-js/concepts/authenticating-oauth/"
+  ],
+  "steps": [
+    {
+      "blockerTip": "Pick the right workspace first. Installing later in a different workspace is a separate install.",
+      "detail": "Create a blank app, give it a name, and pick a development workspace.",
+      "time": "10 minutes",
+      "title": "Create the Slack app",
+      "who": "human"
+    },
+    {
+      "blockerTip": "The signing secret is separate from the client secret. Do not swap them.",
+      "detail": "Find these under Basic Information, App Credentials. Store them securely.",
+      "time": "5 minutes",
+      "title": "Copy client ID, client secret, and signing secret",
+      "who": "human"
+    },
+    {
+      "blockerTip": "Redirect URLs must match exactly. A trailing slash difference can break the install.",
+      "detail": "Under OAuth and Permissions, add your exact redirect URL, for example https://example.com/slack/oauth_redirect, and save it.",
+      "time": "10 minutes",
+      "title": "Add redirect URLs",
+      "who": "agent"
+    },
+    {
+      "blockerTip": "Do not mix Sign in with Slack scopes with other scopes in the same flow. They need separate flows.",
+      "detail": "Add bot scopes under Scopes, for example channels:read and chat:write, and user scopes separately if the agent acts as a user. Keep the list minimal.",
+      "time": "20 minutes",
+      "title": "Choose bot scopes and user scopes separately",
+      "who": "agent"
+    },
+    {
+      "blockerTip": "Bot tokens start with xoxb. If you expected a user token, check whether you requested user scopes.",
+      "detail": "Install the app, approve the scopes shown, exchange the code at slack.com/api/oauth.v2.access for a token, and make one real API call.",
+      "time": "20 minutes",
+      "title": "Install and test in your workspace",
+      "who": "human"
+    },
+    {
+      "blockerTip": "Requesting broad scopes with no clear use in the app description is a common reason installs and listings get questioned.",
+      "detail": "If other workspaces will install it, prepare distribution settings, a clear app description, and a support contact. Public listing review is a separate step from a private install.",
+      "time": "30 minutes or more",
+      "title": "Prepare for distribution if you go public",
+      "who": "human"
+    }
+  ],
+  "tested": "Docs read on 2026-10-31 from Slack Developer Docs search results. No Slack workspace sign-in or app creation was completed for this guide.",
+  "timeline": [
+    {
+      "note": "No approval wait for your own workspace install.",
+      "stage": "Create app and install in your workspace",
+      "wait": "Immediate"
+    },
+    {
+      "note": "Treat this as unknown until Slack gives a review response. Do not promise a date to users.",
+      "stage": "Public distribution or Marketplace review",
+      "wait": "Varies, not published as one fixed number"
+    }
+  ]
+}

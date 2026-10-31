@@ -1,0 +1,138 @@
+{
+  "accountNeeded": "Free GitHub account",
+  "agentCan": [
+    "Draft the app name and description",
+    "List minimum scopes for a feature",
+    "Draft the authorize URL and token exchange code",
+    "Draft a test plan"
+  ],
+  "approvalWait": "None for standard OAuth app registration. Approval is not a separate stage for basic scopes.",
+  "blockers": [
+    {
+      "blocker": "Callback URL mismatch",
+      "fix": "Copy the exact callback URL from the app settings into your authorize request, including host and port, and check path prefix rules."
+    },
+    {
+      "blocker": "Token has fewer scopes than expected",
+      "fix": "Users can edit scopes on consent. Check the token scopes returned and handle a reduced scope gracefully."
+    },
+    {
+      "blocker": "Confusing GitHub App vs OAuth app",
+      "fix": "GitHub Apps use fine-grained permissions, not scopes in the authorize request. Pick OAuth app only if you specifically need the OAuth app model."
+    }
+  ],
+  "category": "Developer tools",
+  "checklist": [
+    {
+      "item": "Application name, homepage URL, and callback URL are correct",
+      "status": "required",
+      "who": "human"
+    },
+    {
+      "item": "Client secret stored securely, not in code or a public repo",
+      "status": "required",
+      "who": "human"
+    },
+    {
+      "item": "Scopes are the minimum needed for the agent feature",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "State check on the OAuth return",
+      "status": "required",
+      "who": "agent"
+    },
+    {
+      "item": "Privacy policy URL",
+      "status": "optional",
+      "who": "human"
+    },
+    {
+      "item": "Business verification",
+      "status": "not_applicable",
+      "who": "human"
+    }
+  ],
+  "confidence": "Medium",
+  "consoleName": "GitHub Developer settings",
+  "consoleUrl": "https://github.com/settings/developers",
+  "cost": "Free to register",
+  "difficulty": "Easy",
+  "difficultyWhy": "Registering an OAuth app is free and immediate for basic use, with no separate approval wait for standard scopes.",
+  "guideType": "full",
+  "humanMust": [
+    "Sign in to GitHub and create the app",
+    "Generate and store the client secret",
+    "Test consent with a real account",
+    "Respond if GitHub flags the app"
+  ],
+  "id": "github",
+  "managedAppNote": "If you use a managed OAuth directory that already covers GitHub, you may not need your own app. Register your own app when you need your own client ID, scopes, or branding.",
+  "name": "GitHub",
+  "nextStep": "Create the OAuth app in GitHub Developer settings and add your exact callback URL, then test consent with your own account.",
+  "notVerified": [
+    "Exact current GitHub settings page layout, which can change",
+    "Any GitHub App review path, which is a different product from OAuth apps"
+  ],
+  "setupTime": "30 to 60 minutes",
+  "sources": [
+    "https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps",
+    "https://docs.github.com/enterprise/2.16/developer/apps/building-oauth-apps/understanding-scopes-for-oauth-apps/"
+  ],
+  "steps": [
+    {
+      "blockerTip": "The callback URL must match exactly, including host, port, and path prefix rules. A mismatch is the most common first failure.",
+      "detail": "In Developer settings, choose OAuth Apps, then New OAuth App. Add an application name, homepage URL, and authorization callback URL.",
+      "time": "10 minutes",
+      "title": "Create the OAuth app",
+      "who": "human"
+    },
+    {
+      "blockerTip": "Treat a leaked secret as compromised. Regenerate it and rotate any tokens made with it.",
+      "detail": "Copy the client ID and generate a client secret. Store the secret securely, never in client code or in a public repo.",
+      "time": "5 minutes",
+      "title": "Save the client ID and client secret",
+      "who": "human"
+    },
+    {
+      "blockerTip": "Asking for repo when you only need public data will scare users and reviewers, even if no formal approval is required.",
+      "detail": "Request only the scopes your agent actually uses, for example read:user for profile data or repo only if private repo access is truly needed. Scopes limit access, they do not grant more than the user already has.",
+      "time": "10 minutes",
+      "title": "Choose the minimum scopes",
+      "who": "agent"
+    },
+    {
+      "blockerTip": "Always check the state value on return. Skipping it leaves the flow open to forgery.",
+      "detail": "Redirect the user to github.com/login/oauth/authorize with client_id, redirect_uri, scope, and a random state value. Exchange the returned code for an access token, then call the API with that token.",
+      "time": "20 minutes",
+      "title": "Build the authorization flow",
+      "who": "agent"
+    },
+    {
+      "blockerTip": "If the consent screen shows extra scopes, fix the authorize URL, not the app settings alone.",
+      "detail": "Authorize the app with a test account, confirm the consent screen shows only the scopes you requested, and confirm a token works for one real API call.",
+      "time": "10 minutes",
+      "title": "Test with your own account",
+      "who": "human"
+    }
+  ],
+  "tested": "Docs read on 2026-10-31 from GitHub Docs search results. No account sign-in or app creation was completed for this guide.",
+  "timeline": [
+    {
+      "note": "App is created as soon as you submit the form.",
+      "stage": "Create app",
+      "wait": "Immediate"
+    },
+    {
+      "note": "No separate approval stage for standard OAuth app use.",
+      "stage": "Test with users",
+      "wait": "Immediate"
+    },
+    {
+      "note": "This is not a normal approval wait. It only happens after reported abuse or misuse.",
+      "stage": "If GitHub suspends the app for abuse",
+      "wait": "Unknown, case by case"
+    }
+  ]
+}
