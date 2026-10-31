@@ -106,7 +106,7 @@ function linkify(text) {
     let url = p;
     let trail = '';
     while (url && /[.,;:!?)\]}'"]$/.test(url)) { trail = url.slice(-1) + trail; url = url.slice(0, -1); }
-    const label = /\/token\b/.test(url) ? 'token endpoint' : /authorize/.test(url) ? 'authorize endpoint' : 'official docs';
+    const label = /token_info|\/oauth_token|\/token(\/|$|\?)/.test(url) ? 'token endpoint' : /authorize/.test(url) ? 'authorize endpoint' : 'official docs';
     return `<a href="${esc(safeUrl(url))}">${label}</a>${esc(trail)}`;
   }).join('');
 }
