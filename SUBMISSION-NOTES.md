@@ -85,3 +85,8 @@ Final three items, 2026-10-31:
   - Miro cached repeat: server 0ms, wall 0.48s, cached true
 - All uncached results are under the 5 second typical target in this run. Times will vary with provider docs speed and Tavily, and per-instance caching and rate limiting are not global across Vercel instances, as noted before.
 - Guide sharing is unchanged: encode and decode of the guide JSON are the same, timings is just an extra field in the encoded guide.
+
+## Scope extraction fix, same day
+
+- Zapier scopes were polluted by CSS tokens from styled docs pages, for example display:fallback and align:middle. Fixed by preferring colon and dot tokens that appear near a scope mention, which covers lists, tables, and JSON scope fields like Miro boards:write, and by filtering CSS selectors and pseudo-classes such as hover, not, last, and first.
+- Verified live on deployment dpl_HVvAYm6ypbtJkD4vVuDK5uQYRQW4: Zapier scopes are now zap:write, zap:update, zap:delete, zap:pause, zap:all, zap:account, zap:runs, action:run, authentication:write, connection:read, connection:write, connection:delete, mcp:run, with no CSS tokens. Miro scopes are back to boards:write, boards:read. Asana scopes are unchanged and clean. Zapier server time in that run was 493ms, Miro 111ms, Asana 463ms.

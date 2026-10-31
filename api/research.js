@@ -46,30 +46,54 @@ function parseInput(raw) {
   return { input, hostname: '', baseDomain: '', app: input, slug, domain: slug.replace(/-/g, '') };
 }
 function extractScopes(text) {
-  const found = new Set();
-  const blocked = new Set(['client', 'client_id', 'client_secret', 'access_token', 'refresh_token', 'token', 'secret', 'id', 'code', 'authorization', 'grant', 'redirect_uri', 'urn', 'params', 'type', 'response', 'grant_type', 'device_code', 'twitter', 'og', 'fb', 'eip155']);
-  const patterns = [
-    /\b[a-z][a-z0-9_]*:[a-z][a-z0-9_]*\b/g,
-    /\b[a-z][a-z0-9_]*\.[a-z][a-z0-9_]+(?:\.[a-z][a-z0-9_]+)?\b/g
-  ];
+  const blocked = new Set(['client', 'client_id', 'client_secret', 'access_token', 'refresh_token', 'token', 'secret', 'id', 'code', 'authorization', 'grant', 'redirect_uri', 'urn', 'params', 'type', 'response', 'grant_type', 'device_code', 'twitter', 'og', 'fb', 'eip155', 'display', 'src', 'style', 'width', 'transition', 'button', 'root', 'items', 'decoration', 'font', 'background', 'color', 'margin', 'padding', 'border', 'position', 'overflow', 'flex', 'grid', 'text', 'line', 'content', 'cursor', 'opacity', 'visibility', 'height', 'max', 'min']);
+  const blockedSecond = new Set(['hover', 'not', 'last', 'first', 'focus', 'active', 'visited', 'checked', 'disabled', 'enabled', 'before', 'after', 'nth', 'only', 'empty']);
   const dotAllowedLast = new Set(['read', 'write', 'info', 'metadata', 'content', 'member', 'delete', 'create', 'update']);
-  for (const re of patterns) {
-    let m;
-    while ((m = re.exec(text)) !== null) {
-      const s = m[0].toLowerCase();
-      if (s.includes('http') || s.length > 60) continue;
-      if (s.endsWith('.com') || s.endsWith('.json') || s.endsWith('.md') || s.endsWith('.html') || s.endsWith('.txt') || s.endsWith('.pdf')) continue;
-      if (s.includes('.') && !dotAllowedLast.has(s.split('.').pop())) continue;
-      if (s.includes('.') && (s.split('.')[0] === 'api' || s.split('.')[0] === 'www')) continue;
-      const parts = s.split(/[:.]/);
-      if (parts.some(part => blocked.has(part))) continue;
-      if (parts[0].length < 3 || parts[parts.length - 1].length < 3) continue;
-      found.add(s);
+  function collect(onlyNearScope) {
+    const found = new Set();
+    const patterns = [
+      /\b[a-z][a-z0-9_]*:[a-z][a-z0-9_]*\b/g,
+      /\b[a-z][a-z0-9_]*\.[a-z][a-z0-9_]+(?:\.[a-z][a-z0-9_]+)?\b/g
+    ];
+    for (const re of patterns) {
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        const s = m[0].toLowerCase();
+        if (onlyNearScope) {
+          const ctx = text.slice(Math.max(0, m.index - 500), Math.min(text.length, m.index + 500)).toLowerCase();
+          if (!ctx.includes('scope')) continue;
+        }
+        // Skip CSS selectors and declarations: a token followed by a
+        // rule brace, a CSS pseudo-class, or an !important nearby is
+        // style, not an OAuth scope.
+        const after = text.slice(m.index + m[0].length, m.index + m[0].length + 10);
+        if (after.trimStart().startsWith('{')) continue;
+        const before100 = text.slice(Math.max(0, m.index - 100), m.index);
+        if (before100.includes('!important')) continue;
+        if (s.includes('http') || s.length > 60) continue;
+        if (s.endsWith('.com') || s.endsWith('.json') || s.endsWith('.md') || s.endsWith('.html') || s.endsWith('.txt') || s.endsWith('.pdf')) continue;
+        if (s.includes('.') && !dotAllowedLast.has(s.split('.').pop())) continue;
+        if (s.includes('.') && (s.split('.')[0] === 'api' || s.split('.')[0] === 'www')) continue;
+        const parts = s.split(/[:.]/);
+        if (parts.some(part => blocked.has(part))) continue;
+        if (parts.length > 1 && blockedSecond.has(parts[parts.length - 1])) continue;
+        if (parts[0].length < 3 || parts[parts.length - 1].length < 3) continue;
+        found.add(s);
+        if (found.size >= 14) break;
+      }
       if (found.size >= 14) break;
     }
-    if (found.size >= 14) break;
+    return Array.from(found);
   }
-  return Array.from(found);
+  // Prefer tokens near a scope mention, which is where real OAuth scopes
+  // live in lists, tables, and JSON scope fields. This avoids the CSS
+  // tokens that fill the first 14 slots on styled docs pages like Zapier,
+  // while still capturing Miro boards:write, which sits in a JSON scope
+  // field. Fall back to a whole-text scan only if no near-scope token
+  // was found at all.
+  const near = collect(true);
+  if (near.length) return near;
+  return collect(false);
 }
 function extractEndpoints(text, slug, domainGuess) {
   const found = new Set();
