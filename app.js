@@ -129,7 +129,7 @@ function showDetail(g, isGenerated) {
       <p>Check Composio managed apps first. Stay managed if default scopes cover your needs and Composio branding fits. Go custom if you need your own branding, custom scopes, dedicated quota, faster polling, a custom instance, or enterprise end-to-end branding. You can mix approaches by toolkit.</p>
       <p><strong>If you use Composio:</strong> Create an auth config in the Composio dashboard, take the redirect URI it shows, add that URI in the provider portal, copy the Client ID and Client Secret back into Composio, save and copy the auth config ID, then pass that ID in the session for that toolkit. Toolkits left out keep using managed auth.</p>
     </div>
-    <h3>Card-by-card setup</h3>
+    <h3>Step by step guide</h3>
     ${stepsHtml(g)}
     <h3>Review timeline card</h3>
     ${g.timeline.map(t => `<div class="timeline-item"><h3>${esc(t.stage)}</h3><p><strong>Wait:</strong> ${esc(t.wait)}</p><p>${esc(t.note)}</p></div>`).join('')}

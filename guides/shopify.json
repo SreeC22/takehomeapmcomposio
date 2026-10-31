@@ -42,7 +42,7 @@
   "id": "shopify",
   "managedAppNote": "Use a managed app first if it covers Shopify. Register your own app for your own scopes or listing.",
   "name": "Shopify",
-  "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official Shopify docs.",
+  "nextStep": "Use live generation to expand this summary into a full step by step guide from official Shopify docs.",
   "notVerified": [
     "All details in this summary card"
   ],

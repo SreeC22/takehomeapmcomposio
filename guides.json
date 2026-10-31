@@ -667,7 +667,7 @@
       "id": "microsoft",
       "managedAppNote": "Use a managed app first if it covers your Microsoft scopes. Register your own app for your own branding or tenant-specific permissions.",
       "name": "Microsoft",
-      "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official Microsoft docs.",
+      "nextStep": "Use live generation to expand this summary into a full step by step guide from official Microsoft docs.",
       "notVerified": [
         "All details in this summary card"
       ],
@@ -747,7 +747,7 @@
       "id": "notion",
       "managedAppNote": "Use a managed app first if it covers Notion. Register your own integration for your own branding or capabilities.",
       "name": "Notion",
-      "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official Notion docs.",
+      "nextStep": "Use live generation to expand this summary into a full step by step guide from official Notion docs.",
       "notVerified": [
         "All details in this summary card"
       ],
@@ -827,7 +827,7 @@
       "id": "salesforce",
       "managedAppNote": "Use a managed app first if it covers Salesforce. Register your own Connected App for your own org or listing.",
       "name": "Salesforce",
-      "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official Salesforce docs.",
+      "nextStep": "Use live generation to expand this summary into a full step by step guide from official Salesforce docs.",
       "notVerified": [
         "All details in this summary card"
       ],
@@ -907,7 +907,7 @@
       "id": "hubspot",
       "managedAppNote": "Use a managed app first if it covers HubSpot. Register your own app for your own scopes or listing.",
       "name": "HubSpot",
-      "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official HubSpot docs.",
+      "nextStep": "Use live generation to expand this summary into a full step by step guide from official HubSpot docs.",
       "notVerified": [
         "All details in this summary card"
       ],
@@ -987,7 +987,7 @@
       "id": "shopify",
       "managedAppNote": "Use a managed app first if it covers Shopify. Register your own app for your own scopes or listing.",
       "name": "Shopify",
-      "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official Shopify docs.",
+      "nextStep": "Use live generation to expand this summary into a full step by step guide from official Shopify docs.",
       "notVerified": [
         "All details in this summary card"
       ],
@@ -1067,7 +1067,7 @@
       "id": "zoom",
       "managedAppNote": "Use a managed app first if it covers Zoom. Register your own app for your own scopes or listing.",
       "name": "Zoom",
-      "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official Zoom docs.",
+      "nextStep": "Use live generation to expand this summary into a full step by step guide from official Zoom docs.",
       "notVerified": [
         "All details in this summary card"
       ],
@@ -1147,7 +1147,7 @@
       "id": "discord",
       "managedAppNote": "Use a managed app first if it covers Discord. Register your own application for your own bot or OAuth scopes.",
       "name": "Discord",
-      "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official Discord docs.",
+      "nextStep": "Use live generation to expand this summary into a full step by step guide from official Discord docs.",
       "notVerified": [
         "All details in this summary card"
       ],
@@ -1222,7 +1222,7 @@
       "id": "linkedin",
       "managedAppNote": "Use a managed app first if it covers LinkedIn. Register your own app for your own products or Company Page access.",
       "name": "LinkedIn",
-      "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official LinkedIn docs.",
+      "nextStep": "Use live generation to expand this summary into a full step by step guide from official LinkedIn docs.",
       "notVerified": [
         "All details in this summary card"
       ],

@@ -42,7 +42,7 @@
   "id": "discord",
   "managedAppNote": "Use a managed app first if it covers Discord. Register your own application for your own bot or OAuth scopes.",
   "name": "Discord",
-  "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official Discord docs.",
+  "nextStep": "Use live generation to expand this summary into a full step by step guide from official Discord docs.",
   "notVerified": [
     "All details in this summary card"
   ],

@@ -42,7 +42,7 @@
   "id": "salesforce",
   "managedAppNote": "Use a managed app first if it covers Salesforce. Register your own Connected App for your own org or listing.",
   "name": "Salesforce",
-  "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official Salesforce docs.",
+  "nextStep": "Use live generation to expand this summary into a full step by step guide from official Salesforce docs.",
   "notVerified": [
     "All details in this summary card"
   ],

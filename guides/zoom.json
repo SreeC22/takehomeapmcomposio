@@ -42,7 +42,7 @@
   "id": "zoom",
   "managedAppNote": "Use a managed app first if it covers Zoom. Register your own app for your own scopes or listing.",
   "name": "Zoom",
-  "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official Zoom docs.",
+  "nextStep": "Use live generation to expand this summary into a full step by step guide from official Zoom docs.",
   "notVerified": [
     "All details in this summary card"
   ],

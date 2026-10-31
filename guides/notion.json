@@ -42,7 +42,7 @@
   "id": "notion",
   "managedAppNote": "Use a managed app first if it covers Notion. Register your own integration for your own branding or capabilities.",
   "name": "Notion",
-  "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official Notion docs.",
+  "nextStep": "Use live generation to expand this summary into a full step by step guide from official Notion docs.",
   "notVerified": [
     "All details in this summary card"
   ],

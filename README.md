@@ -1,6 +1,6 @@
 # OAuth Setup Guides
 
-A working website that helps developers building AI agents understand how to set up an OAuth app and get it approved for a platform, with card-by-card setup, review timeline, and approval checklist.
+A working website that helps developers building AI agents understand how to set up an OAuth app and get it approved for a platform, with step by step guide, review timeline, and approval checklist.
 
 ## Live use
 
@@ -24,7 +24,7 @@ To deploy on Vercel:
 
 ## Guides included
 
-Full card-by-card guides, checked against docs on 2026-10-31 as noted in each guide:
+Full step by step guides, checked against docs on 2026-10-31 as noted in each guide:
 - GitHub, Easy
 - Slack, Medium
 - Google, Medium to Hard
@@ -38,7 +38,7 @@ Summary guides, not verified, that live generation can expand:
 
 1. Same guide schema for every platform, so difficulty and time are comparable.
 2. Setup time is reported separately from approval wait time, because that is the question developers actually ask.
-3. Card-by-card setup, with a separate review timeline card and a separate approval checklist card, so a developer can see the gate before they submit.
+3. Step by step guide, with a separate review timeline card and a separate approval checklist card, so a developer can see the gate before they submit.
 4. Human cards and agent JSON come from the same data, so an agent can call `guides.json` or `guides/<id>.json` and get the same guide a human reads.
 5. Live research returns a guide with a research log, sources, and confidence, not a static template. Claims that cannot be verified from a fetched page are marked Unknown, not invented. It does not submit an OAuth app to any provider.
 6. Generated guides are shareable. The guide data is encoded in the share link and also saved in the browser, so a copied link survives refresh and sharing.

@@ -42,7 +42,7 @@
   "id": "hubspot",
   "managedAppNote": "Use a managed app first if it covers HubSpot. Register your own app for your own scopes or listing.",
   "name": "HubSpot",
-  "nextStep": "Use live generation to expand this summary into a full card-by-card guide from official HubSpot docs.",
+  "nextStep": "Use live generation to expand this summary into a full step by step guide from official HubSpot docs.",
   "notVerified": [
     "All details in this summary card"
   ],

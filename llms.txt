@@ -1,6 +1,6 @@
 # OAuth Setup Guides
 
-> A searchable library of OAuth app setup and approval guides for developers building AI agents. Each guide gives difficulty, setup time separate from approval wait time, card-by-card steps, a review timeline card, an approval checklist card, blockers, agent vs human steps, sources, and uncertainty.
+> A searchable library of OAuth app setup and approval guides for developers building AI agents. Each guide gives difficulty, setup time separate from approval wait time, step by step guide, a review timeline card, an approval checklist card, blockers, agent vs human steps, sources, and uncertainty.
 
 ## Full guides
 
