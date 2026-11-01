@@ -545,6 +545,37 @@ async function researchHandler(req, res) {
   consoleCandidates.sort((a, b) => b.score - a.score);
   const consolePick = consoleCandidates.length && consoleCandidates[0].score >= 3 ? consoleCandidates[0].url : '';
   let consoleUrl = consolePick || 'Unknown';
+  // A read-only, unauthenticated public portal probe is the practical limit
+  // of automated setup without the developer's credentials. A 200/302/403
+  // confirms an HTTP response, NOT app creation or working OAuth.
+  let portalPublicProbe = {attempted:false,result:'not_attempted',reason:'No verified public portal to probe.'};
+  if (consolePick && !providerIdentityAmbiguous) {
+    const target = (() => {
+      try {
+        const u = new URL(consolePick);
+        if (u.protocol !== 'https:' || u.username || u.password ||
+          /(?:^|\.)localhost$|(?:^|\.)internal$|^127\.|^10\.|^192\.168\.|^172\.(?:1[6-9]|2[0-9]|3[01])\./i.test(u.hostname)) return null;
+        if (!isProviderHost(u.hostname.toLowerCase(), slug, domainGuess)) return null;
+        return u;
+      } catch (e) { return null; }
+    })();
+    if (target) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 1300);
+      try {
+        const result = await fetch(target.href, {method:'HEAD',redirect:'manual',
+          signal:controller.signal,headers:{'Accept':'text/html'}});
+        portalPublicProbe = {attempted:true,url:target.href,method:'HEAD',httpStatus:result.status,
+          result:result.status >= 200 && result.status < 400 ? 'reachable_or_redirected' : 'http_response_only',
+          reason:'Only checked public HTTP reachability. No authentication, app creation, or provider approval was attempted.'};
+        logPush('probe_public_developer_portal',target.href,'http_'+result.status,portalPublicProbe.reason);
+      } catch(e) {
+        portalPublicProbe = {attempted:true,url:target.href,method:'HEAD',result:'unverified',
+          reason:'The public portal probe failed or timed out. This does not establish portal unavailability.'};
+        logPush('probe_public_developer_portal',target.href,'unverified',portalPublicProbe.reason);
+      } finally { clearTimeout(timer); }
+    }
+  }
   // Give the developer the most relevant *fetched official article* when
   // the registration UI isn't established. Documentation != portal.
   const registrationDocs = pages.filter(pg => {
@@ -928,10 +959,11 @@ async function researchHandler(req, res) {
     managedAppNote: 'Check first whether a managed app already covers this platform. If it does, you may not need your own app. Managed support for this specific provider was not confirmed in this research run, check the Composio toolkit list before building.',
     nextStep: providerIdentityAmbiguous ? 'Provider identity is ambiguous: multiple providers match this name, including ' + [canonicalProviderDomain, ...discardedProviderDomains].filter(Boolean).join(', ') + '. Enter the official website URL for the provider you mean, then research again, and do not use this draft as a verified guide.' : validationFailures.length ? 'Validation failed: ' + validationFailures.join(' ') + ' Do not use this as a full guide. Check official docs manually.' + (sources.length ? ' Start here: ' + sources[0] : '') : researchFailed ? (sources.length === 0 ? 'No usable official docs were fetched in this run, after ' + tavilyCallsUsed + ' searches and ' + pages.length + ' pages fetched' + (domainGuess ? ', with search results pointing to ' + domainGuess : '') + '. This is a retrieval failure, not proof that no public docs exist. Open the provider official docs directly, search for OAuth or API authentication, paste the official docs URL into the search box to research that page, and do not use this draft as a verified guide.' : 'Research did not find usable official docs. Use the findings below, check the official portal manually, and do not use this draft as a verified guide. Start here: ' + sources[0]) : (registerMeaning.status === 'not_applicable' ? 'Open ' + (sources.length ? sources[0] : 'official docs') + ', confirm the registration-free method and how redirect URIs are declared, then follow the steps in order.' : (consolePick ? 'Open the developer portal at ' + consolePick + ', confirm the authentication model, then follow the steps in order.' : (registrationDoc ? 'Open the official registration documentation at ' + registrationDoc + ' and follow its developer registration instructions. A portal URL was not verified, so do not treat this documentation as the portal.' : (sources.length ? 'Open ' + sources[0] + ' and locate the official developer registration documentation before configuring an app.' : 'Find the official developer registration documentation before configuring an app.')))),
     steps, timeline, checklist, blockers,
-    agentOutput: { type:'documentation_research', sourcesChecked: sources.length,
+    agentOutput: { type:'documentation_research_and_public_checks', sourcesChecked: sources.length,
+      portalPublicProbe,
       registrationDocument: registrationDoc || '', developerConsole: consolePick || '',
       oauthEndpoints: endpoints, scopeCandidates: scopes, reviewEvidence: approvalSnippet ? sourceFor(approvalSnippet) : '',
-      attempted:['searched documentation','retrieved official provider pages','classified authentication direction','validated extracted claims','prepared developer checklist'],
+      attempted:['searched documentation','retrieved official provider pages','classified authentication direction','validated extracted claims','prepared developer checklist', ...(portalPublicProbe.attempted ? ['attempted read-only developer portal HEAD request (not authentication)'] : [])],
       notAttempted:['provider account login','OAuth app creation','real-user consent','token exchange','approval submission'] },
     agentCan: ['Search for official docs', 'Fetch candidate pages', 'Extract scopes, endpoints, and review evidence with sources', 'Draft checklists and timelines from evidence'],
     humanMust: approvalMeaning.status === 'not_applicable' ? ['Confirm the official portal', 'Sign in to the provider console', 'Verify scopes and review requirements', 'Confirm no review is required in official docs'] : ['Confirm the official portal', 'Sign in to the provider console', 'Verify scopes and review requirements', 'Submit for review and reply to reviewers only if docs say public distribution requires it'],
