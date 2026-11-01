@@ -143,8 +143,11 @@ function extractEndpoints(text, slug, domainGuess) {
   const re = /https:\/\/[^\s"'<>]+(?:authorize|token|oauth)[^\s"'<>]*/gi;
   let m;
   while ((m = re.exec(text)) !== null) {
-    let u = m[0];
+    // Split Markdown links and reject encoded template fragments, rather
+    // than allowing broken docs markup to become a credential endpoint.
+    let u = m[0].split(/\]\(|[<>{}`\s]/)[0];
     while (/[\\.,):;`]$/.test(u)) u = u.slice(0, -1);
+    if (/%(?:60|7b|7d|5b|5d)|\]\(|\bfunction\b/i.test(u)) continue;
     if (u.includes('&#')) u = u.split('&#')[0];
     u = u.replace(/\):$/, '');
     if (u.length >= 100) continue;
