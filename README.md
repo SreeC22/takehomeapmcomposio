@@ -115,6 +115,14 @@ Structural harness totals are not factual accuracy rates. Claim-level precision 
 - Browser rendering of the newest fields was verified via API response, not a live browser session in every round, except where a browser test is explicitly reported.
 - The repository is private, so reviewers need access granted or the source package.
 
+## Final submission QA update (November 1, 2026)
+
+Production smoke tests covered the homepage, README, 16 library JSON guides, Composio managed OAuth lookup, and fresh research for Attio, Cal.com, PostHog, Baserow, Pipedrive and Miro. All tested research requests returned HTTP 200. Generated guides correctly remain Partial or Draft when provider documentation is incomplete; HTTP 200 is not a claim of factual completeness. The browser's copy-share/agent-handoff logic was exercised with a live Attio guide in a JavaScript harness (round-trip preserved its steps and sources), but no actual remote human sign-in or external provider OAuth setup was performed.
+
+Two additional research errors were caught during final QA and corrected: provider SSO setup must not be recommended as third-party OAuth app registration, and documentation about **dynamic client registration** must not become a blanket statement that OAuth registration is unnecessary. Internal engineering handbooks and community posts are excluded from primary customer-app claims when official developer docs are available. Regression checks live in `scripts/registration-qa-regression.js` and `scripts/trust-regression.js`.
+
+Remaining limitations: many unfamiliar providers still yield Unknown for portal, scopes or approval; the deployed website was not exhaustively tested in every browser; generated hash share links can still be lengthy; no provider account was used or approval requested. Repository visibility is a separate submission step.
+
 ## Run locally
 
 - Static site: `npx serve .`

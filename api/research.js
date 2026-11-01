@@ -1,4 +1,24 @@
 const { stripHtml, sectionFor, isProviderHost, parseInput, canonicalUrl, baseDomain, validateScope, metadataTokenCount, extractScopes, extractEndpoints, extractRelativeEndpoints, findSnippet, cleanSnippet, timePhrase, classifyPassage, consoleScore, productPath, extractScopesFromPages, extractScopesFromScopeText, extractNextDataText , fetchText, fetchOnce } = require('./research-helpers');
+// Provider-owned developer registration is not enterprise login/SSO.
+function isDeveloperOAuthRegistrationDoc(page, slug, domainGuess) {
+  try {
+    const u = new URL(page.url);
+    if (!isProviderHost(u.hostname.toLowerCase(), slug, domainGuess)) return false;
+    if (/(?:sso|single.sign.on|sign.in|social.auth|handbook\/engineering)/i.test(u.pathname)) return false;
+    return /(?:developer|app|oauth|registration|authentication|marketplace|tutorial)/i.test(u.pathname) &&
+      /(?:create|register|configure|set up|setup|developer hub|developer portal|app settings)/i.test(String(page.text||''));
+  } catch (e) { return false; }
+}
+// Dynamic client registration registers a client remotely; it is NOT
+// equivalent to "no registration needed". A supported metadata-document
+// flow may avoid prior portal registration, but still requires configuration.
+function classifyRegistrationFreeText(snippet) {
+  if (!snippet) return null;
+  const noManual = /(?:no registration required|registration is not required|registration.free|client id metadata|metadata document|do not need to pre.register|without pre.registering|do not need to register)/i.test(snippet);
+  return noManual
+    ? {status:'not_applicable',condition:'No manual pre-registration for the documented client metadata route: '+cleanSnippet(snippet)}
+    : {status:'conditional',condition:'Dynamic OAuth client registration is mentioned, but that still registers a client. Confirm the specific registration method before authorization: '+cleanSnippet(snippet)};
+}
 const rateStore = globalThis.__researchRateStore || (globalThis.__researchRateStore = new Map());
 function rateCheck(ip) {
   const now = Date.now();
@@ -350,8 +370,16 @@ async function researchHandler(req, res) {
   // tutorials and GitHub issue threads cannot corroborate the provider's
   // API requirements or trigger false same-name/provider conflicts.
   const firstPartyPages = pages.filter(p => {
-    try { return isProviderHost(new URL(p.url).hostname.toLowerCase(), slug, domainGuess); }
-    catch (e) { return false; }
+    try {
+      const u = new URL(p.url);
+      if (!isProviderHost(u.hostname.toLowerCase(), slug, domainGuess)) return false;
+      // Community questions, change logs, and internal engineering notes
+      // can describe a different OAuth/SSO product or a proposed feature.
+      // They must not supply executable requirements for developer apps.
+      if (/(?:^|\.)(?:community|devcommunity|forum)\./i.test(u.hostname)) return false;
+      if (/\/(?:blog|changelog|handbook\/engineering)\//i.test(u.pathname)) return false;
+      return true;
+    } catch (e) { return false; }
   });
   if (firstPartyPages.length) {
     const dropped = pages.length - firstPartyPages.length;
@@ -415,7 +443,7 @@ async function researchHandler(req, res) {
   const mcpSnippet = findSnippet(allText, ['model context protocol', 'mcp server', 'mcp authentication']);
   const ssoSnippet = findSnippet(allText, ['single sign-on', 'sso', 'saml']);
   const oauth21Snippet = findSnippet(allText, ['oauth 2.1', 'oauth2.1']);
-  const regFreeSnippet = findSnippet(customerOAuthText, ['dynamic client registration', 'no registration required', 'registration-free', 'client id metadata', 'metadata document', 'do not need to pre-register', 'without pre-registering', 'do not need to register']);
+  const regFreeSnippet = findSnippet(customerOAuthText, ['no registration required', 'registration is not required', 'registration-free', 'client id metadata', 'metadata document', 'do not need to pre-register', 'without pre-registering', 'do not need to register']) || findSnippet(customerOAuthText, ['dynamic client registration']);
   const adminConsentSnippet = findSnippet(allText, ['admin consent']);
   const privateSnippet = findSnippet(allText, ['private app', 'private integration', 'internal app', 'do not need review', 'no review required']);
   const privacySnippet = findSnippet(allText, ['privacy policy']);
@@ -519,8 +547,12 @@ async function researchHandler(req, res) {
     authType = 'sign_in_oauth';
   }
   if (regFreeSnippet) {
-    registerMeaning = { status: 'not_applicable', condition: 'Docs say registration is not required or dynamic registration is used: ' + cleanSnippet(regFreeSnippet) };
+    registerMeaning = classifyRegistrationFreeText(regFreeSnippet);
     if (!registerSnippet) registerSnippet = regFreeSnippet;
+  } else if (authType === 'oauth' && registerMeaning.status === 'optional' && registerSnippet) {
+    // "You can create an OAuth client" does not make client creation
+    // optional once the developer chooses the client-credentials path.
+    registerMeaning = { status:'conditional', condition:'Creating a client is necessary for the documented developer-owned OAuth client path, though other auth paths may exist.' };
   }
   if (oauthStrong && finalTr.hasApiKey) contradictions.push('Docs mention both OAuth and API keys. This guide treats OAuth as the main path only if OAuth endpoints or scopes were found, and lists API keys as a separate check, not as the same flow.');
   if (oauthStrong && noOAuthSnippet) contradictions.push('HARD: Source says OAuth is not supported or API key only, but OAuth endpoints or scopes were also found. Authentication cannot be trusted as OAuth alone.');
@@ -578,18 +610,11 @@ async function researchHandler(req, res) {
   }
   // Give the developer the most relevant *fetched official article* when
   // the registration UI isn't established. Documentation != portal.
-  const registrationDocs = pages.filter(pg => {
-    try {
-      const u = new URL(pg.url);
-      if (!isProviderHost(u.hostname.toLowerCase(), slug, domainGuess)) return false;
-      return /(?:developer|app|oauth|registration|authentication|marketplace)/i.test(u.pathname) &&
-        /(?:create|register|configure|set up|setup|developer hub|developer portal|app settings)/i.test(pg.text);
-    } catch (e) { return false; }
-  }).map(pg => {
+  const registrationDocs = (authType === 'oauth' && registerMeaning.status !== 'not_applicable' ? pages : []).filter(pg => isDeveloperOAuthRegistrationDoc(pg, slug, domainGuess)).map(pg => {
     let p = '';
     try { p = new URL(pg.url).pathname.toLowerCase(); } catch (e) {}
     const explicit = /(?:create (?:an? |a new )?(?:oauth |public )?(?:app|application|client|connection)|register (?:an? |your )?(?:app|application)|developer hub)/i.test(pg.text);
-    const pathScore = /(?:create|register|registration|setup|set.up|oauth|developer.hub|marketplace)/i.test(p) ? 2 : 0;
+    const pathScore = /(?:tutorial|getting.started|create.*app|register.*app|developer.hub)/i.test(p) ? 6 : (/(?:create|register|registration|setup|set.up|oauth|marketplace)/i.test(p) ? 2 : 0);
     return {url:pg.url, score:(explicit ? 5 : 0)+pathScore, explicit};
   }).sort((a,b)=>b.score-a.score);
   const registrationDoc = registrationDocs.length && registrationDocs[0].score >= 5 ? registrationDocs[0].url : '';
@@ -1001,4 +1026,6 @@ module.exports.validateScope = validateScope;
 module.exports.extractEndpoints = extractEndpoints;
 module.exports.extractScopes = extractScopes;
 module.exports.productPath = productPath;
+module.exports.isDeveloperOAuthRegistrationDoc = isDeveloperOAuthRegistrationDoc;
+module.exports.classifyRegistrationFreeText = classifyRegistrationFreeText;
 module.exports.extractScopesFromPages = extractScopesFromPages;
