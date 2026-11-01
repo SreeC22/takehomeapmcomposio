@@ -328,7 +328,9 @@ function classifyPassage(snippetText, keywords) {
       // when it describes registration. Only a page whose path or host is
       // apps, console, dashboard, settings, or account can score as a portal.
       const hasPortalSegment = segments.some(s => ['apps', 'console', 'dashboard', 'settings', 'account'].includes(s));
-      const hasPortalHost = host.startsWith('console.') || host.startsWith('app.') || host.startsWith('dashboard.') || host.startsWith('portal.');
+      const hasPortalHost = host.startsWith('console.') || host.startsWith('app.') || host.startsWith('dashboard.') || host.startsWith('portal.') || host.startsWith('build.');
+      // An app homepage is not evidence of developer app registration.
+      if (host.startsWith('app.') && (path === '/' || path === '')) return -10;
       if (path.includes('/docs/') && !hasPortalSegment && !hasPortalHost) return -10;
       if (path.includes('/reference/') && !hasPortalSegment) return -10;
       let s = 0;
