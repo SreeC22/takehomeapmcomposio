@@ -31,6 +31,8 @@ function compactGuideForShare(g) {
   const copy = {};
   fields.forEach(k => { if (g[k] !== undefined) copy[k] = g[k]; });
   copy.sources = (g.sources || []).slice(0, 20);
+  copy.agentOutput = g.agentOutput || null;
+  copy.registrationDocumentUrl = g.registrationDocumentUrl || '';
   copy.steps = (g.steps || []).map(x => ({title:x.title,detail:x.detail,who:x.who,
     time:x.time,requirement:x.requirement,condition:x.condition,blockerTip:x.blockerTip,
     evidence:x.evidence ? String(x.evidence).slice(0,400):'', evidenceUrl:x.evidenceUrl}));
@@ -262,6 +264,24 @@ function stepsHtml(g) {
     return `<li class="step-card"><span class="step-num">${i + 1}</span><div class="step-body"><strong>${esc(s.title)}</strong><p>${linkify(action)}</p>${chips ? `<p>${chips}</p>` : ''}${s.blockerTip ? `<p class="small">Watch out: ${esc(s.blockerTip)}</p>` : ''}${evidence ? `<details><summary>Evidence from docs</summary><p class="small">${esc(evidence)}</p></details>` : ''}</div></li>`;
   }).join('') + '</ol>';
 }
+function agentOutputHtml(g) {
+  const out = g.agentOutput;
+  if (!out) return '';
+  const completed = (out.attempted || []).map(x=>'<li>'+esc(x)+'</li>').join('');
+  const remaining = (out.notAttempted || []).map(x=>'<li>'+esc(x)+'</li>').join('');
+  const artifacts = [
+    out.developerConsole ? 'Confirmed developer portal: '+out.developerConsole : '',
+    out.registrationDocument ? 'Registration documentation: '+out.registrationDocument : '',
+    (out.oauthEndpoints || []).length ? 'OAuth endpoints extracted: '+out.oauthEndpoints.join(', ') : '',
+    (out.scopeCandidates || []).length ? 'Permission candidates: '+out.scopeCandidates.join(', ') : '',
+    out.reviewEvidence ? 'Review documentation: '+out.reviewEvidence : ''
+  ].filter(Boolean).map(x=>'<li>'+esc(x)+'</li>').join('');
+  return '<h3>What the research agent actually accomplished</h3>' +
+    '<p class="small">These are actual documentation operations and prepared findings, not provider account actions.</p>' +
+    '<p><strong>Completed research:</strong></p><ul>'+completed+'</ul>' +
+    (artifacts?'<p><strong>Prepared findings:</strong></p><ul>'+artifacts+'</ul>':'') +
+    '<p><strong>Not performed, human access may be needed:</strong></p><ul>'+remaining+'</ul>';
+}
 function executionHtml(g) {
   const sources = (g.sources || []).map(s => `<li><a href="${esc(safeUrl(s))}">${esc(s)}</a></li>`).join('');
   const log = (g.executionLog || []).map(l => `<li>${esc(l.time || '')} - ${esc(l.action || '')} - ${esc(l.url || '')} - ${esc(l.status || '')} - ${esc(l.detail || '')}</li>`).join('');
@@ -310,7 +330,7 @@ function showDetail(g, isGenerated, preserveHash) {
         <li><strong>Managed app note:</strong> ${esc(g.managedAppNote)}</li>
       </ul>
     </div>
-    <p class="small">Managed or custom? Check managed first. Go custom only for own branding, custom scopes, dedicated quota, or a custom instance.</p>
+    <div class="step"><h3>Your next concrete action</h3><p>${linkify(g.nextStep || 'Review official registration documentation and resolve missing requirements before building.')}</p>${g.registrationDocumentUrl ? '<p><a href="'+esc(safeUrl(g.registrationDocumentUrl))+'" target="_blank" rel="noopener noreferrer">Open registration instructions from official docs</a></p>' : ''}</div>
     ${evidenceHtml(g)}
     <h3>Step by step guide</h3>
     ${g.steps && g.steps.some(s => s.evidence || String(s.detail || '').toLowerCase().includes('evidence from docs:')) ? '<p class="small">Quick view. Tap Evidence from docs on a step to see the docs quote behind it.</p>' : '<p class="small">Quick view. Library steps have no per-step docs quote in this view, see sources below.</p>'}
@@ -321,12 +341,13 @@ function showDetail(g, isGenerated, preserveHash) {
     <div class="checklist">
       ${g.checklist.map((c, i) => `<label><input type="checkbox" data-check-idx="${i}"> <span><strong>${esc(c.item)}</strong> - ${esc(c.status)} - ${esc(c.who)}</span></label>`).join('')}
     </div>
-    <p class="small">Check items as you complete them. This checklist is saved in this browser only, it does not submit anything to the provider.</p>
+    <p id="checkProgress" class="small">Checklist progress: 0 items completed. This progress is saved only in this browser, not submitted to a provider.</p>
     <h3>Blockers and fixes</h3>
     <ul>${g.blockers.map(b => `<li><strong>${esc(b.blocker)}:</strong> ${esc(b.fix)}</li>`).join('')}</ul>
     <h3>What an agent can do, and where you take over</h3>
     <p><strong>Agent can:</strong></p><ul>${g.agentCan.map(a => `<li>${esc(a)}</li>`).join('')}</ul>
     <p><strong>You must:</strong></p><ul>${g.humanMust.map(a => `<li>${esc(a)}</li>`).join('')}</ul>
+    ${agentOutputHtml(g)}
     ${executionHtml(g)}
     <h3>Next step</h3>
     <ul><li><strong>${esc(g.nextStep)}</strong></li></ul>
@@ -334,7 +355,9 @@ function showDetail(g, isGenerated, preserveHash) {
   try {
     const key = 'checklist-' + String(g.id || 'guide');
     const saved = JSON.parse(localStorage.getItem(key) || '[]');
-    el.querySelectorAll('input[data-check-idx]').forEach(cb => {
+    const checkboxNodes = el.querySelectorAll('input[data-check-idx]');
+    const syncChecklist = () => { const progress = el.querySelector('#checkProgress'); if (progress) progress.textContent = 'Checklist progress: '+Array.from(checkboxNodes).filter(x=>x.checked).length+' of '+checkboxNodes.length+' items checked in this browser. No provider setup action has been performed by checking a box.'; };
+    checkboxNodes.forEach(cb => {
       const idx = Number(cb.getAttribute('data-check-idx'));
       if (saved.includes(idx)) cb.checked = true;
       cb.addEventListener('change', () => {
@@ -342,9 +365,11 @@ function showDetail(g, isGenerated, preserveHash) {
           const cur = JSON.parse(localStorage.getItem(key) || '[]');
           const next = cb.checked ? Array.from(new Set([...cur, idx])) : cur.filter(x => x !== idx);
           localStorage.setItem(key, JSON.stringify(next));
+          syncChecklist();
         } catch (e) {}
       });
     });
+    syncChecklist();
   } catch (e) {}
   renderManagedDecision(g, el);
   document.getElementById('shareBtn').addEventListener('click', async () => {
