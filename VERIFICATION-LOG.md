@@ -56,3 +56,22 @@ Fixes on 2026-10-31, from reviewer critique:
 - Library audit: Google verification status corrected to single official source. All 16 guides open.
 - Example guides checked: GitHub, Shopify, Google, Claude, no sign-in test for any, see SUBMISSION-NOTES.md.
 - Acceptance targets: zero critical errors met, 90 percent claim-level precision not proven, great-majority useful coverage not met, combined 23 of 41. Reported plainly.
+
+## Acceptance round, 2026-11-01
+
+- Cal.com, Baserow, PostHog retested after fixes, production dpl_5UbCxLT1FbbPev91P4w2by4bmsaQ. Cal partial with correct portal, review gate, and 50 scopes. Baserow draft unknown, no OAuth steps, no placeholder endpoint. PostHog partial with official sources, registration-free, clean scopes.
+- Fixed-document regression still 17/17 new, 12/17 old, after this round.
+- No sign-in, app creation, or provider approval was completed for any of the three.
+
+## Universal engine round, 2026-11-01
+
+- Fixed-document regression: 17/17 new, 12/17 old, after universal fixes and MCP guard.
+- Main set, 18 providers: 5 partial, 13 draft, 0 full, 0 errors, structural 254/324.
+- Holdout set, 10 providers, no fixes based on holdout: 5 partial, 5 draft, 0 full, 0 errors, structural 139/180.
+- Paystack targeted check, dpl_5iNMxH6jyNFp4jQs2Zv8zLMYym61: draft unknown, generic steps, no MCP steps.
+- No sign-in, app creation, or provider approval was completed for any provider in either set.
+
+## Final reviewer test, 2026-11-01
+
+- Browser test: GitHub guide passed, share link passed, stale banner gone. PostHog browser guide was a saved guide from an earlier run, not fresh, so its old wording is not a fresh-engine failure.
+- Fresh API PostHog, dpl_DTdhGbFwrnEpXwFXNXFrEAAYShvU: partial oauth, registration-free step, metadata redirect, metadata timeline and next step all correct. Register evidence URL is third-party, condition passage is PostHog CIMD, noted as attribution weakness.

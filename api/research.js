@@ -1,10 +1,4 @@
-const { stripHtml, sectionFor, isProviderHost, parseInput, canonicalUrl, baseDomain, validateScope, metadataTokenCount, extractScopes, extractEndpoints, extractRelativeEndpoints, findSnippet, cleanSnippet, timePhrase, classifyPassage, consoleScore, productPath, extractScopesFromPages , fetchText, fetchOnce } = require('./research-helpers');
-// Universal live research engine, deterministic, no LLM, no paid model.
-// Multi-stage, evidence-driven: discovery, independent tracks, structured
-// facts, requirement engine, evidence-built guides, quality gate.
-// Every claim needs a provider source and a passage. Unknown is a result,
-// not a gap to fill with a guessed step. No hardcoded provider directory.
-// Runs as a Vercel serverless function under /api.
+const { stripHtml, sectionFor, isProviderHost, parseInput, canonicalUrl, baseDomain, validateScope, metadataTokenCount, extractScopes, extractEndpoints, extractRelativeEndpoints, findSnippet, cleanSnippet, timePhrase, classifyPassage, consoleScore, productPath, extractScopesFromPages, extractScopesFromScopeText, extractNextDataText , fetchText, fetchOnce } = require('./research-helpers');
 const rateStore = globalThis.__researchRateStore || (globalThis.__researchRateStore = new Map());
 function rateCheck(ip) {
   const now = Date.now();
@@ -21,8 +15,6 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
   
 async function researchHandler(req, res) {
   const t0 = Date.now();
-  // Query parsing is robust to Vercel routing variants: req.query first,
-  // then the request URL itself. A missing query must not be guessed.
   let queryParams = (req.query || {});
   try {
     if (req.url && String(req.url).includes('?')) {
@@ -55,7 +47,6 @@ async function researchHandler(req, res) {
   if (parsed.isIp) {
     logPush('provider_discovery', '', 'failed_ip', 'Input is an IP address, not a provider. No provider host can be validated, so no fetch is attempted.');
   }
-  // Stage A: provider discovery, parallel targeted Tavily searches, budget 3.
   const tSearch0 = Date.now();
   let tavilyCallsUsed = 0;
   async function tavilySearch(query) {
@@ -72,14 +63,16 @@ async function researchHandler(req, res) {
       } finally { clearTimeout(timer); }
       const allWithTitle = (tavJson.results || []).map(r => ({ url: r.url, title: r.title || '' })).filter(x => typeof x.url === 'string' && x.url.startsWith('http'));
       const all = allWithTitle.map(x => x.url);
-      const provider = allWithTitle.filter(x => { try { const h = new URL(x.url).hostname.toLowerCase(); const firstLabel = h.split('.')[0]; const secondLast = h.split('.').slice(-2, -1)[0] || ''; return isProviderHost(h, slug, domainGuess) || firstLabel.startsWith(slug) || secondLast.startsWith(slug); } catch (e) { return false; } }).map(x => x.url);
+      const provider = allWithTitle.filter(x => { try { const h = new URL(x.url).hostname.toLowerCase(); const firstLabel = h.split('.')[0]; const secondLast = h.split('.').slice(-2, -1)[0] || ''; const titleNorm = String(x.title || '').toLowerCase().replace(/[^a-z0-9]/g, ''); const slugNorm = String(slug || '').replace(/[^a-z0-9]/g, ''); const appNorm = String(app || '').toLowerCase().replace(/[^a-z0-9]/g, ''); const titleMatch = (slugNorm && titleNorm.includes(slugNorm)) || (appNorm.length >= 3 && titleNorm.includes(appNorm)); return isProviderHost(h, slug, domainGuess) || firstLabel.startsWith(slug) || secondLast.startsWith(slug) || titleMatch; } catch (e) { return false; } }).map(x => x.url);
       const rank = (u) => { try { const uu = new URL(u); const host = uu.hostname.toLowerCase(); const path = uu.pathname.toLowerCase(); if (host.startsWith('community.') || host.startsWith('forum.') || path.includes('/blog/') || path.includes('/forums/') || path.includes('/forum/') || path.includes('/community/')) return 100; if (host.startsWith('developers.') || host.startsWith('developer.') || host.startsWith('docs.')) return 0; if (path.includes('/oauth') || path.includes('/docs/') || path.includes('/developer')) return 1; return 2; } catch (e) { return 3; } };
       const out = provider.filter(u => rank(u) < 100).sort((a, b) => rank(a) - rank(b)).slice(0, 8);
+      for (const u of out) { try { candidateHosts.add(new URL(u).hostname.toLowerCase()); } catch (e) {} }
       logPush('search', 'https://api.tavily.com/search', tavRes && tavRes.ok ? 'found_' + out.length : 'failed_' + (tavRes ? tavRes.status : 0), 'Query "' + query + '" returned ' + all.length + ' URLs, ' + out.length + ' provider-specific, community and blog excluded from primary list.');
       return out;
     } catch (e) { logPush('search', 'https://api.tavily.com/search', 'failed', 'Tavily search failed: ' + String(e && e.message ? e.message : e)); return []; }
   }
   let searchUrls = [];
+  const candidateHosts = new Set();
   if (!parsed.isIp) {
     if (!process.env.TAVILY_API_KEY) logPush('search', 'https://api.tavily.com/search', 'skipped_no_key', 'No TAVILY_API_KEY set, using site navigation fallback.');
     else {
@@ -88,10 +81,6 @@ async function researchHandler(req, res) {
         tavilySearch(app + ' developer app review approval distribution marketplace')
       ]);
       searchUrls = results.flat();
-      // Canonical provider domain from search consensus, not a guessed
-      // TLD. This is what later host checks use, so squareup.com can be
-      // the provider for Square, and ghost.org for Ghost, without a
-      // hardcoded exception. A guessed .com is never authoritative.
       const domainCounts = {};
       for (const u of searchUrls) { try { const h = new URL(u).hostname.toLowerCase().replace(/^www\./, ''); const firstLabel = h.split('.')[0]; const secondLast = h.split('.').slice(-2, -1)[0] || ''; if (!(firstLabel.startsWith(slug) || secondLast.startsWith(slug))) continue; domainCounts[h] = (domainCounts[h] || 0) + 1; } catch (e) {} }
       const rankedDomains = Object.entries(domainCounts).sort((a, b) => b[1] - a[1]);
@@ -99,7 +88,6 @@ async function researchHandler(req, res) {
     }
   }
   const searchMs = Date.now() - tSearch0;
-  // Retrieval, parallel batches, document cache, provider-host only, SSRF guard.
   const tRetrieval0 = Date.now();
   const sources = []; const pages = []; const visited = new Set();
   function addSource(u) { const c = canonicalUrl(u); if (!sources.map(canonicalUrl).includes(c)) sources.push(u.split('#')[0]); }
@@ -111,7 +99,7 @@ async function researchHandler(req, res) {
     const results = await Promise.allSettled(batch.map(async (url) => {
       try {
         const uu = new URL(url);
-        if (!isProviderHost(uu.hostname.toLowerCase(), slug, domainGuess)) return null;
+        if (!isProviderHost(uu.hostname.toLowerCase(), slug, domainGuess) && !candidateHosts.has(uu.hostname.toLowerCase())) return null;
         const path = uu.pathname.toLowerCase();
         if (url.includes('#content') || /\.(ico|png|jpg|jpeg|svg|css|js|json|webmanifest|pdf)(\?|$)/.test(path) || path.startsWith('/apps/')) return null;
         if (uu.hostname.startsWith('community.') || uu.hostname.startsWith('forum.') || path.includes('/blog/') || path.includes('/forums/') || path.includes('/forum/') || path.includes('/community/')) return null;
@@ -121,18 +109,18 @@ async function researchHandler(req, res) {
         logPush('fetch_page', url, 'cached', 'Document cache hit, no refetch.');
         addSource(url); return { url, text: cachedDoc.text };
       }
-      // A non-qualifying cache entry is not evidence. Fall through to a
-      // fresh fetch, so a short JS shell cached earlier cannot poison later runs.
       const page = await fetchText(url, 3000, allowProxy);
       if (page.ok && page.body) {
-        const bodyForParse = page.body.length > 500000 ? page.body.slice(0, 500000) : page.body;
-        if (page.body.length > 500000) logPush('fetch_page', url, 'truncated', 'Page body over 500KB, truncated to first 500KB to avoid memory failure.');
-        const text = stripHtml(bodyForParse);
+        const strippedFull = stripHtml(page.body);
+        const text = strippedFull.length > 500000 ? strippedFull.slice(0, 500000) : strippedFull;
+        if (strippedFull.length > 500000) logPush('fetch_page', url, 'truncated', 'Cleaned page text over 500KB, truncated to first 500KB to avoid memory failure.');
         if (/oauth/i.test(text) || /client[ _-]id/i.test(text) || /scope/i.test(text)) docCache.set(canonicalUrl(url) + '|v2', { text, at: Date.now() });
-        const hasOAuth = /oauth/i.test(text); const hasClient = /client[ _-]id/i.test(text); const hasScope = /scope/i.test(text);
-        logPush('fetch_page', url, 'ok_' + page.status + (page.viaProxy ? '_via_proxy' : ''), 'Fetched. OAuth: ' + hasOAuth + ', client ID: ' + hasClient + ', scope: ' + hasScope + '. Text length: ' + text.length + '.');
-        if (hasOAuth || hasClient || hasScope) { addSource(url); return { url, text, html: page.body }; }
-        if (text.length < 2000 && (url.includes('/docs/') || url.includes('/developer')) && !url.endsWith('.md')) return { url, text, mdCandidate: url.replace(/\/$/, '') + '.md' };
+        let text2 = text;
+        if (text.length < 2000) { const nd = extractNextDataText(page.body); if (nd) { text2 = nd; logPush('fetch_page', url, 'next_data', 'Short JS shell, extracted article text from embedded page data.'); } }
+        const hasOAuth = /oauth/i.test(text2); const hasClient = /client[ _-]id/i.test(text2); const hasScope = /scope/i.test(text2);
+        logPush('fetch_page', url, 'ok_' + page.status + (page.viaProxy ? '_via_proxy' : ''), 'Fetched. OAuth: ' + hasOAuth + ', client ID: ' + hasClient + ', scope: ' + hasScope + '. Text length: ' + text2.length + '.');
+        if (hasOAuth || hasClient || hasScope) { addSource(url); return { url, text: text2, html: page.body }; }
+        if (text2.length < 2000 && !url.endsWith('.md')) return { url, text: text2, mdCandidate: url.replace(/\/$/, '') + '.md' };
         return null;
       }
       logPush('fetch_page', url, 'failed_' + page.status, 'Could not fetch page. ' + (page.error || ''));
@@ -147,19 +135,16 @@ async function researchHandler(req, res) {
       }
     }
     pages.push(...out);
-    // Short JS shell fallback, generic, not provider-specific: a docs page
-    // under 2000 characters is a shell, not content. Try its .md variant
-    // once, in parallel, and log any redirect it follows.
     if (mdCandidates.length) {
       const mdResults = await Promise.allSettled(mdCandidates.slice(0, 3).map(async (url) => {
         try {
           const uu = new URL(url);
-          if (!isProviderHost(uu.hostname.toLowerCase(), slug, domainGuess)) return null;
+          if (!isProviderHost(uu.hostname.toLowerCase(), slug, domainGuess) && !candidateHosts.has(uu.hostname.toLowerCase())) return null;
         } catch (e) { return null; }
         const page = await fetchText(url, 3000, false);
         if (page.ok && page.body) {
-          const bodyForParse = page.body.length > 500000 ? page.body.slice(0, 500000) : page.body;
-          const text = stripHtml(bodyForParse);
+          const strippedFull = stripHtml(page.body);
+          const text = strippedFull.length > 500000 ? strippedFull.slice(0, 500000) : strippedFull;
           const hasOAuth = /oauth/i.test(text); const hasClient = /client[ _-]id/i.test(text); const hasScope = /scope/i.test(text);
           logPush('fetch_page', url, 'ok_' + page.status + '_md_variant', 'Fetched .md variant for a short JS shell. OAuth: ' + hasOAuth + ', client ID: ' + hasClient + ', scope: ' + hasScope + '. Text length: ' + text.length + '.');
           if (hasOAuth || hasClient || hasScope) { addSource(url); return { url, text }; }
@@ -195,9 +180,20 @@ async function researchHandler(req, res) {
   function tracksSufficient(tr) {
     return sources.length >= 2 && tr.hasClient && tr.hasRedirect && tr.scopes.length > 0 && tr.endpoints.length > 0;
   }
-  // Batch 1: combined targeted search results, parallel.
+  if (!parsed.isIp && parsed.hostname) {
+    let suppliedUrl = '';
+    try { suppliedUrl = /^https?:\/\//i.test(rawApp) ? rawApp : (rawApp.includes('/') ? 'https://' + rawApp : ''); } catch (e) {}
+    if (suppliedUrl) {
+      try {
+        const su = new URL(suppliedUrl);
+        if (su.pathname && su.pathname !== '/' && isProviderHost(su.hostname.toLowerCase(), slug, domainGuess)) {
+          logPush('supplied_url', suppliedUrl, 'direct_fetch', 'Reviewer supplied a website URL, fetching it directly in addition to search results.');
+          await fetchBatch([suppliedUrl], true);
+        }
+      } catch (e) {}
+    }
+  }
   await fetchBatch(searchUrls.slice(0, 8), true);
-  // Adaptive follow-up: only for missing tracks, one extra targeted search.
   let tr = trackState();
   if (!parsed.isIp && !tracksSufficient(tr) && tavilyCallsUsed < 3) {
     const missing = [];
@@ -210,7 +206,6 @@ async function researchHandler(req, res) {
       tr = trackState();
     }
   }
-  // Follow links inside official docs, only for missing tracks, top 3.
   if (!parsed.isIp && !tracksSufficient(trackState())) {
     const linkUrls = [];
     for (const p of pages) {
@@ -230,7 +225,6 @@ async function researchHandler(req, res) {
     const uniqueLinks = linkUrls.filter((u, i, a) => a.map(canonicalUrl).indexOf(canonicalUrl(u)) === i).sort((a, b) => rankLink(a) - rankLink(b)).slice(0, 3);
     if (uniqueLinks.length) { logPush('follow_links', '', 'found_' + uniqueLinks.length, 'Following ' + uniqueLinks.length + ' links found inside official docs, for missing tracks only.'); await fetchBatch(uniqueLinks, false); tr = trackState(); }
   }
-  // Site navigation fallback, only if evidence is still incomplete.
   if (!parsed.isIp && !tracksSufficient(trackState()) && domainGuess) {
     const navHosts = [domainGuess, 'developers.' + domainGuess, 'developer.' + domainGuess, 'docs.' + domainGuess];
     const navFetches = navHosts.map(h => fetchText('https://' + h + '/', 3000, false));
@@ -276,7 +270,26 @@ async function researchHandler(req, res) {
     if (uniqueNav.length) await fetchBatch(uniqueNav, false);
     tr = trackState();
   }
-  // Generic OAuth patterns, parallel, no proxy, only if still incomplete.
+  if (!parsed.isIp && !tracksSufficient(trackState()) && domainGuess) {
+    try {
+      const llmsResults = await Promise.allSettled([fetchText('https://' + domainGuess + '/docs/llms.txt', 3000, false), fetchText('https://' + domainGuess + '/llms.txt', 3000, false)]);
+      const llmsUrls = [];
+      for (const lr of llmsResults) {
+        if (lr.status === 'fulfilled' && lr.value.ok && lr.value.body) {
+          for (const line of String(lr.value.body).split('\n')) {
+            const m = line.match(/https?:\/\/[^\s)]+/);
+            if (!m) continue;
+            try {
+              const uu = new URL(m[0]); const pth = uu.pathname.toLowerCase();
+              if (isProviderHost(uu.hostname.toLowerCase(), slug, domainGuess) && (pth.includes('/oauth') || pth.includes('/scope') || pth.includes('/auth'))) llmsUrls.push(m[0]);
+            } catch (e) {}
+          }
+        }
+      }
+      const uniqLlms = llmsUrls.filter((u, i, a) => a.map(canonicalUrl).indexOf(canonicalUrl(u)) === i).slice(0, 3);
+      if (uniqLlms.length) { logPush('llms_txt', '', 'found_' + uniqLlms.length, 'Following ' + uniqLlms.length + ' oauth, scope, or auth links from llms.txt.'); await fetchBatch(uniqLlms, false); tr = trackState(); }
+    } catch (e) {}
+  }
   if (!parsed.isIp && !tracksSufficient(trackState()) && domainGuess) {
     await fetchBatch([
       'https://developers.' + domainGuess + '/docs/oauth',
@@ -286,7 +299,6 @@ async function researchHandler(req, res) {
     ], false);
     tr = trackState();
   }
-  // One backup search, direct only, only if still incomplete and Tavily gave few results.
   if (!parsed.isIp && !tracksSufficient(trackState()) && searchUrls.length < 3) {
     const searchUrl = 'https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(app + ' OAuth developer docs register app scopes');
     logPush('search', searchUrl, 'attempted', 'Backup search, direct only, no proxy.');
@@ -299,38 +311,41 @@ async function researchHandler(req, res) {
     } else logPush('search', searchUrl, 'failed_' + search.status, 'Backup search page could not be fetched.');
   }
   const retrievalMs = Date.now() - tRetrieval0;
-  // Provider identity separation: never merge unrelated providers that
-  // share a name. Group fetched pages by base domain, keep only the
-  // dominant evidence cluster, discard the rest, and record them.
-  // A tie for first place, with no canonical domain winner, is ambiguous.
   let providerIdentityAmbiguous = false;
   let discardedProviderDomains = [];
+  let keptParentDomains = [];
   let canonicalProviderDomain = domainGuess || '';
   if (pages.length) {
     const clusters = {};
     for (const pg of pages) { try { const host = new URL(pg.url).hostname.toLowerCase().replace(/^www\./, ''); (clusters[host] = clusters[host] || []).push(pg); } catch (e) {} }
-    const scored = Object.entries(clusters).map(([bd, plist]) => ({ bd, plist, evidence: plist.filter(x => /oauth/i.test(x.text) || /client[ _-]id/i.test(x.text) || /scope/i.test(x.text)).length, canonical: bd === domainGuess ? 1 : 0 })).sort((a, b) => (b.evidence - a.evidence) || (b.plist.length - a.plist.length) || (b.canonical - a.canonical));
+    const appRe = (() => { try { return new RegExp(String(app || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'); } catch (e) { return null; } })();
+    const productMention = (pg) => !!(appRe && appRe.test(pg.text) && /oauth|api|scope|client/i.test(pg.text));
+    const scored = Object.entries(clusters).map(([bd, plist]) => ({ bd, plist, evidence: plist.filter(x => /oauth/i.test(x.text) || /client[ _-]id/i.test(x.text) || /scope/i.test(x.text)).length, canonical: bd === domainGuess ? 1 : 0, mentions: plist.filter(productMention).length })).sort((a, b) => (b.mentions - a.mentions) || (b.evidence - a.evidence) || (b.plist.length - a.plist.length) || (b.canonical - a.canonical));
     const dominantSlugOk = scored.length && scored[0].bd.split('.').some(label => label === slug || label.startsWith(slug));
     if (scored.length && !dominantSlugOk) {
       providerIdentityAmbiguous = true;
       logPush('provider_identity', '', 'ambiguous', 'Dominant fetched domain ' + scored[0].bd + ' does not contain provider name ' + slug + '. Identity not verified, guides must not merge unrelated providers.');
-    } else if (scored.length > 1 && scored[0].evidence === scored[1].evidence && scored[0].plist.length === scored[1].plist.length && scored[0].canonical === scored[1].canonical) {
+    } else if (scored.length > 1 && Math.abs(scored[0].evidence - scored[1].evidence) <= 1 && Math.abs(scored[0].plist.length - scored[1].plist.length) <= 1 && scored[0].mentions > 0 && scored[1].mentions > 0) {
       providerIdentityAmbiguous = true;
       logPush('provider_identity', '', 'ambiguous', 'Same-name providers found on multiple domains with equal evidence: ' + scored.map(x => x.bd).join(', ') + '. No dominant provider, guides must not merge them.');
     } else if (scored.length > 1) {
       const keep = scored[0];
       canonicalProviderDomain = keep.bd;
-      discardedProviderDomains = scored.slice(1).map(x => x.bd);
-      const keepSet = new Set(keep.plist);
+      const parentPages = [];
+      for (const cl of scored.slice(1)) for (const pg of cl.plist) { try { if (productMention(pg) && candidateHosts.has(new URL(pg.url).hostname.toLowerCase())) parentPages.push(pg); } catch (e) {} }
+      const keepPages = [...keep.plist, ...parentPages];
+      const parentDomains = Array.from(new Set(parentPages.map(pg => { try { return new URL(pg.url).hostname.toLowerCase().replace(/^www\./, ''); } catch (e) { return ''; } }).filter(Boolean)));
+      discardedProviderDomains = scored.slice(1).map(x => x.bd).filter(bd => !parentDomains.includes(bd));
+      const keepSet = new Set(keepPages);
       const removedPages = pages.filter(x => !keepSet.has(x));
-      pages.splice(0, pages.length, ...keep.plist);
-      for (let i = sources.length - 1; i >= 0; i--) { try { const host = new URL(sources[i]).hostname.toLowerCase().replace(/^www\./, ''); if (host !== keep.bd) sources.splice(i, 1); } catch (e) {} }
-      logPush('provider_identity', '', 'separated_' + keep.bd, 'Kept provider domain ' + keep.bd + ', discarded ' + discardedProviderDomains.join(', ') + ' (' + removedPages.length + ' pages), not merged.');
+      pages.splice(0, pages.length, ...keepPages);
+      for (let i = sources.length - 1; i >= 0; i--) { try { const host = new URL(sources[i]).hostname.toLowerCase().replace(/^www\./, ''); if (host !== keep.bd && !parentDomains.includes(host)) sources.splice(i, 1); } catch (e) {} }
+      logPush('provider_identity', '', 'separated_' + keep.bd, 'Kept provider domain ' + keep.bd + (parentDomains.length ? ', plus parent-domain product pages from ' + parentDomains.join(', ') : '') + ', discarded ' + discardedProviderDomains.join(', ') + ' (' + removedPages.length + ' pages), not merged.');
+      keptParentDomains = parentDomains;
     } else if (scored.length === 1) {
       canonicalProviderDomain = scored[0].bd;
     }
   }
-  // Extraction: structured facts, per track, with source and passage.
   const tExtraction0 = Date.now();
   const finalTr = trackState();
   const allText = finalTr.text;
@@ -345,9 +360,10 @@ async function researchHandler(req, res) {
     for (const p of pages) if (p.text.includes(clean.slice(0, 40))) return p.url;
     return '';
   }
-  let registerSnippet = findSnippet(allText, ['register an oauth', 'register a new oauth', 'create an oauth app', 'create a new app', 'register your app', 'register an application', 'create your app', 'create a developer app', 'create an application', 'registration is not required']);
+  let registerSnippet = findSnippet(allText, ['register an oauth', 'register a new oauth', 'create an oauth app', 'create an oauth client', 'create a new app', 'register your app', 'register an application', 'create your app', 'create a developer app', 'create an application', 'registration is not required']);
   const redirectSnippet = findSnippet(allText, ['redirect uri', 'redirect url', 'callback url']);
-  const approvalSnippet = findSnippet(allText, ['app review', 'app approval', 'submit for review', 'marketplace review', 'security review', 'admin consent', 'business verification', 'publisher verification']);
+  let approvalSnippet = findSnippet(allText, ['app review', 'app approval', 'submit for review', 'marketplace review', 'security review', 'admin consent', 'business verification', 'publisher verification']);
+  const reviewGateSnippet = findSnippet(allText, ['will review', 'review your oauth', 'admin will review', 'pending']);
   const apiKeySnippet = findSnippet(allText, ['api key', 'personal access token']);
   const pricingSnippet = findSnippet(allText, ['pricing', 'enterprise plan', 'invitation only', 'paid plan']);
   const distributionSnippet = findSnippet(allText, ['public app', 'public distribution', 'marketplace', 'private app', 'internal']);
@@ -358,16 +374,11 @@ async function researchHandler(req, res) {
   const signInSnippet = findSnippet(allText, ['sign in with', 'sign-in with', 'openid connect', 'id token']);
   const mcpSnippet = findSnippet(allText, ['model context protocol', 'mcp server', 'mcp authentication']);
   const ssoSnippet = findSnippet(allText, ['single sign-on', 'sso', 'saml']);
-  const regFreeSnippet = findSnippet(allText, ['dynamic client registration', 'no registration required', 'registration-free']);
+  const oauth21Snippet = findSnippet(allText, ['oauth 2.1', 'oauth2.1']);
+  const regFreeSnippet = findSnippet(allText, ['dynamic client registration', 'no registration required', 'registration-free', 'client id metadata', 'metadata document', 'do not need to pre-register', 'without pre-registering', 'do not need to register']);
   const adminConsentSnippet = findSnippet(allText, ['admin consent']);
   const privateSnippet = findSnippet(allText, ['private app', 'private integration', 'internal app', 'do not need review', 'no review required']);
   const privacySnippet = findSnippet(allText, ['privacy policy']);
-  // Authentication direction guard, P0: OAuth docs about configuring
-  // an external identity provider for the provider's own product are NOT
-  // evidence that external apps can connect through OAuth to this provider.
-  // Likewise, "create an application" in a no-code product is NOT OAuth app
-  // registration unless the passage, its section, or its source URL is a
-  // developer or OAuth context. These checks are generic, not provider rules.
   let registerSnippetRaw = registerSnippet;
   let externalIdpName = '';
   {
@@ -379,6 +390,9 @@ async function researchHandler(req, res) {
     if (externalIdpName && registerSnippet && /identity provider/i.test(registerSnippet) && registerSnippet.toLowerCase().includes(externalIdpName)) {
       registerSnippet = '';
     }
+    if (registerSnippet && ssoSnippet && sourceFor(registerSnippet) && sourceFor(registerSnippet) === sourceFor(ssoSnippet)) {
+      registerSnippet = '';
+    }
     if (registerSnippet) {
       const regSection = registerSnippet.startsWith('[Section: ') ? registerSnippet.slice(10, registerSnippet.indexOf(']')) : '';
       const regSource = sourceFor(registerSnippet);
@@ -386,30 +400,22 @@ async function researchHandler(req, res) {
       if (!devCtx) registerSnippet = '';
     }
   }
-  // Scopes grouped by product page, not merged across subproducts.
-  // A scope list from one product page must not be presented as the
-  // scope list for a different product on the same company domain.
-  // Declared here, before any code that pushes to it, so a multi-product
-  // scope list cannot hit a used-before-declared error.
   const contradictions = [];
   const scopeSources = [];
   for (const pg of pages) {
     const pgPath = (() => { try { return new URL(pg.url).pathname.toLowerCase(); } catch (e) { return ''; } })();
-    const pgSectionScope = /SECTION: [^\n]*(scope|permission)/i.test(pg.text);
-    if (!(pgPath.includes('scope') || pgPath.includes('permission') || pgPath.includes('oauth') || pgSectionScope)) continue;
-    const pgScopes = extractScopes(pg.text).filter(x => scopes.includes(x));
+    const pgSectionScope = /SECTION: [^\n]*scope/i.test(pg.text);
+    if (!(pgPath.includes('scope') || pgSectionScope)) continue;
+    const pgScopes = extractScopesFromScopeText(pg.text).filter(x => scopes.includes(x));
     if (pgScopes.length) scopeSources.push({ url: pg.url, product: productPath(pg.url), scopes: pgScopes });
   }
   const scopeProductPaths = Array.from(new Set(scopeSources.map(x => x.product).filter(x => x && x !== 'main')));
   const scopesFromMultipleProducts = scopeProductPaths.length > 1;
   if (scopesFromMultipleProducts) contradictions.push('Scopes were found on multiple product pages (' + scopeProductPaths.join(', ') + '), not one product. They are listed per source below and must not be requested together without checking which product the feature uses.');
 
-  // Final reasoning layer: passage meaning, not keyword presence.
-  // A requirement is mandatory only if its passage says so, in context.
-  // Optional, conditional, and unnecessary language overrides a generic
-  // template. This is the last check before requirements and steps are built.
   let registerMeaning = classifyPassage(registerSnippet, ['register', 'registration', 'create', 'oauth app', 'application']);
-  const approvalMeaning = classifyPassage(approvalSnippet, ['app review', 'app approval', 'submit for review', 'marketplace review', 'security review', 'publisher verification', 'business verification', 'verification']);
+  if (!approvalSnippet && reviewGateSnippet) approvalSnippet = reviewGateSnippet;
+  const approvalMeaning = classifyPassage(approvalSnippet, ['app review', 'app approval', 'submit for review', 'marketplace review', 'security review', 'publisher verification', 'business verification', 'verification', 'review']);
   const redirectMeaning = classifyPassage(redirectSnippet, ['redirect', 'callback']);
   const accountMeaning = classifyPassage(accountSnippet, ['developer account', 'account']);
   const scopeMeaning = classifyPassage(scopeSnippet, ['scope']);
@@ -420,7 +426,6 @@ async function researchHandler(req, res) {
   const privateMeaning = classifyPassage(privateSnippet, ['private', 'internal', 'review']);
   const privacyMeaning = classifyPassage(privacySnippet, ['privacy policy']);
   const pricingMeaning = classifyPassage(pricingSnippet, ['pricing', 'plan', 'tier', 'enterprise']);
-  // Authentication classification, with contradiction detection.
   let authType = 'unknown';
   const oauthStrong = finalTr.hasOAuth && ((authorizeEndpoints.length > 0 || tokenEndpoints.length > 0) || (finalTr.hasClient && scopes.length > 0));
   const apiKeyStrong = finalTr.hasApiKey && !oauthStrong;
@@ -430,9 +435,7 @@ async function researchHandler(req, res) {
   else if (apiKeyStrong) authType = 'api_key';
   else if (finalTr.hasServiceAccount && !finalTr.hasOAuth) authType = 'service_account';
   else if (finalTr.hasPersonalToken && !finalTr.hasOAuth) authType = 'personal_access_token';
-  // Auth systems, distinguished, not conflated. A sign-in page, an SSO
-  // page, an MCP page, and a third-party API OAuth page are different
-  // systems, even when they share words like OAuth or token.
+  else if (mcpSnippet && (() => { try { const u = new URL(sourceFor(mcpSnippet) || ''); const pth = u.pathname.toLowerCase(); return pth.includes('mcp') || pth.includes('/docs/') || pth.includes('/developer/'); } catch (e) { return false; } })()) authType = 'mcp_authentication';
   const apiScopes = scopes.filter(s => !['openid', 'profile', 'email'].includes(s));
   const authSystems = [];
   function authSystem(system, found, evidenceText) {
@@ -447,10 +450,7 @@ async function researchHandler(req, res) {
   authSystem('service_account', finalTr.hasServiceAccount, '');
   authSystem('mcp_authentication', !!mcpSnippet, mcpSnippet);
   authSystem('sso_enterprise', !!ssoSnippet, ssoSnippet);
-  // Structured authentication relationships, P0: who is the client, who
-  // owns the resource, who is the identity provider, what is authorized.
-  // These are not interchangeable, and a sign-in relationship is not
-  // third-party API access, even when both use OAuth words.
+  authSystem('oauth_2_1', !!oauth21Snippet && oauthStrong, oauth21Snippet);
   const authRelationships = [];
   function relFor(system, client, resourceOwner, idp, target, actionEnabled, direction, evidenceText) {
     const ev = evidenceText ? cleanSnippet(evidenceText) : '';
@@ -464,9 +464,8 @@ async function researchHandler(req, res) {
   relFor('service_account', 'server service', 'organization or service account', app, 'provider API', 'server to server API access', 'server-to-server API access', '');
   relFor('mcp_authentication', 'AI agent or MCP client', 'end user or developer', app, 'MCP tools', 'let an agent call provider tools', 'MCP connection', mcpSnippet);
   relFor('sso_enterprise', 'organization users', 'organization', 'enterprise identity provider', 'provider product login and administration', 'sign users into the provider product and administer the organization', 'enterprise sign-in and administration, not API OAuth', ssoSnippet);
+  relFor('oauth_2_1', 'developer application', 'end user', app, 'provider API', 'access end user data through the provider API under OAuth 2.1', 'third-party API access, OAuth 2.1 where documented', oauth21Snippet);
   if (externalIdpName) authRelationships.push({ method: 'external_idp_for_signin', client: 'provider product', resourceOwner: 'end user', identityProvider: externalIdpName, authorizationTarget: 'provider product login', actionEnabled: 'sign users into the provider product using ' + externalIdpName, direction: 'sign-in to provider product using an external identity provider, NOT third-party API access to this provider', useCase: 'sign-in to provider product using an external identity provider, NOT third-party API access to this provider', evidence: '', evidenceUrl: '' });
-  // If the only OAuth evidence is sign-in or SSO, third-party OAuth is
-  // not established, even if the word OAuth appears in those pages.
   if (authType === 'oauth' && !oauthStrong && (signInSnippet || ssoSnippet)) authType = 'sign_in_oauth';
 
   if (authType === 'oauth' && authorizeEndpoints.length === 0 && tokenEndpoints.length === 0 && apiScopes.length === 0) {
@@ -474,16 +473,31 @@ async function researchHandler(req, res) {
   }
   if (regFreeSnippet) {
     registerMeaning = { status: 'not_applicable', condition: 'Docs say registration is not required or dynamic registration is used: ' + cleanSnippet(regFreeSnippet) };
+    if (!registerSnippet) registerSnippet = regFreeSnippet;
   }
   if (oauthStrong && finalTr.hasApiKey) contradictions.push('Docs mention both OAuth and API keys. This guide treats OAuth as the main path only if OAuth endpoints or scopes were found, and lists API keys as a separate check, not as the same flow.');
   if (oauthStrong && noOAuthSnippet) contradictions.push('HARD: Source says OAuth is not supported or API key only, but OAuth endpoints or scopes were also found. Authentication cannot be trusted as OAuth alone.');
   if (finalTr.hasApiKey && finalTr.hasOAuth && !oauthStrong) contradictions.push('Docs mention both OAuth and API keys, but neither path is strong. The simplest supported path cannot be chosen from fetched pages alone.');
   if (/no review required|no approval required/i.test(allText) && finalTr.hasApproval) contradictions.push('Docs contain both review language and no review language. Approval is therefore treated as conditional, not as a universal requirement.');
-  // Console selection: score, never use an API reference page as the registration URL.
   const consoleCandidates = sources.map(u => ({ url: u, score: consoleScore(u) })).sort((a, b) => b.score - a.score);
+  const bodyUrls = Array.from(String(allText || '').matchAll(/https:\/\/[^\s"'<>]+/g)).map(m => m[0].replace(/[.,;:!?)\]}'"]+$/, ''));
+  for (const bu of bodyUrls) {
+    try {
+      const buu = new URL(bu);
+      const buHost = buu.hostname.toLowerCase();
+      if (!isProviderHost(buHost, slug, domainGuess)) continue;
+      if (baseDomain(buHost) !== (domainGuess || '').toLowerCase()) continue;
+      if (/yourdomain|example\.(com|org|net)|your-domain|yourcompany|localhost|127\.0\.0\.1|\{/.test(bu)) continue;
+      const buSegs = buu.pathname.toLowerCase().split('/').filter(Boolean);
+      const buPortal = buSegs.some(s => ['apps', 'console', 'dashboard', 'settings', 'account'].includes(s)) || buHost.startsWith('app.') || buHost.startsWith('console.') || buHost.startsWith('dashboard.') || buHost.startsWith('portal.');
+      if (!buPortal) continue;
+      const sc = consoleScore(bu);
+      if (sc >= 3 && !consoleCandidates.some(c => canonicalUrl(c.url) === canonicalUrl(bu))) consoleCandidates.push({ url: bu, score: sc });
+    } catch (e) {}
+  }
+  consoleCandidates.sort((a, b) => b.score - a.score);
   const consolePick = consoleCandidates.length && consoleCandidates[0].score >= 3 ? consoleCandidates[0].url : '';
   let consoleUrl = consolePick || 'Unknown';
-  // Tracks, each with status, confidence, sources, evidence, missing.
   function track(name, found, conf, evidenceText, missing) {
     return { name, status: found ? 'found' : 'missing', confidence: found ? conf : 'Low', sources: sources.slice(0, 6), evidence: evidenceText ? cleanSnippet(evidenceText) : '', evidenceUrl: sourceFor(evidenceText), missing: missing || [] };
   }
@@ -509,21 +523,18 @@ async function researchHandler(req, res) {
     externalIdp: externalIdpName || '',
     semanticMethod: 'deterministic sentence semantics, no paid model, no local model in this serverless function. See README for the model evaluation. Model claims, if ever added, must pass the same passage validation or the guide becomes a draft.'
   };
-  // Requirement engine.
   function makeReq(name, status, condition, evidenceText) {
     return { name, status, condition: condition || '', evidence: evidenceText ? cleanSnippet(evidenceText) : '', evidenceUrl: sourceFor(evidenceText) };
   }
   const requirements = [];
-  // Strict rule, final upgrade: a status other than unknown is allowed
-  // only when its cited passage, in the sentence that mentions the
-  // requirement, explicitly supports it. Mentioning a word is not
-  // evidence. A fallback to required, conditional, optional, or
-  // not_applicable from mere presence is forbidden here.
   requirements.push(makeReq('Developer account', accountMeaning.status, accountMeaning.condition, accountSnippet));
   if (authType === 'oauth') {
     requirements.push(makeReq('Register an OAuth app', registerMeaning.status, registerMeaning.condition, registerSnippet));
     requirements.push(makeReq('Redirect URI', redirectMeaning.status, redirectMeaning.condition, redirectSnippet));
-    requirements.push(makeReq('Scopes', scopeMeaning.status, scopeMeaning.condition, scopeSnippet));
+    const scopeReqStatus = scopes.length > 0 && scopeMeaning.status === 'unknown' ? 'conditional' : scopeMeaning.status;
+  const scopeReqCondition = scopeReqStatus === 'conditional' && scopeMeaning.status === 'unknown' ? 'Scopes were found in official docs scope sections, see scope list. The exact scopes your feature needs were not stated in a single passage, so choose minimum only.' : scopeMeaning.condition;
+  const scopeReqEvidence = scopeSnippet || (scopes.length ? 'Scopes found: ' + scopes.join(', ') : '');
+  requirements.push(makeReq('Scopes', scopeReqStatus, scopeReqCondition, scopeReqEvidence));
     requirements.push(makeReq('Client secret storage', secretMeaning.status, secretMeaning.condition, secretSnippet));
   } else if (authType === 'api_key') {
     requirements.push(makeReq('Register an OAuth app', noOAuthMeaning.status === 'not_applicable' ? 'not_applicable' : 'unknown', noOAuthMeaning.condition, noOAuthSnippet));
@@ -543,9 +554,6 @@ async function researchHandler(req, res) {
   requirements.push(makeReq('Private testing approval', approvalMeaning.status === 'not_applicable' ? 'not_applicable' : (privateMeaning.status === 'not_applicable' ? 'not_applicable' : 'unknown'), approvalMeaning.status === 'not_applicable' ? approvalMeaning.condition : privateMeaning.condition, approvalMeaning.status === 'not_applicable' ? approvalSnippet : privateSnippet));
   requirements.push(makeReq('Privacy policy and review documents', privacyMeaning.status, privacyMeaning.condition, privacySnippet));
   if (pricingSnippet) requirements.push(makeReq('Pricing or tier eligibility', (pricingMeaning.status === 'conditional' || pricingMeaning.status === 'required') ? 'conditional' : (pricingMeaning.status === 'optional' ? 'optional' : 'unknown'), pricingMeaning.condition, pricingSnippet));
-  // Evidence-to-decision records, approval as a distinct problem.
-  // Each decision is a claim, a passage, a section, a status, a
-  // condition, contradictions, and confidence, not a template row.
   const testSnippet = findSnippet(allText, ['test account', 'sandbox', 'development app', 'test mode', 'developer sandbox']);
   const testMeaning = classifyPassage(testSnippet, ['test', 'sandbox', 'development']);
   const altSnippet = findSnippet(allText, ['either', 'alternatively', 'you can also use', 'or api key']);
@@ -571,8 +579,6 @@ async function researchHandler(req, res) {
   ];
   evidenceSummary.decisions = decisions;
   evidenceSummary.authSystems = authSystems;
-  // Atomic claims: one proposition per claim, verified only when its
-  // passage logically entails it, not when a word merely appears.
   const claims = [];
   for (const r of requirements) {
     const verified = r.status !== 'unknown' && !!(r.evidence && r.evidenceUrl && sources.includes(r.evidenceUrl));
@@ -588,7 +594,6 @@ async function researchHandler(req, res) {
     claims.push({ proposition: 'OAuth endpoint is ' + ep, provider: canonicalProviderDomain || domainGuess || app, product: '', authContext: 'oauth', sourceUrl: epSource, passage: ep, section: '', classification: malformed ? 'invalid' : 'supported', condition: '', confidence: (!malformed && epSource) ? 'Medium' : 'Low', verified: (!malformed && !!epSource), contradictoryEvidence: malformed ? ['Endpoint is malformed or is a docs page, not an endpoint.'] : [] });
   }
   evidenceSummary.claims = claims;
-  // Quality gate.
   const checksPassed = []; const checksFailed = [];
   if (evidenceSummary.providerHostMatch) checksPassed.push('Provider identity matches sources'); else checksFailed.push('Provider identity does not match sources');
   if (consolePick) checksPassed.push('Registration URL is a developer portal candidate, not an API reference page'); else checksFailed.push('No developer portal candidate scored high enough, console URL set to Unknown');
@@ -596,17 +601,19 @@ async function researchHandler(req, res) {
   if (endpoints.length) checksPassed.push('OAuth endpoints validated as provider hosts, authorize and token categorized'); else if (authType === 'oauth') checksFailed.push('OAuth claimed but no valid endpoints found');
   if (scopes.length) checksPassed.push('Scopes extracted near scope mentions, credential tokens filtered'); else checksFailed.push('No scopes found');
   if (approvalSnippet) checksPassed.push('Approval statements backed by review evidence, not a single generic word'); else checksFailed.push('No approval evidence found, approval set to Unknown');
-  if (contradictions.length) checksFailed.push('Contradictions found, see evidence summary');
+  const criticalContradictions = contradictions.filter(c => String(c).startsWith('HARD:'));
+  const contradictionNotes = contradictions.filter(c => !String(c).startsWith('HARD:'));
+  if (criticalContradictions.length) checksFailed.push('Critical contradictions found, see evidence summary');
+  if (contradictionNotes.length) checksPassed.push('Non-critical notes recorded in evidence summary, not treated as failures');
   const evidenceCoverage = Object.values(tracks).filter(t => t.status === 'found').length;
   const sourceAuthority = sources.length ? sources.filter(u => { try { const h = new URL(u).hostname.toLowerCase(); return h.startsWith('developers.') || h.startsWith('developer.') || h.startsWith('docs.') || h === domainGuess; } catch (e) { return false; } }).length / sources.length : 0;
   let confidence = 'Low';
   if (authType !== 'unknown' && sources.length >= 2 && (scopes.length > 0 || endpoints.length > 0) && contradictions.length === 0) confidence = 'Medium';
-  // Guide completeness is separate from factual confidence. A guide is
-  // full structure only if it has usable evidence; otherwise it is a draft.
   const researchFailed = sources.length === 0 || authType === 'unknown' || providerIdentityAmbiguous;
   let guideType = researchFailed ? 'draft' : 'full';
   let verificationStatus = sources.length >= 2 ? 'Docs checked, 2 or more sources, no sign-in test' : sources.length === 1 ? 'Partially verified, single source, no sign-in test' : 'Unverified, no official source fetched, no sign-in test';
   const qualityGate = {
+    notes: contradictionNotes,
     completeness: guideType,
     evidenceCoverage: evidenceCoverage + ' of 6 tracks found',
     sourceAuthority: Math.round(sourceAuthority * 100) + '% of sources are developer or docs hosts',
@@ -615,7 +622,6 @@ async function researchHandler(req, res) {
     checksPassed,
     checksFailed
   };
-  // Evidence-built steps, variable length, no fixed template.
   const steps = [];
   function addStep(title, detail, who, time, blockerTip, requirement, evidenceText, condition) {
     const evUrl = sourceFor(evidenceText);
@@ -627,7 +633,11 @@ async function researchHandler(req, res) {
   if (authType === 'oauth') {
     if (registerMeaning.status !== 'not_applicable') addStep('Register the app', consolePick ? 'What: create a new OAuth app in the developer portal at ' + consolePick + '. Where: that portal, sign in as a developer. Why: registration creates the client ID and secret used for OAuth.' + (registerSnippet ? ' Evidence from docs: ' + cleanSnippet(registerSnippet) : '') : 'What: find the official developer portal in sources below and create a new OAuth app there. Where: official portal, not an API reference page. Why: no registration URL scored high enough to be used as the portal link, so do not use an API reference page as the registration URL.', 'human', '20 minutes', 'If the portal is not official, stop and mark the guide as unverified.', reqStatus('Register an OAuth app'), registerSnippet, reqCondition('Register an OAuth app'));
     else addStep('Registration is not required, per docs', 'What: do not register an OAuth app, because fetched docs say registration is not required for this path. Where: official docs in sources below. Why: ' + registerMeaning.condition, 'human', 'Unknown', 'Do not create an app that docs say is not required.', 'not_applicable', registerSnippet, registerMeaning.condition);
-    addStep('Set the redirect URI', 'What: add the exact redirect URI from your code, including host, path, and https, in app settings. Where: app settings in the portal. Why: the provider only redirects to registered URIs.' + (redirectSnippet ? ' Evidence from docs: ' + cleanSnippet(redirectSnippet) : ' No redirect rule was found in fetched pages, so copy it from your code and check it against official docs.'), 'human', '10 minutes', 'A redirect mismatch is the most common first failure.', reqStatus('Redirect URI'), redirectSnippet, reqCondition('Redirect URI'));
+    if (reviewGateSnippet && /admin|review/i.test(reviewGateSnippet)) addStep('Wait for provider review before use', 'What: wait for the provider to review the client before using it, because docs say it starts pending and is not ready until reviewed. Where: provider review, see evidence below. Why: using a pending client before approval wastes the integration attempt.' + ' Evidence from docs: ' + cleanSnippet(reviewGateSnippet), 'human', 'Unknown, review wait varies', 'Do not launch on a pending client.', 'conditional', reviewGateSnippet, 'Provider review is required before the client can be used.');
+    const redirectDetail = registerMeaning.status === 'not_applicable'
+      ? 'What: add the exact redirect URI from your code to the client registration method documented in sources, because this path does not use a portal app registration. Where: the registration method in official docs, for example a hosted metadata document. Why: the provider only redirects to URIs declared in that registration.' + (redirectSnippet ? ' Evidence from docs: ' + cleanSnippet(redirectSnippet) : ' No redirect rule was found in fetched pages, so copy it from your code and check it against official docs.')
+      : 'What: add the exact redirect URI from your code, including host, path, and https, in app settings. Where: app settings in the portal. Why: the provider only redirects to registered URIs.' + (redirectSnippet ? ' Evidence from docs: ' + cleanSnippet(redirectSnippet) : ' No redirect rule was found in fetched pages, so copy it from your code and check it against official docs.');
+    addStep('Set the redirect URI', redirectDetail, 'human', '10 minutes', 'A redirect mismatch is the most common first failure.', reqStatus('Redirect URI'), redirectSnippet, reqCondition('Redirect URI'));
     if (scopes.length) addStep('Choose scopes, minimum only', 'What: documented scope examples found in official docs, not a required list for your use case: ' + (scopes.length > 8 ? scopes.slice(0, 8).join(', ') + ', plus ' + (scopes.length - 8) + ' more documented examples, see sources' : scopes.join(', ')) + '. Request only the scopes your feature actually uses, and check the official scopes page for your feature first. Where: app settings and authorize request. Why: broad scopes can trigger extra review and risk. Do not request a broad scope without a stated use case for that scope, and do not request every discovered scope as a default.', 'agent', '20 minutes', 'A single sensitive scope can change the whole timeline.', reqStatus('Scopes'), scopeSnippet, reqCondition('Scopes'));
     else addStep('Find the scope list', 'What: open the first source below, find its scopes or permissions page, and list every scope your feature needs. Where: official docs. Why: no valid scope tokens were extracted in this run, so do not guess a scope list.', 'agent', '20 minutes', 'Do not guess scopes.', 'unknown', '');
     if (endpoints.length) addStep('Build the authorize and token flow', 'What: send the user to the authorize endpoint' + (authorizeEndpoints.length ? ': ' + authorizeEndpoints.join(', ') : '') + ', then exchange the code at the token endpoint' + (tokenEndpoints.length ? ': ' + tokenEndpoints.join(', ') : '') + '. Where: your backend. Why: this is how a user token is issued. Store tokens securely, never in client code.', 'agent', '30 minutes', 'Store client secrets securely. If a secret is exposed, rotate it.', 'unknown', '');
@@ -642,6 +652,10 @@ async function researchHandler(req, res) {
     addStep('Get your key', 'What: get your key from the provider console or account settings. Where: official console in sources below. Why: the key identifies your app, it is not a standard OAuth client ID.', 'human', '10 minutes', 'Never put the key in client code or a public repo.', reqStatus('Create credentials'), apiKeySnippet, reqCondition('Create credentials'));
     addStep('Authorize a token', 'What: send the user through the authorize path found in docs, ' + (finalTr.endpointPaths.length ? finalTr.endpointPaths.join(', ') : 'see sources below') + ', with your key, and store the token returned. Where: your backend. Why: the token, not the key alone, is what API calls use. Do not present a full authorize URL here, because docs gave a path, not a confirmed full URL on the app host, verify it in official docs first.', 'agent', '20 minutes', 'If authorization fails, check key, token scope, and the exact authorize path in official docs.', 'unknown', '');
     addStep('Test one call with the token', 'What: test one call with the stored token, server side. Where: your backend. Why: a working read call proves the key and token, before building more.', 'agent', '20 minutes', 'If the call fails, check token permissions first.', 'unknown', '');
+  } else if (authType === 'mcp_authentication') {
+    addStep('Find the MCP server docs', 'What: find the provider MCP server docs in sources below, and confirm which tools it exposes. Where: official MCP docs. Why: this provider authenticates through MCP in fetched docs, not through a standard OAuth app.' + (mcpSnippet ? ' Evidence from docs: ' + cleanSnippet(mcpSnippet) : ''), 'agent', '20 minutes', 'Do not present MCP access as OAuth.', 'unknown', mcpSnippet);
+    addStep('Configure the MCP client', 'What: configure the MCP client with the credentials documented for that server, server side only. Where: your MCP client configuration. Why: credentials in client code or a public repo are exposed.', 'human', '20 minutes', 'Never put credentials in client code.', 'unknown', '');
+    addStep('Test one MCP tool call', 'What: test one read-only tool call through the MCP server, and confirm it returns expected data. Where: your test account. Why: a working tool call proves the MCP path before building more.', 'agent', '20 minutes', 'If the call fails, check server URL, credentials, and tool permissions first.', 'unknown', '');
   } else {
     addStep('Find the official developer portal', 'What: find the official developer console and registration docs for ' + app + ', then list scopes and review triggers before building. Where: official docs, not a tutorial site. Why: no authentication method was confirmed, so no flow can be recommended yet.', 'human', 'Unknown', 'Do not build on an unverified portal.', 'unknown', '');
   }
@@ -655,10 +669,6 @@ async function researchHandler(req, res) {
     addStep('Check whether review is required', 'What: check official review docs for whether private testing, public distribution, or admin consent needs a separate review. Where: official docs in sources below. Why: no approval evidence was found in fetched pages, so review cannot be claimed or ruled out yet.', 'human', 'Unknown', 'Do not promise a launch date until review docs are checked.', 'unknown', '');
   }
   if (pricingSnippet) addStep('Check pricing, tier, and enterprise limits', 'What: check pricing, account tier, and enterprise restrictions before building. Where: official pricing and docs in sources below. Why: a tier limit can block the feature even if auth works.' + ' Evidence from docs: ' + cleanSnippet(pricingSnippet), 'human', '15 minutes', 'Do not assume a free tier covers the feature.', reqStatus('Pricing or tier eligibility'), pricingSnippet, reqCondition('Pricing or tier eligibility'));
-  // Template override validation pass: no step may stay marked required
-  // when its requirement is not applicable or optional in docs. If it does,
-  // the step is downgraded and its detail says so, rather than letting a
-  // generic template override the provider's documented process.
   const reqByName = {};
   for (const r of requirements) reqByName[r.name] = r;
   let templateViolations = 0;
@@ -679,11 +689,6 @@ async function researchHandler(req, res) {
   }
   if (templateViolations === 0) qualityGate.checksPassed.push('Template override check: no step is marked required when its requirement is not applicable or optional');
   else qualityGate.checksFailed.push('Template override check: ' + templateViolations + ' step(s) were downgraded to match docs, see step details');
-  // Independent validation gate, P0: re-derive checks from raw fetched
-  // text and step prose, NOT from the generator's own requirement objects.
-  // The generator and the checker must not agree on the same wrong
-  // interpretation by sharing a status field. If a required step is
-  // removed here, the guide becomes a draft, with verified steps retained.
   const independentRemovals = [];
   const independentCorrections = [];
   {
@@ -732,10 +737,7 @@ async function researchHandler(req, res) {
       }
     }
   }
-  if (independentCorrections.length) qualityGate.checksFailed.push('Independent gate corrections: ' + independentCorrections.join(' '));
-  // Final factual consistency checker. This is not a downgrade pass.
-  // A critical contradiction makes the guide a draft, not a full guide,
-  // even if the rest of the guide looks complete.
+  if (independentCorrections.length) qualityGate.notes = [...(qualityGate.notes || []), ...independentCorrections.map(c => 'Independent gate: ' + c)];
   const validationFailures = [];
   for (const f of independentRemovals) validationFailures.push(f);
   let broadScopeWarning = false;
@@ -780,11 +782,6 @@ async function researchHandler(req, res) {
   qualityGate.factualConfidence = confidence;
   qualityGate.factualVerification = validationFailures.length ? 'unverified' : (keyDecisionsUnknown >= 2 ? 'partial' : 'docs checked, not sign-in tested');
   qualityGate.claimsVerified = claims.filter(c => c.verified).length + ' of ' + claims.length + ' claims verified by a passage';
-  // Three-state outcome, final hardening: a guide is full only when it
-  // is a verified path, partial when some details are confirmed but key
-  // information is missing or validation found non-critical issues, and
-  // draft when it is unsupported or ambiguous. A partial guide must never
-  // be presented as full, even if its research tracks are complete.
   {
     const criticalValidation = validationFailures.some(f => /Auth classified|Provider identity|Source says OAuth|Auth type is unknown/i.test(f));
     if (researchFailed) { guideType = 'draft'; }
@@ -799,9 +796,8 @@ async function researchHandler(req, res) {
     } else { guideType = 'full'; }
     qualityGate.completeness = guideType;
   }
-  // Timeline, checklist, blockers built from requirements and steps.
   const timeline = [
-    { stage: 'Registration and credentials', wait: 'Estimate: 30 minutes to 1 hour for a first app, not a published provider time', note: 'Create the app or credentials, record client ID or key, store secrets server side.' },
+    { stage: 'Registration and credentials', wait: registerMeaning.status === 'not_applicable' ? 'Unknown, depends on registration method, not a published provider time' : 'Estimate: 30 minutes to 1 hour for a first app, not a published provider time', note: registerMeaning.status === 'not_applicable' ? 'No portal app registration for this path. Publish the client registration method documented in sources, and declare redirect URIs there.' : 'Create the app or credentials, record client ID or key, store secrets server side.' },
     { stage: 'Auth test', wait: 'Estimate: 30 minutes, not a published provider time', note: 'One real consent or credential flow and one API call with a stored token or key.' },
     { stage: 'Provider review and publishing', wait: approvalMeaning.status === 'not_applicable' ? 'No provider review required, per fetched docs' : (approvalSnippet ? (timePhrase(approvalSnippet) ? 'Published phrase found: ' + timePhrase(approvalSnippet) + ', see evidence, not a guarantee' : 'Varies, see sources. No fixed timeline was confirmed in this research run.') : 'Unknown, do not promise a date until review docs are checked'), note: approvalMeaning.status === 'not_applicable' ? 'No provider review submission is required, per fetched docs.' : 'Authentication is not app review. Publishing or listing needs its own submission, if required.' }
   ];
@@ -819,7 +815,6 @@ async function researchHandler(req, res) {
   if (authType === 'api_key') blockers.push({ blocker: 'Platform may use API keys instead of OAuth', fix: 'Fetched docs support API keys. Do not present API key access as OAuth, and do not build an OAuth flow for this provider.' });
   if (broadScopeWarning) blockers.push({ blocker: 'Broad scope in extracted list', fix: 'A broad scope such as admin or all was found. Do not request it without a stated use case for that scope, and check official docs for a narrower scope first.' });
   if (validationFailures.length) blockers.push({ blocker: 'Validation failed', fix: 'See quality gate validation failures. Do not use this guide as a full guide until those contradictions are resolved in official docs.' });
-  // Difficulty, honest, from evidence, not a fixed rule.
   let difficulty = 'Unknown'; let difficultyWhy = '';
   if (sources.length === 0) { difficulty = 'Unknown'; difficultyWhy = 'No official docs could be verified in this research run, so difficulty cannot be set.'; }
   else if (/business verification|company verification/i.test(allText)) { difficulty = 'Hard'; difficultyWhy = 'Hard from retrieved docs: sources mention business or enterprise verification, which usually adds a human review step.'; }
@@ -850,7 +845,7 @@ async function researchHandler(req, res) {
     requirements,
     qualityGate,
     managedAppNote: 'Check first whether a managed app already covers this platform. If it does, you may not need your own app. Managed support for this specific provider was not confirmed in this research run, check the Composio toolkit list before building.',
-    nextStep: validationFailures.length ? 'Validation failed: ' + validationFailures.join(' ') + ' Do not use this as a full guide. Check official docs manually.' + (sources.length ? ' Start here: ' + sources[0] : '') : researchFailed ? (sources.length === 0 ? 'Provider could not be identified from search results, and no official docs were fetched. Do not guess a domain. Provide the official website or developer docs URL, then research again, and do not use this draft as a verified guide.' : 'Research did not find usable official docs. Use the findings below, check the official portal manually, and do not use this draft as a verified guide. Start here: ' + sources[0]) : (consolePick ? 'Open the developer portal at ' + consolePick + ', confirm the authentication model, then follow the steps in order.' : (sources.length ? 'Open ' + sources[0] + ', confirm the authentication model and registration portal, then follow the steps in order.' : 'Open the first source below, confirm the authentication model and registration portal, then follow the steps in order.')),
+    nextStep: providerIdentityAmbiguous ? 'Provider identity is ambiguous: multiple providers match this name, including ' + [canonicalProviderDomain, ...discardedProviderDomains].filter(Boolean).join(', ') + '. Enter the official website URL for the provider you mean, then research again, and do not use this draft as a verified guide.' : validationFailures.length ? 'Validation failed: ' + validationFailures.join(' ') + ' Do not use this as a full guide. Check official docs manually.' + (sources.length ? ' Start here: ' + sources[0] : '') : researchFailed ? (sources.length === 0 ? 'No usable official docs were fetched in this run, after ' + tavilyCallsUsed + ' searches and ' + pages.length + ' pages fetched' + (domainGuess ? ', with search results pointing to ' + domainGuess : '') + '. This is a retrieval failure, not proof that no public docs exist. Open the provider official docs directly, search for OAuth or API authentication, paste the official docs URL into the search box to research that page, and do not use this draft as a verified guide.' : 'Research did not find usable official docs. Use the findings below, check the official portal manually, and do not use this draft as a verified guide. Start here: ' + sources[0]) : (registerMeaning.status === 'not_applicable' ? 'Open ' + (sources.length ? sources[0] : 'official docs') + ', confirm the registration-free method and how redirect URIs are declared, then follow the steps in order.' : (consolePick ? 'Open the developer portal at ' + consolePick + ', confirm the authentication model, then follow the steps in order.' : (sources.length ? 'Open ' + sources[0] + ', confirm the authentication model and registration portal, then follow the steps in order.' : 'Open the first source below, confirm the authentication model and registration portal, then follow the steps in order.'))),
     steps, timeline, checklist, blockers,
     agentCan: ['Search for official docs', 'Fetch candidate pages', 'Extract scopes, endpoints, and review evidence with sources', 'Draft checklists and timelines from evidence'],
     humanMust: approvalMeaning.status === 'not_applicable' ? ['Confirm the official portal', 'Sign in to the provider console', 'Verify scopes and review requirements', 'Confirm no review is required in official docs'] : ['Confirm the official portal', 'Sign in to the provider console', 'Verify scopes and review requirements', 'Submit for review and reply to reviewers only if docs say public distribution requires it'],
@@ -867,11 +862,6 @@ async function researchHandler(req, res) {
   if (guideType === 'full' && confidence === 'Medium' && sources.length >= 2) guideCache.set(slug, { guide, log, at: Date.now() });
   res.status(200).json({ guide, log, timings, cached: false });
 };
-// Catch-all failure handling, P1: a research crash must never become
-// a 500 with no guide. If anything in the handler throws, return a draft
-// guide that says research failed, with verified information only, which
-// here is none, and a clear next step. This does not hide the failure:
-// the error is recorded in the guide's tested field and in notVerified.
 module.exports = async (req, res) => {
   try {
     await researchHandler(req, res);
@@ -887,10 +877,6 @@ module.exports = async (req, res) => {
   }
 };
 
-// Exported for the fixed-document regression test only. The Vercel
-// handler above is still module.exports as a function; these properties
-// are how the regression script calls the actual production logic
-// against captured passages, instead of a copy of the logic.
 module.exports.classifyPassage = classifyPassage;
 module.exports.consoleScore = consoleScore;
 module.exports.validateScope = validateScope;

@@ -73,11 +73,26 @@ function baseDomain(host) {
 function validateScope(s) {
   if (!s || typeof s !== 'string') return false;
   if (s.length > 50 || s.length < 5) return false;
+  // UPPER_SNAKE scopes, for example EVENT_TYPE_READ, are real OAuth
+  // scopes on some providers. They are only accepted from a scope
+  // section or a scope page, never from arbitrary page text, because
+  // extractScopesFromPages gates the caller. Credential and metadata
+  // tokens are never scopes, in any case.
+  if (/^[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+$/.test(s)) {
+    const upParts = s.split('_');
+    if (upParts.some(p => /^(CLIENT|ACCESS|REFRESH|API|SECRET|TOKEN|KEY|ID|OG|TWITTER|FB)$/.test(p))) return false;
+    if (/(ID|SECRET|TOKEN|KEY)$/.test(s)) return false;
+    return true;
+  }
+  // Metadata and social tokens are never OAuth scopes, even when they
+  // look like colon tokens, for example og:title or twitter:card.
+  const firstPart = s.toLowerCase().split(/[:.]/)[0];
+  if (['og', 'twitter', 'fb', 'article', 'meta', 'schema', 'ld', 'jsonld'].includes(firstPart)) return false;
   if (!/^[a-z][a-z0-9_-]+([:.][a-z][a-z0-9_-]+)+$/.test(s)) return false;
   if (s.includes('..') || s.includes('::') || s.includes('._') || s.includes('_.')) return false;
   const parts = s.split(/[:.]/);
   if (parts.some(x => x.length < 3)) return false;
-  if (parts.some(x => /^(api|www|http|https|oauth|auth|login|signup|v1|v2|v3|js|css|png|jpg|svg|json|html|md|com|net|org|token|secret|client|id|code|pem|key|crt|cert|xml|yaml|yml|txt|pdf)$/.test(x))) return false;
+  if (parts.some(x => /^(api|www|http|https|oauth|auth|login|signup|v1|v2|v3|js|ts|tsx|jsx|mjs|cjs|css|png|jpg|svg|json|html|md|com|net|org|token|secret|client|id|code|pem|key|crt|cert|xml|yaml|yml|txt|pdf)$/.test(x))) return false;
   if (parts.some(x => /^\d+$/.test(x))) return false;
   return true;
 }
@@ -89,7 +104,7 @@ function metadataTokenCount(s) {
 function extractScopes(text) {
   const blocked = new Set(['client', 'client_id', 'client_secret', 'access_token', 'refresh_token', 'token', 'secret', 'id', 'code', 'authorization', 'grant', 'redirect_uri', 'urn', 'params', 'type', 'response', 'grant_type', 'device_code', 'display', 'src', 'style', 'width', 'transition', 'button', 'root', 'items', 'decoration', 'font', 'background', 'color', 'margin', 'padding', 'border', 'position', 'overflow', 'flex', 'grid', 'text', 'line', 'content', 'cursor', 'opacity', 'visibility', 'height', 'max', 'min']);
   const blockedSecond = new Set(['hover', 'not', 'last', 'first', 'focus', 'active', 'visited', 'checked', 'disabled', 'enabled', 'before', 'after', 'nth', 'only', 'empty']);
-  const blockedFirst = new Set(['www', 'api', 'oauth', 'auth', 'login', 'signup', 'http', 'https']);
+  const blockedFirst = new Set(['www', 'api', 'oauth', 'auth', 'login', 'signup', 'http', 'https', 'og', 'twitter', 'fb', 'article', 'meta', 'schema', 'ld', 'jsonld']);
   const dotAllowedLast = new Set(['read', 'write', 'info', 'metadata', 'content', 'member', 'delete', 'create', 'update']);
   function collect(onlyNearScope) {
     const found = new Set();
@@ -103,7 +118,7 @@ function extractScopes(text) {
         if (after.trimStart().startsWith('{')) continue;
         if (text.slice(Math.max(0, m.index - 100), m.index).includes('!important')) continue;
         if (s.includes('http') || s.length > 60) continue;
-        if (s.endsWith('.com') || s.endsWith('.json') || s.endsWith('.md') || s.endsWith('.html') || s.endsWith('.txt') || s.endsWith('.pdf')) continue;
+        if (s.endsWith('.com') || s.endsWith('.json') || s.endsWith('.md') || s.endsWith('.html') || s.endsWith('.txt') || s.endsWith('.pdf') || s.endsWith('.tsx') || s.endsWith('.jsx') || s.endsWith('.ts') || s.endsWith('.js')) continue;
         if (s.includes('.') && !onlyNearScope && !dotAllowedLast.has(s.split('.').pop())) continue;
         if (s.includes('.') && (s.split('.')[0] === 'api' || s.split('.')[0] === 'www')) continue;
         const parts = s.split(/[:.]/);
@@ -135,6 +150,8 @@ function extractEndpoints(text, slug, domainGuess) {
     if (u.length >= 100) continue;
     try {
       const pp = new URL(u); const path = pp.pathname.toLowerCase(); const host = pp.hostname.toLowerCase();
+      if (/yourdomain|your-domain|yourcompany|localhost|127\.0\.0\.1|\{/.test(u)) continue;
+      if (domainGuess && baseDomain(host) !== String(domainGuess).toLowerCase()) continue;
       if (path.includes('/docs/') || path.includes('/reference/') || path.endsWith('.md') || path.endsWith('.png') || path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.svg') || path.endsWith('.gif') || path.includes('/attachments') || host.includes('attachments')) continue;
       if (path.includes('token') && !path.includes('oauth') && !path.includes('authorize')) continue;
       if (!isProviderHost(host, slug, domainGuess)) continue;
@@ -331,15 +348,60 @@ function classifyPassage(snippetText, keywords) {
       return 'main';
     } catch (e) { return ''; }
   }
+  function extractUpperSnakeScopes(sectionText) {
+    const out = [];
+    const re = /\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+\b/g;
+    let m;
+    while ((m = re.exec(sectionText)) !== null) {
+      const s = m[0];
+      if (validateScope(s) && !out.includes(s)) out.push(s);
+      if (out.length >= 100) break;
+    }
+    return out;
+  }
+  function extractScopesFromScopeText(sectionText) {
+    const out = [];
+    for (const sc of extractScopes(sectionText)) if (!out.includes(sc)) out.push(sc);
+    for (const sc of extractUpperSnakeScopes(sectionText)) if (!out.includes(sc)) out.push(sc);
+    return out.filter(validateScope);
+  }
   function extractScopesFromPages(pages) {
     const out = [];
     for (const pg of pages) {
       const path = (() => { try { return new URL(pg.url).pathname.toLowerCase(); } catch (e) { return ''; } })();
-      const sectionScope = /SECTION: [^\n]*(scope|permission)/i.test(pg.text);
-      if (!(path.includes('scope') || path.includes('permission') || path.includes('oauth') || sectionScope)) continue;
-      for (const sc of extractScopes(pg.text)) if (!out.includes(sc)) out.push(sc);
+      // Scope context is narrow, on purpose. A role or permissions guide
+      // is not an OAuth scope list, and an SSO page is not either, even
+      // when its path contains permission or oauth. Only a section whose
+      // heading is about scopes, or a page whose path is about scopes,
+      // may supply scopes. Anything else is dropped completely, never
+      // shown as a scope example in a partial guide.
+      const sections = String(pg.text || '').split(/(?=SECTION: )/);
+      let pageScopes = [];
+      for (const sec of sections) {
+        const headMatch = sec.match(/^SECTION: ([^\n]*)/);
+        const heading = headMatch ? headMatch[1] : '';
+        if (/scope/i.test(heading)) pageScopes.push(...extractScopesFromScopeText(sec));
+      }
+      if (!pageScopes.length && path.includes('scope')) pageScopes = extractScopesFromScopeText(pg.text);
+      for (const sc of pageScopes) if (!out.includes(sc)) out.push(sc);
     }
     return out;
   }
 
-module.exports = { stripHtml, sectionFor, isProviderHost, parseInput, canonicalUrl, baseDomain, validateScope, metadataTokenCount, extractScopes, extractEndpoints, extractRelativeEndpoints, findSnippet, cleanSnippet, timePhrase, classifyPassage, consoleScore, productPath, extractScopesFromPages, fetchText, fetchOnce };
+function extractNextDataText(body) {
+  try {
+    const m = String(body || '').match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+    if (!m) return '';
+    const data = JSON.parse(m[1]);
+    const out = [];
+    const walk = (x) => {
+      if (typeof x === 'string') { if (x.length > 80 && /oauth|scope|client|api|token/i.test(x)) out.push(x); }
+      else if (Array.isArray(x)) x.forEach(walk);
+      else if (x && typeof x === 'object') Object.values(x).forEach(walk);
+    };
+    walk(data);
+    const txt = out.join('\n');
+    return /oauth|scope|client/i.test(txt) ? txt : '';
+  } catch (e) { return ''; }
+}
+module.exports = { stripHtml, sectionFor, isProviderHost, parseInput, canonicalUrl, baseDomain, validateScope, metadataTokenCount, extractScopes, extractEndpoints, extractRelativeEndpoints, findSnippet, cleanSnippet, timePhrase, classifyPassage, consoleScore, productPath, extractScopesFromPages, extractScopesFromScopeText, extractUpperSnakeScopes, extractNextDataText, fetchText, fetchOnce };

@@ -115,7 +115,7 @@ function evidenceHtml(g) {
   if (!g.evidenceSummary && !g.requirements && !g.qualityGate) return '';
   const tracks = g.evidenceSummary && g.evidenceSummary.tracks ? Object.values(g.evidenceSummary.tracks).map(t => `<li><strong>${esc(t.name)}:</strong> ${esc(t.status)}, confidence ${esc(t.confidence)}${t.evidence ? ` - ${esc(t.evidence)}` : ''}${t.missing && t.missing.length ? ` Missing: ${esc(t.missing.join('; '))}` : ''}</li>`).join('') : '';
   const reqs = (g.requirements || []).map(r => `<li><strong>${esc(r.name)}:</strong> ${esc(r.status)}${r.condition ? ` - ${esc(r.condition)}` : ''}${r.evidence ? ` Evidence: ${esc(r.evidence)}` : ''}</li>`).join('');
-  const gate = g.qualityGate ? `<p><strong>Quality gate:</strong> completeness ${esc(g.qualityGate.completeness)}, evidence ${esc(g.qualityGate.evidenceCoverage)}, source authority ${esc(g.qualityGate.sourceAuthority)}, factual confidence ${esc(g.qualityGate.factualConfidence)}</p>${g.qualityGate.checksPassed && g.qualityGate.checksPassed.length ? `<p>Checks passed: ${esc(g.qualityGate.checksPassed.join('; '))}</p>` : ''}${g.qualityGate.checksFailed && g.qualityGate.checksFailed.length ? `<p>Checks failed: ${esc(g.qualityGate.checksFailed.join('; '))}</p>` : ''}` : '';
+  const gate = g.qualityGate ? `<p><strong>Quality gate:</strong> completeness ${esc(g.qualityGate.completeness)}, evidence ${esc(g.qualityGate.evidenceCoverage)}, source authority ${esc(g.qualityGate.sourceAuthority)}, factual confidence ${esc(g.qualityGate.factualConfidence)}</p>${g.qualityGate.checksPassed && g.qualityGate.checksPassed.length ? `<p>Checks passed: ${esc(g.qualityGate.checksPassed.join('; '))}</p>` : ''}${g.qualityGate.checksFailed && g.qualityGate.checksFailed.length ? `<p>Checks failed: ${esc(g.qualityGate.checksFailed.join('; '))}</p>` : ''}${g.qualityGate.notes && g.qualityGate.notes.length ? `<p>Notes, not failures: ${esc(g.qualityGate.notes.join('; '))}</p>` : ''}` : '';
   const decisions = (g.decisions || []).map(d => `<li><strong>${esc(d.claim)}:</strong> ${esc(d.status)}${d.condition ? ` - ${esc(d.condition)}` : ''}${d.evidence ? ` Evidence: ${esc(d.evidence)}` : ''}${d.justification ? ` Why: ${esc(d.justification)}` : ''}</li>`).join('');
   const rels = (g.evidenceSummary && g.evidenceSummary.authRelationships ? g.evidenceSummary.authRelationships.filter(r => r.evidence || r.method === 'external_idp_for_signin') : []).map(r => `<li><strong>${esc(r.method)}:</strong> ${esc(r.direction)} - client: ${esc(r.client)}, resource owner: ${esc(r.resourceOwner)}, identity provider: ${esc(r.identityProvider)}, authorized: ${esc(r.authorizationTarget)}${r.evidence ? ` Evidence: ${esc(r.evidence)}` : ''}</li>`).join('');
   const scopeSrc = (g.evidenceSummary && g.evidenceSummary.scopeSources ? g.evidenceSummary.scopeSources : []).map(x => `<li>${esc(x.url)} (${esc(x.product)}): ${esc(x.scopes.join(', '))}</li>`).join('');
@@ -142,6 +142,7 @@ function executionHtml(g) {
     ${log ? `<p><strong>Research log:</strong></p><ul>${log}</ul>` : '<p>No step-by-step research log was recorded for this guide. See the verification report on the home page for the sampled checks.</p>'}`;
 }
 function showDetail(g, isGenerated) {
+  try { document.getElementById('empty').classList.add('hidden'); } catch (e) {}
   if (isGenerated || String(g.id || '').startsWith('generated-') || String(g.id || '').startsWith('draft-')) {
     const enc = encodeGuide(g);
     if (enc) location.hash = 'generated=' + enc;
@@ -173,7 +174,7 @@ function showDetail(g, isGenerated) {
     <p class="small">Managed or custom? Check managed first. Go custom only for own branding, custom scopes, dedicated quota, or a custom instance.</p>
     ${evidenceHtml(g)}
     <h3>Step by step guide</h3>
-    <p class="small">Quick view. Tap Evidence from docs on a step to see the docs quote behind it.</p>
+    ${g.steps && g.steps.some(s => s.evidence || String(s.detail || '').toLowerCase().includes('evidence from docs:')) ? '<p class="small">Quick view. Tap Evidence from docs on a step to see the docs quote behind it.</p>' : '<p class="small">Quick view. Library steps have no per-step docs quote in this view, see sources below.</p>'}
     ${stepsHtml(g)}
     <h3>Review timeline card</h3>
     <ul>${g.timeline.map(t => `<li><strong>${esc(t.stage)}:</strong> ${esc(t.wait)} - ${esc(t.note)}</li>`).join('')}</ul>
@@ -207,7 +208,8 @@ function showDetail(g, isGenerated) {
     });
   } catch (e) {}
   document.getElementById('shareBtn').addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(location.href); alert('Share link copied.'); } catch (e) { alert(location.href); }
+    const btn = document.getElementById('shareBtn');
+    try { await navigator.clipboard.writeText(location.href); if (btn) { btn.textContent = 'Link copied'; setTimeout(() => { btn.textContent = 'Copy share link'; }, 2000); } } catch (e) { alert(location.href); }
   });
   document.getElementById('jsonBtn').addEventListener('click', async () => {
     const json = JSON.stringify(g, null, 2);

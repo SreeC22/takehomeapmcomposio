@@ -1,0 +1,12 @@
+FreshBooks 16/18 partial oauth Low steps 7 sources 4 tracks 4 latency 2052ms
+Zoho 13/18 partial oauth Low steps 8 sources 4 tracks 5 latency 1772ms
+Intercom 14/18 partial api_key Low steps 5 sources 12 tracks 4 latency 3175ms
+Typeform 14/18 draft oauth Low steps 8 sources 4 tracks 5 latency 1519ms
+Mailchimp 16/18 partial oauth Low steps 9 sources 6 tracks 5 latency 9853ms
+Docusign 12/18 draft unknown Low steps 4 sources 0 tracks 0 latency 13172ms
+Wix 16/18 partial oauth Low steps 9 sources 14 tracks 5 latency 10693ms
+Podia 12/18 draft unknown Low steps 4 sources 0 tracks 0 latency 4027ms
+Kit 12/18 draft unknown Low steps 4 sources 0 tracks 0 latency 3300ms
+Gumroad 14/18 draft oauth Low steps 9 sources 3 tracks 5 latency 4440ms
+TOTAL 139/180
+FULL guides 0 DRAFT guides 5 ERRORS 0

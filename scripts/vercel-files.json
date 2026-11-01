@@ -1,38 +1,38 @@
 [
  {
   "file": "README.md",
-  "sha": "f23bb8f4c37aa359adb44f8b26aecfd89cc0e746",
-  "size": 12839
+  "sha": "cb5427418b11c52a287855df54e87764cdbb311f",
+  "size": 9959
  },
  {
   "file": "SUBMISSION-NOTES.md",
-  "sha": "8e6572b8cabd7a3c499bca323032188c63d90076",
-  "size": 61569
+  "sha": "e08b8385d3155568bf3f55e7b8c272402d97ee6f",
+  "size": 74291
  },
  {
   "file": "VERIFICATION-LOG.md",
-  "sha": "7bb36893514de605dff680432966f57b4affe28b",
-  "size": 5673
+  "sha": "143394bafe9e201348bcfe2e6e0e09b841bac292",
+  "size": 7181
  },
  {
   "file": "api/research.js",
-  "sha": "bc06334987cf63673f8fd9759a1dc20ae85022ed",
-  "size": 94100
+  "sha": "ff4ae72c8277f6bfd7b9d3dae737e96509ef7fd9",
+  "size": 97584
  },
  {
   "file": "api/research-helpers.js",
-  "sha": "e2a5eae3746ef757fffbbf746fc82d56ba133854",
-  "size": 21332
+  "sha": "8db8d6b9b92354482f1756c863648894c9b7b3d6",
+  "size": 24566
  },
  {
   "file": "app.js",
-  "sha": "6b0e9617c0a5bb503697a2eb75378e5946069157",
-  "size": 21047
+  "sha": "010364088c8244a738854b40215ae3ebe675bb47",
+  "size": 21624
  },
  {
   "file": "guides.json",
-  "sha": "6bf6ad6f7f09d6f785189360c6d6122df6523452",
-  "size": 93886
+  "sha": "397464acb09095b3a30cfc8755f665cc160ebe23",
+  "size": 90936
  },
  {
   "file": "guides/airtable.json",
@@ -61,8 +61,8 @@
  },
  {
   "file": "guides/github.json",
-  "sha": "8ab742957e53cbd2244afd380b489d3798077de0",
-  "size": 5624
+  "sha": "5a9436034fc27c2202ea31ea25cb7c77b2012f07",
+  "size": 5896
  },
  {
   "file": "guides/google.json",
@@ -116,8 +116,8 @@
  },
  {
   "file": "index.html",
-  "sha": "f9cfccbe94d50c69966bea78971dfe86c145843a",
-  "size": 4320
+  "sha": "269fc7d4f657384c93210b1bd8d46d09bdd26732",
+  "size": 4380
  },
  {
   "file": "llms.txt",

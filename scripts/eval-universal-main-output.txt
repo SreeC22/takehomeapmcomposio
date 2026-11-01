@@ -1,0 +1,20 @@
+Monday 14/18 partial oauth Low steps 9 sources 7 tracks 5 latency 6682ms
+Xero 13/18 partial oauth Low steps 9 sources 7 tracks 5 latency 9455ms
+Square 15/18 partial oauth Low steps 7 sources 12 tracks 5 latency 6022ms
+Ghost 13/18 draft unknown Low steps 4 sources 1 tracks 2 latency 3793ms
+SendGrid 14/18 draft mcp_authentication Low steps 6 sources 7 tracks 3 latency 4132ms
+Braintree 14/18 draft mcp_authentication Low steps 6 sources 3 tracks 3 latency 8352ms
+Bitbucket 13/18 draft oauth Low steps 7 sources 3 tracks 2 latency 19915ms
+Trello 14/18 draft mcp_authentication Low steps 7 sources 5 tracks 4 latency 9210ms
+Acuity Scheduling 14/18 draft api_key Low steps 6 sources 4 tracks 5 latency 2626ms
+Mercury 14/18 draft api_key Low steps 5 sources 5 tracks 4 latency 4362ms
+Replicate 12/18 draft unknown Low steps 4 sources 0 tracks 0 latency 3241ms
+Hugging Face 14/18 draft oauth Low steps 9 sources 5 tracks 5 latency 8184ms
+Paddle 17/18 partial api_key Low steps 5 sources 2 tracks 3 latency 8671ms
+Paystack 14/18 draft mcp_authentication Low steps 6 sources 1 tracks 2 latency 9118ms
+Dubsado 13/18 draft mcp_authentication Low steps 6 sources 2 tracks 2 latency 8528ms
+Turso 14/18 partial api_key Low steps 5 sources 11 tracks 3 latency 3847ms
+PropelAuth 17/18 draft mcp_authentication Low steps 7 sources 5 tracks 4 latency 8124ms
+Character AI 14/18 draft mcp_authentication Low steps 6 sources 1 tracks 2 latency 3341ms
+TOTAL 253/324
+FULL guides 0 DRAFT guides 13 ERRORS 0

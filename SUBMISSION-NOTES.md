@@ -352,3 +352,79 @@ Findings fixed or explained:
 - GitHub second source was discontinued Enterprise 2.16 docs, discontinued January 22, 2020. Replaced with current scopes page, https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps, verified live before the change. No old Enterprise URL remains in guides.json or guides/github.json.
 - Card count: home says 16 library guides, browser profile showed 22 cards, because that browser profile had 6 saved generated guides in localStorage from earlier tests, including a nonsense test entry. Library count is correct at 16. A fresh reviewer browser shows 16 library cards plus any guides they generate themselves. This is localStorage persistence, not a library data error.
 - Minor quirks, not fixed in this pass, no redesign: back navigation left the guide detail rendered while the URL returned to root, the search message still said press Get guide after the guide was already open, and share confirmation is a browser alert, not an inline toast, so it did not show in the page snapshot. Share link itself worked.
+
+## Acceptance round, 2026-11-01, Cal.com, Baserow, PostHog
+
+Specification: the original Composio APM Integrations take-home assignment, as re-stated by the user. No UI redesign, no library expansion. Core goal only: help a developer understand the integration path and make progress safely.
+
+Before, live research on the current production:
+- Cal.com partial OAuth, 1 source, 0 scopes, generic Register step, no admin approval, console Unknown, despite official docs stating the portal, scopes, and review gate.
+- Baserow partial OAuth, with scopes baserow.core.registries and database.list_tables, and OAuth steps built from a GitHub SSO page. That page describes signing users into Baserow, not third-party API access.
+- PostHog draft unknown, 0 sources, despite public OAuth docs, because raw HTML was truncated to the first 500KB before stripping, losing the article body behind scripts and embedded JSON.
+
+Fixes, all generic, no provider rules:
+- Scopes only from scope sections or scope pages, including UPPER_SNAKE scopes. Metadata tokens, file names, credential tokens, and role permission identifiers are never scopes.
+- Endpoint extraction rejects placeholder and example domains, and requires the endpoint host base domain to match the provider domain when known.
+- Console candidates from docs body text must be a real portal on the provider domain, not a placeholder or a bare API host.
+- Pages are stripped before truncation, so cleaned docs text is truncated, not raw HTML.
+- A supplied website URL is fetched directly, provider host only, in addition to search results.
+- Registration-free OAuth carries its own passage as evidence.
+- Zero-source drafts state retrieval failure, attempted searches and pages fetched, and a concrete next action to paste the official docs URL.
+
+After, production deployment dpl_5UbCxLT1FbbPev91P4w2by4bmsaQ, verified by API:
+- Cal.com partial OAuth, Low, console https://app.cal.com/settings/developer/oauth, sources cal.com/docs/api-reference/v2/oauth and introduction, steps Register, Wait for provider review before use, Set redirect URI, Choose scopes, Build authorize and token flow, with 50 documented scopes in scopeSources, starting EVENT_TYPE_READ, BOOKING_READ, SCHEDULE_READ, APPS_READ, PROFILE_READ, WEBHOOK_READ, plus team scopes. No validation failures. Checked against official docs fetched directly: create client at app.cal.com/settings/developer/oauth, client starts pending, Cal.com admin reviews, email if accepted or rejected, at least one scope required, up to 10 redirect URIs, exact match, wildcards rejected.
+- Baserow draft unknown, Low, console Unknown, scopeSources empty, steps Confirm, Find portal, Test, Check review, Check pricing only, no OAuth steps, no placeholder endpoint anywhere in the guide. Checked against official docs: GitHub SSO page is sign-in to Baserow, SSO on Advanced and Enterprise, Baserow API uses database tokens, not third-party OAuth.
+- PostHog partial OAuth, Low, console Unknown, sources posthog.com/docs/api/oauth, api, handbook engineering oauth-development-guide, integrate/provisioning, steps Registration is not required per docs, Set redirect URI, Choose scopes grouped by page, Build authorize and token flow, no validation failures, no scopes.tsx. Checked against official docs fetched directly: OAuth via Client ID Metadata Document, no pre-registration, client_id is a hosted URL, redirect URIs must match exactly, personal API keys are the own-account alternative, project secret keys are a beta server-to-server alternative.
+- Website URL test, API level: https://posthog.com/docs/api/oauth submitted as the search input returned the same partial OAuth PostHog guide, with that URL as first source, confirming a supplied docs URL is actually investigated.
+
+Three varied library examples, unchanged in this round, for the acceptance demo:
+- GitHub, straightforward public OAuth, Easy.
+- Shopify, private versus public, Medium.
+- Claude, API key only, Easy, no OAuth.
+
+Managed versus developer-owned: library guides state the managed note per provider. Generated guides state managed coverage was not confirmed in that run and tell the developer to check the Composio toolkit list first, rather than claiming coverage.
+
+Remaining limitations in this round: Cal.com and PostHog are partial, not full, with Low confidence, and must not be presented as verified. Baserow is a draft, not a usable guide. Claim-level precision for every step, scope, and endpoint in these three guides was not manually graded line by line; direction, provider, portal, scope list, and review gate were checked against official docs directly, as stated above.
+
+## Universal engine round, 2026-11-01
+
+Specification: universal, evidence-driven integration research, any platform, no provider hardcoding, no UI redesign, no library expansion. Library stays at 16 guides.
+
+Systemic changes, all generic:
+- Parent-company docs: a page on a different host is kept only when the page itself names the product in an OAuth or API context, and its host was a search candidate. Other domains are discarded, not merged, and scopes stay grouped by product page.
+- Ambiguity: near-tie provider matches are now ambiguous drafts, with a next step listing the candidate domains found and asking for an official website URL, instead of picking one.
+- Authentication: OAuth 2.1 is classified separately. MCP applies only when no OAuth, key, token, service account, or personal token evidence is strong, and only when its passage comes from a docs, developer, or MCP path. SSO is still not treated as third-party OAuth.
+- Retrieval: JS shells get an embedded page-data fallback, docs sites get an llms.txt fallback, and the markdown fallback now applies to any short page, all bounded and generic.
+- Validation: scope requirements are conditional, not unknown, when scopes were found in scope sections. Registration-free redirect, timeline, and next step use the registration method in docs, not a portal. Quality gate notes and independent gate corrections are shown as notes, not failures. The home page no longer promises a full guide for every live search.
+- MCP bug found in main evaluation and fixed: MCP was checked before API-key evidence, so 7 drafts were wrongly labeled MCP. Reordering fixed 6 of them, and a docs-path guard fixed Paystack to draft unknown.
+
+Main evaluation, 18 unfamiliar and regression providers, production dpl_GdHyyDMWG9uMd74kUytNX8QcwEwB, then Paystack guard dpl_5iNMxH6jyNFp4jQs2Zv8zLMYym61:
+- Partial, 5: Monday oauth, Xero oauth, Square oauth, Paddle api_key, Turso api_key.
+- Draft, 13: Ghost unknown, SendGrid api_key, Braintree api_key, Bitbucket oauth, Trello api_key, Acuity Scheduling api_key, Mercury api_key, Replicate unknown with 0 sources, Hugging Face oauth, Paystack unknown after guard, Dubsado api_key, PropelAuth key_token, Character AI api_key.
+- Full, 0. Errors, 0. Structural total 254/324, not a factual accuracy rate.
+- Useful coverage, direction and provider level, not line-by-line claim grading: 5 partial guides are usable with sources, 13 drafts are honest abstentions, with two known over-claims: Character AI draft api_key comes from a third-party listing, not official docs, and Bitbucket, Ghost, and Acuity draft because official parent-domain docs were not retrieved in those runs. Replicate 0 sources is a retrieval failure, not proof of no docs.
+
+Holdout evaluation, 10 providers never used for implementation, no fixes based on holdout, production dpl_5iNMxH6jyNFp4jQs2Zv8zLMYym61:
+- Partial, 5: FreshBooks oauth, Zoho oauth, Intercom api_key, Mailchimp oauth, Wix oauth.
+- Draft, 5: Typeform oauth, Docusign unknown with 0 sources, Podia unknown with 0 sources, Kit unknown with 0 sources, Gumroad oauth.
+- Full, 0. Errors, 0. Structural total 139/180, not a factual accuracy rate.
+- Useful coverage is 5 of 10 partial, with 3 of 10 failing on source retrieval alone. Those 3 are retrieval failures, not conclusions about the providers.
+
+Combined main plus holdout, universal round: 28 providers, 10 partial, 18 draft, 0 full, 0 errors. No full guide was produced in either set, because confidence is capped Low whenever any non-critical note exists, and because many providers draft on missing official docs. That is a conservative product choice, not a sign that partial guides are unusable, but it also means the great-majority useful coverage target is still not met.
+
+Remaining limitations, plainly:
+- Third-party guides appear in source lists alongside official docs, and source authority is not shown per source in the guide view. Partial guides must still be checked against official docs before launch.
+- No guide was tested with a provider sign-in, app creation, or approval.
+- Cache and rate limits are per Vercel instance, not global.
+- Claim-level precision for every step, scope, and endpoint was not manually graded line by line in either set. Direction, provider, auth model, and registration decision were checked for the partial guides, not every claim.
+- The share link for a generated guide is a long encoded URL hash, because the guide data is encoded in the URL with no server store. It works, but it is not a clean URL.
+
+## Final reviewer test, 2026-11-01, and registration-free keyword fix
+
+Browser test, final deployment engine dpl_5iNMxH6jyNFp4jQs2Zv8zLMYym61, plus docs:
+- GitHub library guide passed: EASY FULL, 30 to 60 minutes, no approval stage for basic scopes, 5 steps, 2 official sources, checklist, next step all visible. Step view correctly says library steps have no per-step docs quote, not "Tap Evidence from docs".
+- Share link passed: button changed to LINK COPIED, and the share URL opened the same GitHub guide in a new tab.
+- Stale banner fixed: "No guide matches that search yet" was NOT shown above a generated guide.
+- Caveat, plainly: the PostHog guide shown in the browser test was a saved generated guide from an earlier run in that browser, not a fresh generation, so its redirect, timeline, and next step wording were from before the browser fixes. Fresh API research on the final engine was checked separately and is reported below, and it does show the fixed wording.
+- Fresh API check, dpl_DTdhGbFwrnEpXwFXNXFrEAAYShvU, PostHog via supplied URL: partial oauth, step 2 Registration is not required per docs, step 3 redirect URI via client registration method documented in sources, timeline registration via registration method, next step confirm registration-free method and redirect declaration. Registration requirement evidence URL is a third-party guide, not the PostHog docs page, even though the condition passage is the PostHog CIMD section. That is a source attribution weakness, not a step error.
+- Registration-free keyword fix, generic, no provider rule: regFreeSnippet now also matches client id metadata, metadata document, do not need to pre-register, without pre-registering, and do not need to register. This was needed because a fresh PostHog run missed the registration-free evidence with only dynamic client registration, no registration required, and registration-free as keywords, and fell back to a generic Register step. After the fix, the fresh run finds the CIMD passage.
