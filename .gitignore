@@ -1,0 +1,25 @@
+# Local environment and credential files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Dependency/build outputs and local tooling
+node_modules/
+.vercel/
+dist/
+build/
+coverage/
+.cache/
+*.log
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+__pycache__/
+*.pyc
