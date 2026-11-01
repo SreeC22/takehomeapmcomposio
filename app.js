@@ -270,7 +270,8 @@ function agentOutputHtml(g) {
   const completed = (out.attempted || []).map(x=>'<li>'+esc(x)+'</li>').join('');
   const remaining = (out.notAttempted || []).map(x=>'<li>'+esc(x)+'</li>').join('');
   const artifacts = [
-    out.developerConsole ? 'Confirmed developer portal: '+out.developerConsole : '',
+    out.portalPublicProbe && out.portalPublicProbe.attempted ? 'Public portal HTTP check: '+out.portalPublicProbe.result+(out.portalPublicProbe.httpStatus ? ' (HTTP '+out.portalPublicProbe.httpStatus+')' : '')+'. This did not authenticate or create an app.' : '',
+    out.developerConsole ? 'Documented developer portal candidate: '+out.developerConsole : '',
     out.registrationDocument ? 'Registration documentation: '+out.registrationDocument : '',
     (out.oauthEndpoints || []).length ? 'OAuth endpoints extracted: '+out.oauthEndpoints.join(', ') : '',
     (out.scopeCandidates || []).length ? 'Permission candidates: '+out.scopeCandidates.join(', ') : '',
