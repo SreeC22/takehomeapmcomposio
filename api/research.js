@@ -600,7 +600,7 @@ async function researchHandler(req, res) {
     try {
       const u = new URL(pg.url);
       if (!isProviderHost(u.hostname.toLowerCase(), slug, domainGuess)) return false;
-      if (/(?:sso|single.sign.on|sign.in|social.auth|handbook/engineering)/i.test(u.pathname)) return false;
+      if (/(?:sso|single.sign.on|sign.in|social.auth|handbook\/engineering)/i.test(u.pathname)) return false;
       return /(?:developer|app|oauth|registration|authentication|marketplace|tutorial)/i.test(u.pathname) &&
         /(?:create|register|configure|set up|setup|developer hub|developer portal|app settings)/i.test(pg.text);
     } catch (e) { return false; }
