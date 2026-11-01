@@ -325,14 +325,14 @@ async function researchHandler(req, res) {
     if (scored.length && !dominantSlugOk) {
       providerIdentityAmbiguous = true;
       logPush('provider_identity', '', 'ambiguous', 'Dominant fetched domain ' + scored[0].bd + ' does not contain provider name ' + slug + '. Identity not verified, guides must not merge unrelated providers.');
-    } else if (scored.length > 1 && Math.abs(scored[0].evidence - scored[1].evidence) <= 1 && Math.abs(scored[0].plist.length - scored[1].plist.length) <= 1 && scored[0].mentions > 0 && scored[1].mentions > 0) {
+    } else if (scored.length > 1 && baseDomain(scored[0].bd) !== baseDomain(scored[1].bd) && isProviderHost(scored[0].bd, slug, domainGuess) && isProviderHost(scored[1].bd, slug, domainGuess) && Math.abs(scored[0].evidence - scored[1].evidence) <= 1 && Math.abs(scored[0].plist.length - scored[1].plist.length) <= 1 && scored[0].mentions > 0 && scored[1].mentions > 0) {
       providerIdentityAmbiguous = true;
       logPush('provider_identity', '', 'ambiguous', 'Same-name providers found on multiple domains with equal evidence: ' + scored.map(x => x.bd).join(', ') + '. No dominant provider, guides must not merge them.');
     } else if (scored.length > 1) {
       const keep = scored[0];
       canonicalProviderDomain = keep.bd;
       const parentPages = [];
-      for (const cl of scored.slice(1)) for (const pg of cl.plist) { try { if (productMention(pg) && candidateHosts.has(new URL(pg.url).hostname.toLowerCase())) parentPages.push(pg); } catch (e) {} }
+      for (const cl of scored.slice(1)) for (const pg of cl.plist) { try { if (baseDomain(new URL(pg.url).hostname) === baseDomain(keep.bd) || (productMention(pg) && candidateHosts.has(new URL(pg.url).hostname.toLowerCase()))) parentPages.push(pg); } catch (e) {} }
       const keepPages = [...keep.plist, ...parentPages];
       const parentDomains = Array.from(new Set(parentPages.map(pg => { try { return new URL(pg.url).hostname.toLowerCase().replace(/^www\./, ''); } catch (e) { return ''; } }).filter(Boolean)));
       discardedProviderDomains = scored.slice(1).map(x => x.bd).filter(bd => !parentDomains.includes(bd));
@@ -344,6 +344,25 @@ async function researchHandler(req, res) {
       keptParentDomains = parentDomains;
     } else if (scored.length === 1) {
       canonicalProviderDomain = scored[0].bd;
+    }
+  }
+  // If we have genuine provider-domain documentation, third-party setup
+  // tutorials and GitHub issue threads cannot corroborate the provider's
+  // API requirements or trigger false same-name/provider conflicts.
+  const firstPartyPages = pages.filter(p => {
+    try { return isProviderHost(new URL(p.url).hostname.toLowerCase(), slug, domainGuess); }
+    catch (e) { return false; }
+  });
+  if (firstPartyPages.length) {
+    const dropped = pages.length - firstPartyPages.length;
+    if (dropped) {
+      pages.splice(0, pages.length, ...firstPartyPages);
+      const retained = new Set(firstPartyPages.map(p => canonicalUrl(p.url)));
+      for (let i = sources.length - 1; i >= 0; i--)
+        if (!retained.has(canonicalUrl(sources[i]))) sources.splice(i, 1);
+      keptParentDomains = [];
+      logPush('source_authority', '', 'official_only',
+        'Excluded ' + dropped + ' third-party page(s) from factual claims because first-party documentation was available.');
     }
   }
   const tExtraction0 = Date.now();
@@ -360,10 +379,31 @@ async function researchHandler(req, res) {
     for (const p of pages) if (p.text.includes(clean.slice(0, 40))) return p.url;
     return '';
   }
-  let registerSnippet = findSnippet(allText, ['register an oauth', 'register a new oauth', 'create an oauth app', 'create an oauth client', 'create a new app', 'register your app', 'register an application', 'create your app', 'create a developer app', 'create an application', 'registration is not required']);
+  // Classify the developer's use case (connecting their users), not any
+  // occurrence of OAuth in a provider's site. SSO, admin tokens, Workers,
+  // and unrelated identity-provider instructions cannot establish OAuth
+  // access to the provider API.
+  const customerOAuthPages = pages.filter(pg => {
+    let path = '';
+    let host = '';
+    try { const u = new URL(pg.url); path = u.pathname.toLowerCase(); host = u.hostname.toLowerCase(); } catch (e) { return false; }
+    if (!isProviderHost(host, slug, domainGuess) && !keptParentDomains.includes(host)) return false;
+    if (/(?:sso|single.sign.on|sign.in.with|identity.provider|workers|\/admin\/|\/mcp\/|\/sdk\/)/i.test(path)) return false;
+    if (!/(?:oauth|authorization|authentication|public.connections?)/.test(path)) return false;
+    const txt = String(pg.text || '');
+    if (!/\boauth\b|oauth2|oauth 2\.0|authorization code/i.test(txt)) return false;
+    return /(?:public\s+(?:apps?|connections?|integrations?)|third.party\s+(?:apps?|integrations?|developers?)|on behalf of|users?\s+(?:can\s+)?authoriz|authoriz\w*\s+(?:the\s+)?users?|connect\s+(?:an?\s+)?app\s+through\s+oauth|oauth\s+(?:client|application|flow)|client\s+id.{0,100}redirect)/i.test(txt);
+  });
+  const customerOAuthText = customerOAuthPages.map(p => p.text).join('\n');
+  const customerOAuthEvidence = findSnippet(customerOAuthText, [
+    'public app', 'public connection', 'connect an app through oauth',
+    'on behalf of', 'oauth client', 'authorization code', 'setting up oauth'
+  ]);
+  let registerSnippet = findSnippet(customerOAuthText, ['create a public connection', 'create a new public connection', 'register an oauth', 'register a new oauth', 'create an oauth app', 'create an oauth client', 'create a new app', 'register your app', 'register an application', 'create your app', 'create a developer app', 'create an application', 'registration is not required']) || findSnippet(allText, ['register an oauth', 'create an oauth app', 'create an oauth client', 'create a new app', 'register your app']);
   const redirectSnippet = findSnippet(allText, ['redirect uri', 'redirect url', 'callback url']);
-  let approvalSnippet = findSnippet(allText, ['app review', 'app approval', 'submit for review', 'marketplace review', 'security review', 'admin consent', 'business verification', 'publisher verification']);
-  const reviewGateSnippet = findSnippet(allText, ['will review', 'review your oauth', 'admin will review', 'pending']);
+  const relevantApprovalText = pages.filter(p => { try { return /(?:oauth|authorization|authentication|marketplace|app.listing|app.review|approval|verification|distribution|public.connections|getting.started|overview)/i.test(new URL(p.url).pathname) && !/(?:shipping.updates|changelog|release.notes|feature.update)/i.test(new URL(p.url).pathname); } catch (e) { return false; } }).map(p => p.text).join('\n');
+  let approvalSnippet = findSnippet(relevantApprovalText, ['app review', 'app approval', 'submit for review', 'marketplace review', 'security review', 'admin consent', 'business verification', 'publisher verification']);
+  const reviewGateSnippet = findSnippet(customerOAuthText, ['review your oauth client', 'oauth client will be reviewed', 'oauth app is pending', 'client is pending approval', 'pending oauth client']);
   const apiKeySnippet = findSnippet(allText, ['api key', 'personal access token']);
   const pricingSnippet = findSnippet(allText, ['pricing', 'enterprise plan', 'invitation only', 'paid plan']);
   const distributionSnippet = findSnippet(allText, ['public app', 'public distribution', 'marketplace', 'private app', 'internal']);
@@ -375,7 +415,7 @@ async function researchHandler(req, res) {
   const mcpSnippet = findSnippet(allText, ['model context protocol', 'mcp server', 'mcp authentication']);
   const ssoSnippet = findSnippet(allText, ['single sign-on', 'sso', 'saml']);
   const oauth21Snippet = findSnippet(allText, ['oauth 2.1', 'oauth2.1']);
-  const regFreeSnippet = findSnippet(allText, ['dynamic client registration', 'no registration required', 'registration-free', 'client id metadata', 'metadata document', 'do not need to pre-register', 'without pre-registering', 'do not need to register']);
+  const regFreeSnippet = findSnippet(customerOAuthText, ['dynamic client registration', 'no registration required', 'registration-free', 'client id metadata', 'metadata document', 'do not need to pre-register', 'without pre-registering', 'do not need to register']);
   const adminConsentSnippet = findSnippet(allText, ['admin consent']);
   const privateSnippet = findSnippet(allText, ['private app', 'private integration', 'internal app', 'do not need review', 'no review required']);
   const privacySnippet = findSnippet(allText, ['privacy policy']);
@@ -415,7 +455,14 @@ async function researchHandler(req, res) {
 
   let registerMeaning = classifyPassage(registerSnippet, ['register', 'registration', 'create', 'oauth app', 'application']);
   if (!approvalSnippet && reviewGateSnippet) approvalSnippet = reviewGateSnippet;
-  const approvalMeaning = classifyPassage(approvalSnippet, ['app review', 'app approval', 'submit for review', 'marketplace review', 'security review', 'publisher verification', 'business verification', 'verification', 'review']);
+  let approvalMeaning = classifyPassage(approvalSnippet, ['app review', 'app approval', 'submit for review', 'marketplace review', 'security review', 'publisher verification', 'business verification', 'verification', 'review']);
+  // "Review before marketplace listing" is conditional on choosing to list.
+  // It must not be displayed as universal approval for user OAuth.
+  if (approvalMeaning.status === 'required' && /(?:marketplace|app store)/i.test(approvalSnippet || '') &&
+      /(?:before being listed|to be listed|for listing|marketplace listing|listed on|listing in)/i.test(approvalSnippet || '')) {
+    approvalMeaning = { status: 'conditional',
+      condition: 'Marketplace listing requires a provider review; whether public OAuth connections can be used without a listing is a separate decision.' };
+  }
   const redirectMeaning = classifyPassage(redirectSnippet, ['redirect', 'callback']);
   const accountMeaning = classifyPassage(accountSnippet, ['developer account', 'account']);
   const scopeMeaning = classifyPassage(scopeSnippet, ['scope']);
@@ -427,7 +474,7 @@ async function researchHandler(req, res) {
   const privacyMeaning = classifyPassage(privacySnippet, ['privacy policy']);
   const pricingMeaning = classifyPassage(pricingSnippet, ['pricing', 'plan', 'tier', 'enterprise']);
   let authType = 'unknown';
-  const oauthStrong = finalTr.hasOAuth && ((authorizeEndpoints.length > 0 || tokenEndpoints.length > 0) || (finalTr.hasClient && scopes.length > 0));
+  const oauthStrong = customerOAuthPages.length > 0 && !!customerOAuthEvidence;
   const apiKeyStrong = finalTr.hasApiKey && !oauthStrong;
   const keyTokenStrong = !oauthStrong && finalTr.endpointPaths && finalTr.endpointPaths.some(x => x.includes('authorize')) && /key/i.test(allText) && /token/i.test(allText);
   if (oauthStrong) authType = 'oauth';
@@ -442,7 +489,7 @@ async function researchHandler(req, res) {
     const ev = evidenceText ? cleanSnippet(evidenceText) : '';
     authSystems.push({ system, found, evidence: ev, evidenceUrl: sourceFor(evidenceText), verified: !!(found && ev && sourceFor(evidenceText)) });
   }
-  authSystem('third_party_oauth', oauthStrong && (authorizeEndpoints.length > 0 || tokenEndpoints.length > 0 || apiScopes.length > 0), registerSnippet || '');
+  authSystem('third_party_oauth', oauthStrong, customerOAuthEvidence || '');
   authSystem('sign_in_oauth', !!signInSnippet, signInSnippet);
   authSystem('registration_free_oauth', !!regFreeSnippet, regFreeSnippet);
   authSystem('api_key', finalTr.hasApiKey, apiKeySnippet);
@@ -456,7 +503,7 @@ async function researchHandler(req, res) {
     const ev = evidenceText ? cleanSnippet(evidenceText) : '';
     authRelationships.push({ method: system, client, resourceOwner, identityProvider: idp, authorizationTarget: target, actionEnabled, direction, useCase: direction, evidence: ev, evidenceUrl: sourceFor(evidenceText) });
   }
-  relFor('third_party_oauth', 'developer application', 'end user', app, 'provider API', 'access end user data through the provider API', 'third-party API access', registerSnippet);
+  relFor('third_party_oauth', 'developer application', 'end user', app, 'provider API', 'access end user data through the provider API', 'third-party API access', customerOAuthEvidence);
   relFor('sign_in_oauth', 'developer application', 'end user', app, 'user identity', 'let a user sign in to the developer application', 'sign-in to developer app, not API access', signInSnippet);
   relFor('registration_free_oauth', 'developer application', 'end user', app, 'provider API', 'access provider API without pre-registering an app', 'third-party API access without pre-registration', regFreeSnippet);
   relFor('api_key', 'developer application or own account', 'developer or account owner', 'none, key based', 'provider API', 'access provider API as the key owner', 'own-account API access', apiKeySnippet);
@@ -468,7 +515,7 @@ async function researchHandler(req, res) {
   if (externalIdpName) authRelationships.push({ method: 'external_idp_for_signin', client: 'provider product', resourceOwner: 'end user', identityProvider: externalIdpName, authorizationTarget: 'provider product login', actionEnabled: 'sign users into the provider product using ' + externalIdpName, direction: 'sign-in to provider product using an external identity provider, NOT third-party API access to this provider', useCase: 'sign-in to provider product using an external identity provider, NOT third-party API access to this provider', evidence: '', evidenceUrl: '' });
   if (authType === 'oauth' && !oauthStrong && (signInSnippet || ssoSnippet)) authType = 'sign_in_oauth';
 
-  if (authType === 'oauth' && authorizeEndpoints.length === 0 && tokenEndpoints.length === 0 && apiScopes.length === 0) {
+  if (authType === 'oauth' && !oauthStrong && authorizeEndpoints.length === 0 && tokenEndpoints.length === 0 && apiScopes.length === 0) {
     authType = 'sign_in_oauth';
   }
   if (regFreeSnippet) {
@@ -480,16 +527,16 @@ async function researchHandler(req, res) {
   if (finalTr.hasApiKey && finalTr.hasOAuth && !oauthStrong) contradictions.push('Docs mention both OAuth and API keys, but neither path is strong. The simplest supported path cannot be chosen from fetched pages alone.');
   if (/no review required|no approval required/i.test(allText) && finalTr.hasApproval) contradictions.push('Docs contain both review language and no review language. Approval is therefore treated as conditional, not as a universal requirement.');
   const consoleCandidates = sources.map(u => ({ url: u, score: consoleScore(u) })).sort((a, b) => b.score - a.score);
-  const bodyUrls = Array.from(String(allText || '').matchAll(/https:\/\/[^\s"'<>]+/g)).map(m => m[0].replace(/[.,;:!?)\]}'"]+$/, ''));
+  const bodyUrls = Array.from(String(allText || '').matchAll(/https:\/\/[^\s"'<>]+/g)).map(m => m[0].split(/[`;,\\)\]}]/)[0].replace(/[.,:!?)\]}'"]+$/, ''));
   for (const bu of bodyUrls) {
     try {
       const buu = new URL(bu);
       const buHost = buu.hostname.toLowerCase();
       if (!isProviderHost(buHost, slug, domainGuess)) continue;
-      if (baseDomain(buHost) !== (domainGuess || '').toLowerCase()) continue;
+      if (baseDomain(buHost) !== baseDomain(domainGuess || canonicalProviderDomain || '')) continue;
       if (/yourdomain|example\.(com|org|net)|your-domain|yourcompany|localhost|127\.0\.0\.1|\{/.test(bu)) continue;
       const buSegs = buu.pathname.toLowerCase().split('/').filter(Boolean);
-      const buPortal = buSegs.some(s => ['apps', 'console', 'dashboard', 'settings', 'account'].includes(s)) || buHost.startsWith('app.') || buHost.startsWith('console.') || buHost.startsWith('dashboard.') || buHost.startsWith('portal.');
+      const buPortal = buSegs.some(s => ['apps', 'console', 'dashboard', 'settings', 'account', 'developers', 'developer', 'developer-hub'].includes(s)) || buHost.startsWith('console.') || buHost.startsWith('dashboard.') || buHost.startsWith('portal.') || buHost.startsWith('build.');
       if (!buPortal) continue;
       const sc = consoleScore(bu);
       if (sc >= 3 && !consoleCandidates.some(c => canonicalUrl(c.url) === canonicalUrl(bu))) consoleCandidates.push({ url: bu, score: sc });
@@ -639,9 +686,9 @@ async function researchHandler(req, res) {
       : 'What: add the exact redirect URI from your code, including host, path, and https, in app settings. Where: app settings in the portal. Why: the provider only redirects to registered URIs.' + (redirectSnippet ? ' Evidence from docs: ' + cleanSnippet(redirectSnippet) : ' No redirect rule was found in fetched pages, so copy it from your code and check it against official docs.');
     addStep('Set the redirect URI', redirectDetail, 'human', '10 minutes', 'A redirect mismatch is the most common first failure.', reqStatus('Redirect URI'), redirectSnippet, reqCondition('Redirect URI'));
     if (scopes.length) addStep('Choose scopes, minimum only', 'What: documented scope examples found in official docs, not a required list for your use case: ' + (scopes.length > 8 ? scopes.slice(0, 8).join(', ') + ', plus ' + (scopes.length - 8) + ' more documented examples, see sources' : scopes.join(', ')) + '. Request only the scopes your feature actually uses, and check the official scopes page for your feature first. Where: app settings and authorize request. Why: broad scopes can trigger extra review and risk. Do not request a broad scope without a stated use case for that scope, and do not request every discovered scope as a default.', 'agent', '20 minutes', 'A single sensitive scope can change the whole timeline.', reqStatus('Scopes'), scopeSnippet, reqCondition('Scopes'));
-    else addStep('Find the scope list', 'What: open the first source below, find its scopes or permissions page, and list every scope your feature needs. Where: official docs. Why: no valid scope tokens were extracted in this run, so do not guess a scope list.', 'agent', '20 minutes', 'Do not guess scopes.', 'unknown', '');
-    if (endpoints.length) addStep('Build the authorize and token flow', 'What: send the user to the authorize endpoint' + (authorizeEndpoints.length ? ': ' + authorizeEndpoints.join(', ') : '') + ', then exchange the code at the token endpoint' + (tokenEndpoints.length ? ': ' + tokenEndpoints.join(', ') : '') + '. Where: your backend. Why: this is how a user token is issued. Store tokens securely, never in client code.', 'agent', '30 minutes', 'Store client secrets securely. If a secret is exposed, rotate it.', 'unknown', '');
-    else addStep('Find the authorize and token endpoints', 'What: find the authorize endpoint and the token endpoint in official docs first, then build the flow. Where: official docs. Why: no authorize or token endpoints were found in fetched pages.', 'agent', '30 minutes', 'Do not guess endpoints.', 'unknown', '');
+    else addStep('Confirm permissions or capabilities', 'What: open the provider authorization documentation and confirm how permissions are configured. Some platforms use portal capabilities rather than OAuth scope parameters. Where: official docs. Why: no valid permissions for this exact integration flow were extracted, so do not request guessed scopes.', 'agent', '20 minutes', 'Do not guess scopes.', 'unknown', '');
+    if (authorizeEndpoints.length && tokenEndpoints.length) addStep('Build the authorize and token flow', 'What: send the user to the authorize endpoint' + (authorizeEndpoints.length ? ': ' + authorizeEndpoints.join(', ') : '') + ', then exchange the code at the token endpoint' + (tokenEndpoints.length ? ': ' + tokenEndpoints.join(', ') : '') + '. Where: your backend. Why: this is how a user token is issued. Store tokens securely, never in client code.', 'agent', '30 minutes', 'Store client secrets securely. If a secret is exposed, rotate it.', 'unknown', '');
+    else addStep('Find the remaining authorize and token endpoints', 'What: confirm both OAuth endpoints before building the flow.' + (authorizeEndpoints.length ? ' Confirmed authorize endpoint: ' + authorizeEndpoints.join(', ') + '.' : ' Authorization endpoint not confirmed.') + (tokenEndpoints.length ? ' Confirmed token endpoint: ' + tokenEndpoints.join(', ') + '.' : ' Token endpoint not confirmed.') + ' Where: official docs. Why: an incomplete endpoint pair is not a runnable OAuth flow.', 'agent', '30 minutes', 'Do not guess endpoints.', 'unknown', '');
   } else if (authType === 'api_key') {
     addStep('Create an API key', 'What: create an API key in the provider console or account settings. Where: official console in sources below. Why: this key, not OAuth, is how this provider authenticates in fetched docs.' + (apiKeySnippet ? ' Evidence from docs: ' + cleanSnippet(apiKeySnippet) : ''), 'human', '10 minutes', 'Never put the key in client code or a public repo.', reqStatus('Create an API key'), apiKeySnippet, reqCondition('Create an API key'));
     addStep('Store the key and test one call', 'What: store the key in a secrets manager, send it as documented, and test one read call. Where: your backend. Why: a working read call proves the key and permissions, without building OAuth.', 'agent', '20 minutes', 'If the call fails, check key scope and account permissions first.', 'unknown', '');

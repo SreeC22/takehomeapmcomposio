@@ -143,15 +143,18 @@ function extractEndpoints(text, slug, domainGuess) {
   const re = /https:\/\/[^\s"'<>]+(?:authorize|token|oauth)[^\s"'<>]*/gi;
   let m;
   while ((m = re.exec(text)) !== null) {
-    let u = m[0];
+    // Split Markdown links and reject encoded template fragments, rather
+    // than allowing broken docs markup to become a credential endpoint.
+    let u = m[0].split(/\]\(|[<>{}`\s]/)[0];
     while (/[\\.,):;`]$/.test(u)) u = u.slice(0, -1);
+    if (/%(?:60|7b|7d|5b|5d)|\]\(|\bfunction\b/i.test(u)) continue;
     if (u.includes('&#')) u = u.split('&#')[0];
     u = u.replace(/\):$/, '');
     if (u.length >= 100) continue;
     try {
       const pp = new URL(u); const path = pp.pathname.toLowerCase(); const host = pp.hostname.toLowerCase();
       if (/yourdomain|your-domain|yourcompany|localhost|127\.0\.0\.1|\{/.test(u)) continue;
-      if (domainGuess && baseDomain(host) !== String(domainGuess).toLowerCase()) continue;
+      if (domainGuess && baseDomain(host) !== baseDomain(String(domainGuess))) continue;
       if (path.includes('/docs/') || path.includes('/reference/') || path.endsWith('.md') || path.endsWith('.png') || path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.svg') || path.endsWith('.gif') || path.includes('/attachments') || host.includes('attachments')) continue;
       if (path.includes('token') && !path.includes('oauth') && !path.includes('authorize')) continue;
       if (!isProviderHost(host, slug, domainGuess)) continue;
@@ -328,7 +331,9 @@ function classifyPassage(snippetText, keywords) {
       // when it describes registration. Only a page whose path or host is
       // apps, console, dashboard, settings, or account can score as a portal.
       const hasPortalSegment = segments.some(s => ['apps', 'console', 'dashboard', 'settings', 'account'].includes(s));
-      const hasPortalHost = host.startsWith('console.') || host.startsWith('app.') || host.startsWith('dashboard.') || host.startsWith('portal.');
+      const hasPortalHost = host.startsWith('console.') || host.startsWith('app.') || host.startsWith('dashboard.') || host.startsWith('portal.') || host.startsWith('build.');
+      // An app homepage is not evidence of developer app registration.
+      if (host.startsWith('app.') && (path === '/' || path === '')) return -10;
       if (path.includes('/docs/') && !hasPortalSegment && !hasPortalHost) return -10;
       if (path.includes('/reference/') && !hasPortalSegment) return -10;
       let s = 0;
@@ -365,27 +370,43 @@ function classifyPassage(snippetText, keywords) {
     for (const sc of extractUpperSnakeScopes(sectionText)) if (!out.includes(sc)) out.push(sc);
     return out.filter(validateScope);
   }
+  // Only API permission names with explicit permission-like syntax are safe
+  // to show. A token found in a docs theme is NOT an OAuth scope.
+  function isPermissionToken(value) {
+    if (!validateScope(value)) return false;
+    if (/^[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+$/.test(value))
+      return /_(?:READ|WRITE|CREATE|DELETE|UPDATE|LIST|VIEW|MANAGE|ADMIN)$/.test(value);
+    return /(?:[:.](?:read|write|create|delete|update|list|view|manage|admin|readonly|read_only)|^(?:read|write|delete|manage):[a-z0-9_-]+)$/.test(value);
+  }
   function extractScopesFromPages(pages) {
     const out = [];
+    const unrelatedAuthPaths = /\/(?:admin|workers|mcp|sdk|sso|single-sign-on)(?:\/|$)/i;
     for (const pg of pages) {
       const path = (() => { try { return new URL(pg.url).pathname.toLowerCase(); } catch (e) { return ''; } })();
-      // Scope context is narrow, on purpose. A role or permissions guide
-      // is not an OAuth scope list, and an SSO page is not either, even
-      // when its path contains permission or oauth. Only a section whose
-      // heading is about scopes, or a page whose path is about scopes,
-      // may supply scopes. Anything else is dropped completely, never
-      // shown as a scope example in a partial guide.
+      // Separate administrative, MCP, SDK and sign-in permission systems
+      // cannot supply scopes for a customer-facing third-party OAuth app.
+      if (unrelatedAuthPaths.test(path)) continue;
       const sections = String(pg.text || '').split(/(?=SECTION: )/);
-      let pageScopes = [];
       for (const sec of sections) {
-        const headMatch = sec.match(/^SECTION: ([^\n]*)/);
-        const heading = headMatch ? headMatch[1] : '';
-        if (/scope/i.test(heading)) pageScopes.push(...extractScopesFromScopeText(sec));
+        const heading = (sec.match(/^SECTION: ([^\n]*)/) || [,''])[1];
+        if (!/\b(?:scopes?|permissions?)\b/i.test(heading) &&
+            !/\/(?:scopes|permissions)(?:[./]|$)/i.test(path)) continue;
+        const lines = sec.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line || /^SECTION:/.test(line)) continue;
+          // Embedded navigation, theme configuration and asset names
+          // are never machine-readable API permissions.
+          if (/[{}]/.test(line) || /(?:\.mdx?|\.tsx?|\.ico|\.css|\.js|\.com\b|\.mintlify\.)/i.test(line)) continue;
+          const candidates = extractScopesFromScopeText(line).filter(isPermissionToken);
+          if (!candidates.length) continue;
+          const near = [lines[i-1] || '', line, lines[i+1] || ''].join(' ');
+          if (!/\b(?:scope|permission|access|authorize|allow|read|write|create|update|delete|manage|list|view|grant)\b|(?:_READ|_WRITE|_CREATE|_DELETE|_UPDATE|_MANAGE)\b/i.test(near)) continue;
+          for (const candidate of candidates) if (!out.includes(candidate)) out.push(candidate);
+        }
       }
-      if (!pageScopes.length && path.includes('scope')) pageScopes = extractScopesFromScopeText(pg.text);
-      for (const sc of pageScopes) if (!out.includes(sc)) out.push(sc);
     }
-    return out;
+    return out.slice(0, 60);
   }
 
 function extractNextDataText(body) {
