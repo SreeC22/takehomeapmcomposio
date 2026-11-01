@@ -14,7 +14,7 @@ function isDeveloperOAuthRegistrationDoc(page, slug, domainGuess) {
 // flow may avoid prior portal registration, but still requires configuration.
 function classifyRegistrationFreeText(snippet) {
   if (!snippet) return null;
-  const noManual = /(?:no registration required|registration.free|client id metadata|metadata document|do not need to pre.register|without pre.registering|do not need to register)/i.test(snippet);
+  const noManual = /(?:no registration required|registration is not required|registration.free|client id metadata|metadata document|do not need to pre.register|without pre.registering|do not need to register)/i.test(snippet);
   return noManual
     ? {status:'not_applicable',condition:'No manual pre-registration for the documented client metadata route: '+cleanSnippet(snippet)}
     : {status:'conditional',condition:'Dynamic OAuth client registration is mentioned, but that still registers a client. Confirm the specific registration method before authorization: '+cleanSnippet(snippet)};
@@ -443,7 +443,7 @@ async function researchHandler(req, res) {
   const mcpSnippet = findSnippet(allText, ['model context protocol', 'mcp server', 'mcp authentication']);
   const ssoSnippet = findSnippet(allText, ['single sign-on', 'sso', 'saml']);
   const oauth21Snippet = findSnippet(allText, ['oauth 2.1', 'oauth2.1']);
-  const regFreeSnippet = findSnippet(customerOAuthText, ['no registration required', 'registration-free', 'client id metadata', 'metadata document', 'do not need to pre-register', 'without pre-registering', 'do not need to register']) || findSnippet(customerOAuthText, ['dynamic client registration']);
+  const regFreeSnippet = findSnippet(customerOAuthText, ['no registration required', 'registration is not required', 'registration-free', 'client id metadata', 'metadata document', 'do not need to pre-register', 'without pre-registering', 'do not need to register']) || findSnippet(customerOAuthText, ['dynamic client registration']);
   const adminConsentSnippet = findSnippet(allText, ['admin consent']);
   const privateSnippet = findSnippet(allText, ['private app', 'private integration', 'internal app', 'do not need review', 'no review required']);
   const privacySnippet = findSnippet(allText, ['privacy policy']);
