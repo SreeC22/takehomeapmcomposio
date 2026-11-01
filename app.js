@@ -21,6 +21,130 @@ function decodeGuide(b64) {
     return JSON.parse(json);
   } catch (e) { return null; }
 }
+// Share only the developer's actionable guide, not the full 80KB research
+// transcript, then gzip it. A recipient can reopen it without our server
+// storing credentials, browser localStorage, or private data.
+function compactGuideForShare(g) {
+  const fields = ['id','name','category','difficulty','difficultyWhy','setupTime','implementationTime',
+    'approvalWait','accountNeeded','cost','consoleName','consoleUrl','guideType','verificationStatus',
+    'confidence','authType','managedAppNote','nextStep','startNow','tested','timings'];
+  const copy = {};
+  fields.forEach(k => { if (g[k] !== undefined) copy[k] = g[k]; });
+  copy.sources = (g.sources || []).slice(0, 20);
+  copy.steps = (g.steps || []).map(x => ({title:x.title,detail:x.detail,who:x.who,
+    time:x.time,requirement:x.requirement,condition:x.condition,blockerTip:x.blockerTip,
+    evidence:x.evidence ? String(x.evidence).slice(0,400):'', evidenceUrl:x.evidenceUrl}));
+  copy.timeline = (g.timeline || []).slice(0,15);
+  copy.checklist = (g.checklist || []).slice(0,25);
+  copy.blockers = (g.blockers || []).slice(0,15);
+  copy.agentCan = (g.agentCan || []).slice(0,15);
+  copy.humanMust = (g.humanMust || []).slice(0,15);
+  copy.notVerified = (g.notVerified || []).slice(0,15);
+  copy.requirements = (g.requirements || []).map(x => ({name:x.name,status:x.status,
+    condition:x.condition,evidence:x.evidence ? String(x.evidence).slice(0,250):'',
+    evidenceUrl:x.evidenceUrl}));
+  copy.decisions = (g.decisions || []).map(x => ({claim:x.claim,status:x.status,
+    condition:x.condition,evidence:x.evidence ? String(x.evidence).slice(0,200):'',
+    evidenceUrl:x.evidenceUrl,justification:x.justification}));
+  copy.qualityGate = g.qualityGate ? {completeness:g.qualityGate.completeness,
+    factualConfidence:g.qualityGate.factualConfidence,
+    checksFailed:(g.qualityGate.checksFailed||[]).slice(0,10),
+    notes:(g.qualityGate.notes||[]).slice(0,5)}:null;
+  copy.executionLog = (g.executionLog || []).slice(-12).map(x => ({
+    action:x.action,status:x.status,url:x.url,detail:String(x.detail||'').slice(0,180)}));
+  copy.evidenceSummary = g.evidenceSummary ? {tracks:g.evidenceSummary.tracks,
+    providerIdentity:g.evidenceSummary.providerIdentity,
+    scopeSources:(g.evidenceSummary.scopeSources||[]).slice(0,4)}:null;
+  return copy;
+}
+function encodeBytes(bytes) {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 8192)
+    binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function decodeBytes(v) {
+  const binary = atob(v.replace(/-/g,'+').replace(/_/g,'/'));
+  return Uint8Array.from(binary, c => c.charCodeAt(0));
+}
+async function encodeSharedGuide(g) {
+  const raw = new TextEncoder().encode(JSON.stringify(compactGuideForShare(g)));
+  if (typeof CompressionStream !== 'undefined') {
+    const compressed = await new Response(new Blob([raw]).stream().pipeThrough(
+      new CompressionStream('gzip'))).arrayBuffer();
+    return 'gz.' + encodeBytes(new Uint8Array(compressed));
+  }
+  return 'raw.' + encodeBytes(raw);
+}
+async function decodeSharedGuide(v) {
+  try {
+    const sep = v.indexOf('.');
+    const kind = v.slice(0,sep), payload = decodeBytes(v.slice(sep+1));
+    const buffer = kind === 'gz' && typeof DecompressionStream !== 'undefined'
+      ? await new Response(new Blob([payload]).stream().pipeThrough(
+        new DecompressionStream('gzip'))).arrayBuffer()
+      : kind === 'raw' ? payload : null;
+    if (!buffer) return null;
+    const value = JSON.parse(new TextDecoder().decode(buffer));
+    return value && typeof value.name === 'string' && Array.isArray(value.steps) ? value : null;
+  } catch(e) { return null; }
+}
+function agentHandoff(g) {
+  const out = ['Developer OAuth integration research handoff — '+(g.name||'Provider'),
+    'Objective: Connect external users to this provider, without inventing auth flows.',
+    'Research status: '+(g.verificationStatus||'unknown')+'; '+(g.guideType||'draft'),
+    'Authentication: '+(g.authType||'unconfirmed'),
+    'Official managed auth directory: https://docs.composio.dev/toolkits/managed-auth',
+    'Managed support for this toolkit requires checking Composio documentation/API.',
+    'Where to start: '+(g.consoleUrl||'Unknown'),
+    'Approval wait: '+(g.approvalWait||'Unknown'),
+    'Next action: '+(g.nextStep||'Research official docs'),
+    'DOCUMENTED STEPS:'];
+  (g.steps||[]).forEach((x,i) => out.push((i+1)+'. '+x.title+' ['+(x.requirement||'unknown')+
+    ', owner: '+(x.who||'unknown')+'] '+String(x.detail||'').split('Evidence from docs:')[0] +
+    (x.evidenceUrl ? ' Source: '+x.evidenceUrl:'')));
+  out.push('BLOCKERS:');
+  (g.blockers||[]).forEach(x => out.push('- '+x.blocker+': '+x.fix));
+  out.push('HUMAN TAKEOVER:');
+  (g.humanMust||[]).forEach(x => out.push('- '+x));
+  out.push('OFFICIAL SOURCES:');
+  (g.sources||[]).forEach(x => out.push('- '+x));
+  out.push('Safety: do not create accounts, submit applications, request unsupported scopes, or claim a flow was tested without authorized access. Mark missing facts Unknown.');
+  return out.join('\n');
+}
+async function renderManagedDecision(g, el) {
+  const desc = el.querySelector('#managedDecisionText');
+  const link = el.querySelector('#managedDecisionSource');
+  const next = el.querySelector('#managedDecisionNext');
+  if (!desc || !next || !link) return;
+  const catalog = 'https://docs.composio.dev/toolkits/managed-auth';
+  link.href = catalog;
+  link.textContent = 'Open official managed OAuth directory';
+  next.textContent = 'Until availability is verified, do not assume you must register an OAuth app.';
+  try {
+    const r = await fetch('/api/managed-auth?app=' + encodeURIComponent(g.name||''));
+    if (!r.ok) throw new Error('lookup failed');
+    const data = await r.json();
+    if (!desc.isConnected) return;
+    if (data.status === 'managed_available') {
+      desc.textContent = 'Composio-managed OAuth is available for this toolkit (official toolkit documentation).';
+      next.textContent = 'Fastest path: use Composio managed authentication and a Connect Link. Skip provider OAuth registration unless you need your own branding, scopes, or quota.';
+    } else if (data.status === 'bring_your_own') {
+      desc.textContent = 'Composio-managed OAuth is not available for this toolkit (official toolkit documentation).';
+      next.textContent = 'Use the developer-owned OAuth setup guide below and create a custom Composio auth config, if OAuth is supported for the intended use case.';
+    } else {
+      desc.textContent = 'Managed OAuth: not verified for this exact toolkit. Do not guess.';
+      next.textContent = 'Use the official directory or the authenticated Composio toolkit API to determine if you need your own app.';
+    }
+    if (data.source && /^https:\/\/docs\.composio\.dev\//.test(data.source)) {
+      link.href = data.source;
+      link.textContent = data.verified ? 'View supporting Composio toolkit page' : 'Check Composio official toolkit documentation';
+    }
+  } catch(e) {
+    desc.textContent = 'Managed OAuth: not verified (lookup unavailable).';
+  }
+}
+
 function loadStoredGuides() {
   try {
     const raw = localStorage.getItem('generatedGuides');
@@ -59,6 +183,14 @@ async function load() {
   stored.forEach(g => { if (!guides.find(x => x.id === g.id)) guides.push(g); });
   render();
   const hash = location.hash || '';
+  if (hash.startsWith('#share=')) {
+    const g = await decodeSharedGuide(hash.slice(7));
+    if (g) { showDetail(g, true, true); return; }
+  }
+  if (hash.startsWith('#local=')) {
+    const local = guides.find(x => x.id === hash.slice(7));
+    if (local) { showDetail(local, true, true); return; }
+  }
   if (hash.startsWith('#generated=')) {
     const g = decodeGuide(hash.replace('#generated=', ''));
     if (g) {
@@ -141,21 +273,28 @@ function executionHtml(g) {
     <ul>${sources || '<li>None listed. Use live research and official docs before use.</li>'}</ul>
     ${log ? `<p><strong>Research log:</strong></p><ul>${log}</ul>` : '<p>No step-by-step research log was recorded for this guide. See the verification report on the home page for the sampled checks.</p>'}`;
 }
-function showDetail(g, isGenerated) {
+function showDetail(g, isGenerated, preserveHash) {
   try { document.getElementById('empty').classList.add('hidden'); } catch (e) {}
-  if (isGenerated || String(g.id || '').startsWith('generated-') || String(g.id || '').startsWith('draft-')) {
-    const enc = encodeGuide(g);
-    if (enc) location.hash = 'generated=' + enc;
-  } else {
-    location.hash = 'guide=' + g.id;
+  if (!preserveHash) {
+    if (isGenerated || String(g.id || '').startsWith('generated-') || String(g.id || '').startsWith('draft-')) {
+      location.hash = 'local=' + encodeURIComponent(g.id || g.name || 'guide');
+    } else {
+      location.hash = 'guide=' + g.id;
+    }
   }
   const el = document.getElementById('detail');
   el.classList.remove('hidden');
   el.innerHTML = `
-    <p><a href="#grid">Back to all platforms</a> | <button id="shareBtn" type="button">Copy share link</button> | <button id="jsonBtn" type="button">Copy guide JSON</button>${(isGenerated || String(g.id || '').startsWith('generated-') || String(g.id || '').startsWith('draft-')) ? ' | <button id="refreshBtn" type="button">Refresh live research</button>' : ''}</p>
+    <p><a href="#grid">Back to all platforms</a> | <button id="shareBtn" type="button">Copy share link</button> | <button id="jsonBtn" type="button">Copy guide JSON</button> | <button id="handoffBtn" type="button">Copy agent setup brief</button>${(isGenerated || String(g.id || '').startsWith('generated-') || String(g.id || '').startsWith('draft-')) ? ' | <button id="refreshBtn" type="button">Refresh live research</button>' : ''}</p>
     <h2>${esc(g.name)} <span class="badge">${esc(g.difficulty)}</span> <span class="badge ${esc(g.guideType)}">${esc(g.guideType)}</span>${g.category ? ` <span class="badge category">${esc(g.category)}</span>` : ''}</h2>
     <p class="small">${esc(g.difficultyWhy)}</p>
-    <p class="small"><strong>Verification, separate from completeness:</strong> ${esc(g.verificationStatus || ('Confidence ' + g.confidence + ', verification status not set'))}. Full means a verified path, partial means partially verified, draft means unsupported or ambiguous. None means it was tested with a sign-in.</p>
+    <p class="small"><strong>Verification, separate from completeness:</strong> ${esc(g.verificationStatus || ('Confidence ' + g.confidence + ', verification status not set'))}. Full describes guide completeness, not an authenticated OAuth test. Partial has unverified details; Draft is unsupported or ambiguous. None means it was tested with a sign-in.</p>
+    <div class="step" id="managedDecision">
+      <h3>Step 0 — Do you actually need your own OAuth app?</h3>
+      <p id="managedDecisionText">Checking the official Composio toolkit documentation…</p>
+      <p><a id="managedDecisionSource" href="https://docs.composio.dev/toolkits/managed-auth" target="_blank" rel="noopener noreferrer">Open official managed OAuth directory</a></p>
+      <p id="managedDecisionNext" class="small">Only create a provider OAuth app if Composio-managed auth is unavailable or your product needs custom credentials.</p>
+    </div>
     <div class="step"><h3>At a glance</h3>
       <ul>
         <li><strong>Verification:</strong> ${esc(g.verificationStatus || 'Not set')}</li>
@@ -207,13 +346,24 @@ function showDetail(g, isGenerated) {
       });
     });
   } catch (e) {}
+  renderManagedDecision(g, el);
   document.getElementById('shareBtn').addEventListener('click', async () => {
     const btn = document.getElementById('shareBtn');
-    try { await navigator.clipboard.writeText(location.href); if (btn) { btn.textContent = 'Link copied'; setTimeout(() => { btn.textContent = 'Copy share link'; }, 2000); } } catch (e) { alert(location.href); }
+    try {
+      const generated = isGenerated || String(g.id||'').startsWith('generated-') || String(g.id||'').startsWith('draft-');
+      const path = location.href.split('#')[0];
+      const url = generated ? path + '#share=' + await encodeSharedGuide(g) : path + '#guide=' + encodeURIComponent(g.id);
+      await navigator.clipboard.writeText(url);
+      if (btn) { btn.textContent = 'Link copied'; setTimeout(() => { btn.textContent = 'Copy share link'; }, 2000); }
+    } catch (e) { alert('Copy failed. You can still copy the guide JSON.'); }
   });
   document.getElementById('jsonBtn').addEventListener('click', async () => {
     const json = JSON.stringify(g, null, 2);
     try { await navigator.clipboard.writeText(json); alert('Guide JSON copied.'); } catch (e) { alert('Copy failed, use guides.json instead.'); }
+  });
+  document.getElementById('handoffBtn').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(agentHandoff(g)); alert('Agent setup brief copied.'); }
+    catch(e) { alert('Copy unavailable. Use the guide JSON button instead.'); }
   });
   const refreshBtn = document.getElementById('refreshBtn');
   if (refreshBtn) refreshBtn.addEventListener('click', async () => { await runResearch(g.name, true); });
