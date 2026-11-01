@@ -455,7 +455,14 @@ async function researchHandler(req, res) {
 
   let registerMeaning = classifyPassage(registerSnippet, ['register', 'registration', 'create', 'oauth app', 'application']);
   if (!approvalSnippet && reviewGateSnippet) approvalSnippet = reviewGateSnippet;
-  const approvalMeaning = classifyPassage(approvalSnippet, ['app review', 'app approval', 'submit for review', 'marketplace review', 'security review', 'publisher verification', 'business verification', 'verification', 'review']);
+  let approvalMeaning = classifyPassage(approvalSnippet, ['app review', 'app approval', 'submit for review', 'marketplace review', 'security review', 'publisher verification', 'business verification', 'verification', 'review']);
+  // "Review before marketplace listing" is conditional on choosing to list.
+  // It must not be displayed as universal approval for user OAuth.
+  if (approvalMeaning.status === 'required' && /(?:marketplace|app store)/i.test(approvalSnippet || '') &&
+      /(?:before being listed|to be listed|for listing|marketplace listing|listed on|listing in)/i.test(approvalSnippet || '')) {
+    approvalMeaning = { status: 'conditional',
+      condition: 'Marketplace listing requires a provider review; whether public OAuth connections can be used without a listing is a separate decision.' };
+  }
   const redirectMeaning = classifyPassage(redirectSnippet, ['redirect', 'callback']);
   const accountMeaning = classifyPassage(accountSnippet, ['developer account', 'account']);
   const scopeMeaning = classifyPassage(scopeSnippet, ['scope']);
