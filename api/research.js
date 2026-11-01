@@ -545,6 +545,55 @@ async function researchHandler(req, res) {
   consoleCandidates.sort((a, b) => b.score - a.score);
   const consolePick = consoleCandidates.length && consoleCandidates[0].score >= 3 ? consoleCandidates[0].url : '';
   let consoleUrl = consolePick || 'Unknown';
+  // A read-only, unauthenticated public portal probe is the practical limit
+  // of automated setup without the developer's credentials. A 200/302/403
+  // confirms an HTTP response, NOT app creation or working OAuth.
+  let portalPublicProbe = {attempted:false,result:'not_attempted',reason:'No verified public portal to probe.'};
+  if (consolePick && !providerIdentityAmbiguous) {
+    const target = (() => {
+      try {
+        const u = new URL(consolePick);
+        if (u.protocol !== 'https:' || u.username || u.password ||
+          /(?:^|\.)localhost$|(?:^|\.)internal$|^127\.|^10\.|^192\.168\.|^172\.(?:1[6-9]|2[0-9]|3[01])\./i.test(u.hostname)) return null;
+        if (!isProviderHost(u.hostname.toLowerCase(), slug, domainGuess)) return null;
+        return u;
+      } catch (e) { return null; }
+    })();
+    if (target) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 1300);
+      try {
+        const result = await fetch(target.href, {method:'HEAD',redirect:'manual',
+          signal:controller.signal,headers:{'Accept':'text/html'}});
+        portalPublicProbe = {attempted:true,url:target.href,method:'HEAD',httpStatus:result.status,
+          result:result.status >= 200 && result.status < 400 ? 'reachable_or_redirected' : 'http_response_only',
+          reason:'Only checked public HTTP reachability. No authentication, app creation, or provider approval was attempted.'};
+        logPush('probe_public_developer_portal',target.href,'http_'+result.status,portalPublicProbe.reason);
+      } catch(e) {
+        portalPublicProbe = {attempted:true,url:target.href,method:'HEAD',result:'unverified',
+          reason:'The public portal probe failed or timed out. This does not establish portal unavailability.'};
+        logPush('probe_public_developer_portal',target.href,'unverified',portalPublicProbe.reason);
+      } finally { clearTimeout(timer); }
+    }
+  }
+  // Give the developer the most relevant *fetched official article* when
+  // the registration UI isn't established. Documentation != portal.
+  const registrationDocs = pages.filter(pg => {
+    try {
+      const u = new URL(pg.url);
+      if (!isProviderHost(u.hostname.toLowerCase(), slug, domainGuess)) return false;
+      return /(?:developer|app|oauth|registration|authentication|marketplace)/i.test(u.pathname) &&
+        /(?:create|register|configure|set up|setup|developer hub|developer portal|app settings)/i.test(pg.text);
+    } catch (e) { return false; }
+  }).map(pg => {
+    let p = '';
+    try { p = new URL(pg.url).pathname.toLowerCase(); } catch (e) {}
+    const explicit = /(?:create (?:an? |a new )?(?:oauth |public )?(?:app|application|client|connection)|register (?:an? |your )?(?:app|application)|developer hub)/i.test(pg.text);
+    const pathScore = /(?:create|register|registration|setup|set.up|oauth|developer.hub|marketplace)/i.test(p) ? 2 : 0;
+    return {url:pg.url, score:(explicit ? 5 : 0)+pathScore, explicit};
+  }).sort((a,b)=>b.score-a.score);
+  const registrationDoc = registrationDocs.length && registrationDocs[0].score >= 5 ? registrationDocs[0].url : '';
+
   function track(name, found, conf, evidenceText, missing) {
     return { name, status: found ? 'found' : 'missing', confidence: found ? conf : 'Low', sources: sources.slice(0, 6), evidence: evidenceText ? cleanSnippet(evidenceText) : '', evidenceUrl: sourceFor(evidenceText), missing: missing || [] };
   }
@@ -678,7 +727,7 @@ async function researchHandler(req, res) {
   const reqCondition = (name) => { const r = requirements.find(x => x.name === name); return r ? r.condition : ''; };
   addStep('Confirm the authentication model', 'What: confirm ' + app + ' uses ' + authType + (authType === 'oauth' ? ' before building an OAuth flow.' : authType === 'unknown' ? ' before building, because no authentication method was confirmed in fetched pages.' : ' before building, because this is not a standard OAuth flow.') + ' Where: official docs in sources below. Why: building the wrong auth model wastes the whole integration.' + (registerSnippet || apiKeySnippet ? ' Evidence from docs: ' + cleanSnippet(registerSnippet || apiKeySnippet) : ''), 'agent', '15 minutes', 'If the auth model is unknown, stop and research official docs, do not guess OAuth.', 'unknown', registerSnippet || apiKeySnippet);
   if (authType === 'oauth') {
-    if (registerMeaning.status !== 'not_applicable') addStep('Register the app', consolePick ? 'What: create a new OAuth app in the developer portal at ' + consolePick + '. Where: that portal, sign in as a developer. Why: registration creates the client ID and secret used for OAuth.' + (registerSnippet ? ' Evidence from docs: ' + cleanSnippet(registerSnippet) : '') : 'What: find the official developer portal in sources below and create a new OAuth app there. Where: official portal, not an API reference page. Why: no registration URL scored high enough to be used as the portal link, so do not use an API reference page as the registration URL.', 'human', '20 minutes', 'If the portal is not official, stop and mark the guide as unverified.', reqStatus('Register an OAuth app'), registerSnippet, reqCondition('Register an OAuth app'));
+    if (registerMeaning.status !== 'not_applicable') addStep(consolePick ? 'Register the app' : 'Find the verified registration entry point', consolePick ? 'What: create a new OAuth app in the developer portal at ' + consolePick + '. Where: that portal, sign in as a developer. Why: registration creates the client ID and secret used for OAuth.' + (registerSnippet ? ' Evidence from docs: ' + cleanSnippet(registerSnippet) : '') : 'What: use ' + (registrationDoc || 'the linked official OAuth documentation') + ' to locate the real developer app registration screen; do not register or configure anything until the provider portal is confirmed. Where: official registration docs, not an API reference page. Why: an official portal URL could not be verified in this research run.', 'human', '20 minutes', 'If the portal is not official, stop and mark the guide as unverified.', reqStatus('Register an OAuth app'), registerSnippet, reqCondition('Register an OAuth app'));
     else addStep('Registration is not required, per docs', 'What: do not register an OAuth app, because fetched docs say registration is not required for this path. Where: official docs in sources below. Why: ' + registerMeaning.condition, 'human', 'Unknown', 'Do not create an app that docs say is not required.', 'not_applicable', registerSnippet, registerMeaning.condition);
     if (reviewGateSnippet && /admin|review/i.test(reviewGateSnippet)) addStep('Wait for provider review before use', 'What: wait for the provider to review the client before using it, because docs say it starts pending and is not ready until reviewed. Where: provider review, see evidence below. Why: using a pending client before approval wastes the integration attempt.' + ' Evidence from docs: ' + cleanSnippet(reviewGateSnippet), 'human', 'Unknown, review wait varies', 'Do not launch on a pending client.', 'conditional', reviewGateSnippet, 'Provider review is required before the client can be used.');
     const redirectDetail = registerMeaning.status === 'not_applicable'
@@ -869,14 +918,29 @@ async function researchHandler(req, res) {
   else if (authType === 'api_key') { difficulty = 'Easy'; difficultyWhy = 'Easy from retrieved docs: API key authentication was found, with no OAuth app or review evidence in fetched pages.'; }
   else if (finalTr.hasClient && scopes.length) { difficulty = 'Medium'; difficultyWhy = 'Medium from retrieved docs: registration with client ID and scopes was found, but no approval or business verification was found in fetched pages.'; }
   else { difficulty = 'Unknown'; difficultyWhy = 'Sources were found, but they did not contain enough registration, scope, or review evidence to set difficulty. Do not use a guessed difficulty.'; }
-  const setupTime = sources.length && (finalTr.hasClient || authType !== 'unknown') ? 'Estimate: 1 to 2 hours for a first test, not a published provider time, based on steps found in sources, plus review time if required' : 'Unknown, registration steps were not fully found in fetched pages';
+  // Transparent planning estimate from the individual tasks on this guide.
+  // This is NOT a provider-published SLA; approval waiting is separate.
+  const parseMinutes = x => { const m = String(x || '').match(/^(\d+)\s*(?:minutes?|mins?)$/i); return m ? Number(m[1]) : 0; };
+  const stageMinutes = steps.reduce((out, x) => {
+    const n = parseMinutes(x.time);
+    if (/test|consent|account|register|redirect|review/i.test(x.title)) out.setup += n;
+    else out.engineering += n;
+    return out;
+  }, {setup:0, engineering:0});
+  const estimateBand = n => n ? Math.max(15, Math.floor(n / 15) * 15) + '–' + (Math.ceil(n / 15) * 15 + 30) + ' minutes' : 'Unknown';
+  const setupTime = sources.length && authType !== 'unknown'
+    ? 'Planning estimate: ' + estimateBand(stageMinutes.setup) + ' of hands-on setup/testing from listed tasks; excludes provider review and implementation.'
+    : 'Unknown, registration steps were not fully found in fetched pages';
+  const implementationEstimate = authType === 'unknown' ? 'Unknown, authentication direction is not verified'
+    : 'Planning estimate: ' + estimateBand(stageMinutes.engineering) + ' of research and engineering actions listed here; actual production integration may take longer.';
+
   const approvalWait = approvalMeaning.status === 'not_applicable' ? 'No provider review required, per fetched docs' : (approvalSnippet ? (timePhrase(approvalSnippet) ? 'Published phrase found: ' + timePhrase(approvalSnippet) + ', see evidence, not a guarantee' : 'Varies, see sources. No fixed timeline was confirmed in this research run.') : 'Unknown, do not promise a date until review docs are checked');
   const guide = {
     id: 'generated-' + slug,
     name: app,
     category: 'Generated, from live research',
     difficulty, difficultyWhy, setupTime, approvalWait,
-    implementationTime: sources.length && authType !== 'unknown' ? 'Estimate: 2 to 4 hours for a first working integration, not a published provider time, based on steps found in sources, plus review time if required' : 'Unknown, implementation steps were not fully found in fetched pages',
+    implementationTime: sources.length ? implementationEstimate : 'Unknown, implementation steps were not fully found in fetched pages',
     startNow: guideType === 'full' ? 'Yes, with a developer account, follow the steps in order.' : guideType === 'partial' ? 'Yes, for the confirmed steps, but check the missing items and blockers first.' : 'No, not from this guide alone. Use the next research action below, then start.',
 
     accountNeeded: sources.length ? 'Provider developer account, see first source' : 'Unknown, check the provider developer docs',
@@ -889,11 +953,18 @@ async function researchHandler(req, res) {
     claims,
     semanticVerification: { method: 'deterministic sentence semantics with linked negation and modal proximity, no model', modelUsed: false, reason: 'No free or local model is available in this Vercel serverless function without a paid dependency, slow inference, or an unreliable external API. See notes for the evaluation.', validatedAgainstPassages: true, limitation: 'This rule engine is not semantic understanding. Complex negation, exceptions, and conditional requirements that do not follow linked patterns are marked Unknown, not guessed.' },
     evidenceSummary,
+    registrationDocumentUrl: registrationDoc || '',
     requirements,
     qualityGate,
     managedAppNote: 'Check first whether a managed app already covers this platform. If it does, you may not need your own app. Managed support for this specific provider was not confirmed in this research run, check the Composio toolkit list before building.',
-    nextStep: providerIdentityAmbiguous ? 'Provider identity is ambiguous: multiple providers match this name, including ' + [canonicalProviderDomain, ...discardedProviderDomains].filter(Boolean).join(', ') + '. Enter the official website URL for the provider you mean, then research again, and do not use this draft as a verified guide.' : validationFailures.length ? 'Validation failed: ' + validationFailures.join(' ') + ' Do not use this as a full guide. Check official docs manually.' + (sources.length ? ' Start here: ' + sources[0] : '') : researchFailed ? (sources.length === 0 ? 'No usable official docs were fetched in this run, after ' + tavilyCallsUsed + ' searches and ' + pages.length + ' pages fetched' + (domainGuess ? ', with search results pointing to ' + domainGuess : '') + '. This is a retrieval failure, not proof that no public docs exist. Open the provider official docs directly, search for OAuth or API authentication, paste the official docs URL into the search box to research that page, and do not use this draft as a verified guide.' : 'Research did not find usable official docs. Use the findings below, check the official portal manually, and do not use this draft as a verified guide. Start here: ' + sources[0]) : (registerMeaning.status === 'not_applicable' ? 'Open ' + (sources.length ? sources[0] : 'official docs') + ', confirm the registration-free method and how redirect URIs are declared, then follow the steps in order.' : (consolePick ? 'Open the developer portal at ' + consolePick + ', confirm the authentication model, then follow the steps in order.' : (sources.length ? 'Open ' + sources[0] + ', confirm the authentication model and registration portal, then follow the steps in order.' : 'Open the first source below, confirm the authentication model and registration portal, then follow the steps in order.'))),
+    nextStep: providerIdentityAmbiguous ? 'Provider identity is ambiguous: multiple providers match this name, including ' + [canonicalProviderDomain, ...discardedProviderDomains].filter(Boolean).join(', ') + '. Enter the official website URL for the provider you mean, then research again, and do not use this draft as a verified guide.' : validationFailures.length ? 'Validation failed: ' + validationFailures.join(' ') + ' Do not use this as a full guide. Check official docs manually.' + (sources.length ? ' Start here: ' + sources[0] : '') : researchFailed ? (sources.length === 0 ? 'No usable official docs were fetched in this run, after ' + tavilyCallsUsed + ' searches and ' + pages.length + ' pages fetched' + (domainGuess ? ', with search results pointing to ' + domainGuess : '') + '. This is a retrieval failure, not proof that no public docs exist. Open the provider official docs directly, search for OAuth or API authentication, paste the official docs URL into the search box to research that page, and do not use this draft as a verified guide.' : 'Research did not find usable official docs. Use the findings below, check the official portal manually, and do not use this draft as a verified guide. Start here: ' + sources[0]) : (registerMeaning.status === 'not_applicable' ? 'Open ' + (sources.length ? sources[0] : 'official docs') + ', confirm the registration-free method and how redirect URIs are declared, then follow the steps in order.' : (consolePick ? 'Open the developer portal at ' + consolePick + ', confirm the authentication model, then follow the steps in order.' : (registrationDoc ? 'Open the official registration documentation at ' + registrationDoc + ' and follow its developer registration instructions. A portal URL was not verified, so do not treat this documentation as the portal.' : (sources.length ? 'Open ' + sources[0] + ' and locate the official developer registration documentation before configuring an app.' : 'Find the official developer registration documentation before configuring an app.')))),
     steps, timeline, checklist, blockers,
+    agentOutput: { type:'documentation_research_and_public_checks', sourcesChecked: sources.length,
+      portalPublicProbe,
+      registrationDocument: registrationDoc || '', developerConsole: consolePick || '',
+      oauthEndpoints: endpoints, scopeCandidates: scopes, reviewEvidence: approvalSnippet ? sourceFor(approvalSnippet) : '',
+      attempted:['searched documentation','retrieved official provider pages','classified authentication direction','validated extracted claims','prepared developer checklist', ...(portalPublicProbe.attempted ? ['attempted read-only developer portal HEAD request (not authentication)'] : [])],
+      notAttempted:['provider account login','OAuth app creation','real-user consent','token exchange','approval submission'] },
     agentCan: ['Search for official docs', 'Fetch candidate pages', 'Extract scopes, endpoints, and review evidence with sources', 'Draft checklists and timelines from evidence'],
     humanMust: approvalMeaning.status === 'not_applicable' ? ['Confirm the official portal', 'Sign in to the provider console', 'Verify scopes and review requirements', 'Confirm no review is required in official docs'] : ['Confirm the official portal', 'Sign in to the provider console', 'Verify scopes and review requirements', 'Submit for review and reply to reviewers only if docs say public distribution requires it'],
     sources,

@@ -16,6 +16,22 @@ Scope, deliberately focused:
 - Live generation for unfamiliar apps, from a name or a website URL. A supplied docs URL is fetched directly, in addition to search results.
 - No UI redesign in this round, no new library guides, no new features that do not help the core goal.
 
+## Developer-first decision and agent progress (latest update)
+
+The first task in every guide is to determine whether a developer-owned OAuth app is necessary. The website checks **public Composio toolkit documentation** through `/api/managed-auth?app=<provider>` and returns one of three outcomes:
+
+- **Managed available**, supported by an explicit statement on that provider's toolkit page: start with Composio managed OAuth and avoid custom provider registration unless the app needs custom branding, scopes, quota, or configuration. GitHub and Attio are examples verified during this iteration.
+- **Bring your own**, supported by an explicit statement that Composio-managed OAuth is not available: follow the provider app-registration guide. Pipedrive is an example verified during this iteration.
+- **Unknown**: the docs cannot establish the correct answer; open the linked official directory or use an authenticated toolkit API. Never treat a generic statement about most toolkits as proof for a particular provider.
+
+The public-doc lookup is not the authenticated Composio toolkit API, so Unknown is a valid and intentional result. No Composio API key is exposed.
+
+For unfamiliar apps the deterministic research pipeline now prefers relevant fetched registration instructions over generic provider homepages, separates hands-on task estimates from approval waits, and generates an `agentOutput` record identifying research completed, artifacts prepared, and setup not attempted. When an official developer portal URL is established, the agent attempts a **read-only, credential-free HEAD request** with a bounded timeout. An HTTP response is *not* proof of account access, registration, valid OAuth or approval.
+
+The guide surfaces the next actionable step near the top, shows research artifacts and checklist progress, and offers **Copy agent setup brief**. For sharing, generated guides are reduced to essential evidence and steps, then gzip-compressed into a URL fragment when browser support is available. The recipient does not need this application's database or a user account. Generated source research logs in the share are intentionally condensed, so the original local guide may include more detail.
+
+Test commands: `node scripts/trust-regression.js` and `node scripts/assignment-readiness-regression.js`. These test guide data safety, basic parsing, portable sharing and syntax, not provider OAuth integration end-to-end.
+
 ## How to use it
 
 - Search a library app, for example GitHub, and open its guide.
@@ -94,8 +110,8 @@ Structural harness totals are not factual accuracy rates. Claim-level precision 
 - Cache and rate limits are per Vercel instance, not global: 5 per minute and 20 per hour per IP per instance, guides cached 24 hours per instance.
 - JS-rendered docs, parent-domain docs, and gated enterprise docs often draft honestly rather than guess.
 - Combined useful coverage across the earlier main and holdout sets is 23 of 41, not a great majority, and holdout coverage alone is low. In the universal round, combined useful coverage is 10 partial of 28, with 0 full, so the great-majority target is still not met.
-- Third-party guides appear in source lists alongside official docs, and source authority is not shown per source in the guide view. Check partial guides against official docs before launch.
-- A generated guide share link is a long encoded URL hash, because the guide data is encoded in the URL with no server store. It works, but it is not a clean URL.
+- Live research prefers first-party provider documentation when it is available. Some sources can still be misclassified or key details omitted. Partial guides must be checked against official docs before launch.
+- Generated guides use compact, optionally gzip-compressed URL fragments without a backend store. Links are smaller than the prior full-JSON hashes but may remain longer than ordinary website URLs, and the shared version contains a condensed log.
 - Browser rendering of the newest fields was verified via API response, not a live browser session in every round, except where a browser test is explicitly reported.
 - The repository is private, so reviewers need access granted or the source package.
 
@@ -110,5 +126,7 @@ Structural harness totals are not factual accuracy rates. Claim-level precision 
 - `index.html`, `app.js`, `style.css`: site, search, guide detail, share links.
 - `guides.json`, `guides/`: 16 library guides.
 - `api/research.js`, `api/research-helpers.js`: live research engine.
+- `api/managed-auth.js`: public Composio toolkit managed-OAuth verification, with evidence and safe Unknown fallback.
+- `scripts/assignment-readiness-regression.js`: compressed-share and syntax regression.
 - `SUBMISSION-NOTES.md`: full test results and classifications.
 - `VERIFICATION-LOG.md`: verification entries by round.
