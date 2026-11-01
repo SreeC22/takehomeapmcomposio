@@ -3,60 +3,65 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>README - OAuth Setup Guides</title>
+<title>Project README — OAuth Setup Guides</title>
+<meta name="description" content="Composio APM integrations take-home: demo, decisions, setup, evidence, and limitations.">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="top"><div class="wrap"><h1>OAuth Setup Guides - README</h1><p class="sub">Rendered README for the deployed site. Source on GitHub: <a href="https://github.com/SreeC22/takehomeapmcomposio">SreeC22/takehomeapmcomposio</a>. Live site guide library is on the home page.</p><p><a href="index.html">Back to guides</a></p></div></header>
+<header class="top"><div class="wrap">
+<p><a href="index.html">← Back to guides</a></p>
+<h1>OAuth Setup Guides</h1>
+<p class="sub">Composio APM Integrations take-home · A searchable OAuth setup library plus live, source-backed research for unfamiliar apps.</p>
+<p><a href="https://github.com/SreeC22/takehomeapmcomposio">View the full GitHub README and source code</a></p>
+</div></header>
 <main class="wrap">
 <section class="about">
-<h2>Live use</h2>
-<p>Open index.html for the library, or deploy this folder to Vercel. Search is one merged box: type an app name and press Get guide. Library guides open directly. Unfamiliar apps are researched live and generate a full guide, once. Live research uses the serverless endpoint in api/research.js, Tavily first when TAVILY_API_KEY is set in Vercel, with a 24 hour per instance cache and per instance rate limiting. No login and no secrets are needed to run it.</p>
-<h2>What is inside</h2>
-<ul>
-<li>index.html, style.css, app.js: searchable library, guide cards, guide detail view, quick guide view, live research, and shareable generated guides.</li>
-<li>api/research.js: serverless live research endpoint. It searches for official developer and OAuth docs, fetches candidate pages in parallel, extracts registration, redirect, scope, endpoint, and review claims, and returns a full guide plus a research log and timings.</li>
-<li>guides.json: full guide index, in the same schema used for human cards and agent JSON. It is minified, because a single upload argument cannot exceed about 128 KB.</li>
-<li>guides/&lt;id&gt;.json: one machine readable guide per platform.</li>
-<li>llms.txt: plain text index for agents and crawlers.</li>
-<li>VERIFICATION-LOG.md: what was checked, what was corrected, and what could not be verified.</li>
-<li>SUBMISSION-NOTES.md: paste-ready notes for the file upload submission.</li>
-</ul>
-<h2>Guides included</h2>
-<p>16 full guides, 0 summaries, checked against docs on 2026-10-31 as noted in each guide. Full means completeness, not verification. Verification is shown separately in each guide. Notion and Discord each have a single official source. Meta relies on third-party sources only: GitHub, Slack, Google, Meta, Microsoft, Notion, Salesforce, HubSpot, Shopify, Zoom, Discord, LinkedIn, Airtable, Claude, ChatGPT, and Composio. Claude is an API key guide, not an OAuth flow. ChatGPT is Sign in with ChatGPT, commercial access is a limited trial. Composio is an auth config, not a provider OAuth app. No guide claims High confidence, and no guide claims a sign-in, app creation, or provider approval was completed.</p>
-<h2>Key decisions</h2>
+<h2>The problem</h2>
+<p>Before a developer can let an AI agent's users connect an app, they need to know whether to create their own OAuth client at all, how to configure it, which permissions matter, whether review blocks launch, and which work still requires a person.</p>
+<p><strong>First decision:</strong> check whether Composio-managed OAuth is documented for the provider. If available, managed authentication can avoid custom provider registration. When documentation does not establish support, the guide says Unknown rather than guessing.</p>
+<h2>Try the demo</h2>
 <ol>
-<li>Same guide schema for every platform, so difficulty and time are comparable.</li>
-<li>Setup time is reported separately from approval wait time.</li>
-<li>Step by step guide, with a separate review timeline and a separate approval checklist.</li>
-<li>Human cards and agent JSON come from the same data.</li>
-<li>Live research returns a full guide with a research log, sources, timings, confidence, and a separate verificationStatus, not a static template and not a summary. If the research endpoint itself fails, the browser fallback is a draft, labeled draft and Unverified, not a full guide. Claims that cannot be verified from a fetched page are marked Unknown, not invented.</li>
-<li>Generated guides are shareable. Guide data is encoded in the share link and also saved in the browser, so a copied link survives refresh and sharing.</li>
-<li>Managed or custom is the first decision in every guide. Check Composio managed apps first, and go custom only for own branding, custom scopes, dedicated quota, faster polling, a custom instance, or enterprise branding.</li>
-<li>Quick guide view: steps show a short action, Who and Time chips, and a short Watch out line. Docs evidence is collapsed, and step URLs are cleaned of trailing punctuation before linking.</li>
-<li>Focused slice, not 100 thin guides. Sixteen full guides that can be checked beat a hundred guessed guides.</li>
+<li><a href="index.html#guide=github">GitHub</a>: straightforward OAuth setup and ordinary consent, no separate review for standard scopes.</li>
+<li><a href="index.html#guide=google">Google</a>: sensitive/restricted scopes and potentially significant verification work.</li>
+<li><a href="index.html#guide=shopify">Shopify</a>: development installation vs. public App Store distribution and review.</li>
+<li>Back on the <a href="index.html">homepage</a>, search an unfamiliar app such as Attio, Cal.com or Miro. The site investigates documentation live; generated guides may be Partial or Draft when critical information is missing.</li>
+<li>Review the next action, registration documentation, sources, requirements, agent actions, human takeover, and share or copy the guide.</li>
 </ol>
-<h2>Live research, honest version</h2>
-<p>The merged search calls api/research.js. That endpoint searches for official developer and OAuth docs, fetches candidate pages in parallel, and extracts claims only where pages mention OAuth, client ID, redirect, or scopes. It returns a full guide, a research log with timestamps and failures, sources, timings, and confidence. Extraction is rule-based, not a language model, so quality varies by site, and failures are logged instead of hidden. A generated guide must be checked against official docs before use.</p>
-<h2>Style</h2>
-<p>Inter, matching Composio, uniform white background, pure blue #0000FF as the main accent.</p>
-<h2>Latest developer-first improvements</h2>
-<p><strong>Start with the managed-versus-custom decision:</strong> each guide checks the provider's public Composio toolkit documentation. If managed OAuth is explicitly available, you may not need your own provider OAuth app. If unavailable, follow the custom setup path. If unverified, the result remains Unknown with an official source link.</p>
-<p><strong>Actionable next step:</strong> unfamiliar-app research identifies relevant registration documentation, presents the next step near the top, and separates estimated hands-on work from provider review waiting.</p>
-<p><strong>What the agent actually attempted:</strong> live source discovery, evidence extraction, classification and an optional read-only public developer-portal HEAD check. It never signs in, registers apps, exchanges user tokens or submits provider approval.</p>
-<p><strong>Share and hand off:</strong> copy a compact compressed guide URL or an agent-ready implementation brief. Checklist progress stays only in this browser and is not proof that provider tasks were completed.</p>
+<h2>What's included</h2>
+<p>16 curated guides plus live generation for providers outside the library. Each guide contains difficulty, hands-on effort, approval wait/Unknown, requirements, step-by-step actions, blockers, source links, and a clear separation of the work an automated researcher performed from work a person must complete.</p>
+<p>Guides are also available as <a href="guides.json">structured JSON</a> for coding agents. Generated guides can be shared as compressed URL snapshots and copied as agent setup briefs.</p>
+<h2>How the research works</h2>
+<ol>
+<li>Search for official provider documentation using Tavily and fetch relevant pages.</li>
+<li>Distinguish user-facing provider OAuth from sign-in/SSO, API keys and unrelated permission systems.</li>
+<li>Extract client registration, redirect, scopes, approval and blocker evidence. Reject malformed endpoint URLs and misleading metadata.</li>
+<li>Produce Full, Partial, or Draft guidance with confidence and unresolved facts visible.</li>
+<li>Where a developer portal is established, optionally attempt a read-only public HTTP reachability check. This does not create an app or test OAuth.</li>
+</ol>
+<p><strong>Technical judgment:</strong> this is a deterministic, source-backed investigation pipeline, not an LLM and not an automated logged-in browser agent. Full means documentary completeness, <em>not</em> a successful real OAuth test.</p>
+<h2>Run locally</h2>
+<p>Node.js 20+ and the Vercel CLI are sufficient; there is no application dependency install step. Provide a Tavily key as a server-side environment variable for live research.</p>
+<pre><code>git clone https://github.com/SreeC22/takehomeapmcomposio.git
+cd takehomeapmcomposio
+export TAVILY_API_KEY="your_tavily_key"
+npx vercel dev</code></pre>
+<p>The Vercel CLI may prompt you to sign in/link a project. A static preview with library guides only is available with <code>npx serve .</code>. Never commit API keys; local environment files are excluded by <code>.gitignore</code>.</p>
+<h2>Test and evidence</h2>
+<pre><code>node scripts/trust-regression.js
+node scripts/registration-qa-regression.js
+node scripts/assignment-readiness-regression.js</code></pre>
+<p>Production checks covered the homepage, library JSON, Composio managed-auth lookup, and fresh research on Attio, Cal.com, Pipedrive, PostHog, Miro and Baserow. These unfamiliar-app guides correctly remained Partial or Draft. The site also underwent logic-level share/handoff testing, though not complete cross-device browser QA.</p>
+<p>Corrections include removing bogus metadata-derived OAuth scopes, distinguishing SSO from provider OAuth, preventing dynamic client registration from being described as no registration, validating OAuth endpoints, and downgrading unsupported review claims. See <a href="https://github.com/SreeC22/takehomeapmcomposio/blob/main/VERIFICATION-LOG.md">verification log</a> and <a href="https://github.com/SreeC22/takehomeapmcomposio/blob/main/SUBMISSION-NOTES.md">full results</a>.</p>
 <h2>Limitations</h2>
 <ul>
-<li>No account sign-in, app creation, or provider approval was completed for these guides.</li>
-<li>Google and Meta timelines are ranges, not guarantees. Meta timeline was not confirmed from an official Meta page in this check.</li>
-<li>ChatGPT commercial access is a limited trial, approval wait Unknown. Claude has no third party OAuth app in official docs checked. Composio itself has no approval, provider approval is separate.</li>
-<li>Live research extraction is heuristic. It can miss JavaScript rendered official pages, and it can return Low confidence with Unknowns when no official page can be verified.</li>
-<li>No credentials, tokens, or client secrets are included anywhere in this repo.</li>
+<li>No provider account was signed into, no OAuth app created, no live end-user consent/token exchange performed, and no provider approval submitted.</li>
+<li>Unfamiliar documentation can be incomplete or gated. Scope lists, portal URLs, review conditions and effort estimates may remain Unknown and should be rechecked before launch.</li>
+<li>Managed-OAuth availability comes from public Composio documentation; it is not a complete authenticated toolkit inventory.</li>
+<li>Generated guide links are self-contained URL fragments rather than server-stored records; they can be long.</li>
+<li>This is a focused take-home slice, not the planned full 100-app library.</li>
 </ul>
-<h2>Verification</h2>
-<p>See VERIFICATION-LOG.md for the sample checked, corrections made, and items that could not be verified. See SUBMISSION-NOTES.md for the full round by round record.</p>
+<p>For implementation details, file layout and more complete verification results, see the <a href="https://github.com/SreeC22/takehomeapmcomposio/blob/main/README.md">GitHub README</a>.</p>
 </section>
 </main>
-<footer class="wrap small"><a href="index.html">Back to guides</a> | <a href="https://github.com/SreeC22/takehomeapmcomposio">Source on GitHub</a></footer>
-</body>
-</html>
+<footer class="wrap small"><a href="index.html">Back to the application</a> · <a href="https://github.com/SreeC22/takehomeapmcomposio">Source repository</a></footer>
+</body></html>
