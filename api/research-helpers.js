@@ -324,7 +324,12 @@ function classifyPassage(snippetText, keywords) {
     } catch (e) { return -10; }
   }
   function productPath(u) {
-    try { const segs = new URL(u).pathname.toLowerCase().split('/').filter(Boolean); const i = segs.indexOf('docs'); return i >= 0 && segs[i+1] ? segs[i+1] : (segs[0] || ''); } catch (e) { return ''; }
+    try {
+      const segs = new URL(u).pathname.toLowerCase().split('/').filter(Boolean);
+      const generic = new Set(['docs','doc','developer','developers','api','apis','oauth','auth','authentication','authorization','developer-tools','partner','partner-api','partners','integration','integrations','getting-started','reference','guides','guide','cloud','platform','scopes','scope','permissions','permission','v1','v2','v3','latest','en','us']);
+      for (const seg of segs) { if (!generic.has(seg) && !/^v\d+$/.test(seg) && !/(oauth|partner|developer|auth|api|scope|permission)/.test(seg)) return seg; }
+      return 'main';
+    } catch (e) { return ''; }
   }
   function extractScopesFromPages(pages) {
     const out = [];

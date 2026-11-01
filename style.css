@@ -43,7 +43,7 @@ button.secondary{background:#fff;color:var(--ink)}
 .card h3{margin:0 0 10px;font-size:19px}
 .card .card-cta{color:var(--blue);font-weight:600;font-size:14px;margin:14px 0 0}
 .badge{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.08em;margin-right:6px;background:var(--pale)}
-.badge.draft,.badge.generated{background:#eef0ff;border-color:#d6d9ff;color:#0000aa}
+.badge.draft,.badge.generated,.badge.partial{background:#eef0ff;border-color:#d6d9ff;color:#0000aa}
 .badge.category{background:#eef0ff;border-color:#c7ccff;color:#0000aa}
 .meta{color:var(--muted);font-size:14px}
 .detail{background:#fff;border:1px solid var(--line);border-radius:24px;padding:32px;margin-top:36px;box-shadow:0 12px 40px rgba(0,0,0,.06)}

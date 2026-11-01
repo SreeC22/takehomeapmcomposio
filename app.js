@@ -154,12 +154,14 @@ function showDetail(g, isGenerated) {
     <p><a href="#grid">Back to all platforms</a> | <button id="shareBtn" type="button">Copy share link</button> | <button id="jsonBtn" type="button">Copy guide JSON</button>${(isGenerated || String(g.id || '').startsWith('generated-') || String(g.id || '').startsWith('draft-')) ? ' | <button id="refreshBtn" type="button">Refresh live research</button>' : ''}</p>
     <h2>${esc(g.name)} <span class="badge">${esc(g.difficulty)}</span> <span class="badge ${esc(g.guideType)}">${esc(g.guideType)}</span>${g.category ? ` <span class="badge category">${esc(g.category)}</span>` : ''}</h2>
     <p class="small">${esc(g.difficultyWhy)}</p>
-    <p class="small"><strong>Verification, separate from completeness:</strong> ${esc(g.verificationStatus || ('Confidence ' + g.confidence + ', verification status not set'))}. Full means the guide has all sections, it does not mean it was tested with a sign-in.</p>
+    <p class="small"><strong>Verification, separate from completeness:</strong> ${esc(g.verificationStatus || ('Confidence ' + g.confidence + ', verification status not set'))}. Full means a verified path, partial means partially verified, draft means unsupported or ambiguous. None means it was tested with a sign-in.</p>
     <div class="step"><h3>At a glance</h3>
       <ul>
         <li><strong>Verification:</strong> ${esc(g.verificationStatus || 'Not set')}</li>
         <li><strong>Confidence:</strong> ${esc(g.confidence)}</li>
         <li><strong>Setup time:</strong> ${esc(g.setupTime)}</li>
+        ${g.implementationTime ? `<li><strong>Engineering implementation time:</strong> ${esc(g.implementationTime)}</li>` : ''}
+        ${g.startNow ? `<li><strong>Can I start building now?</strong> ${esc(g.startNow)}</li>` : ''}
         <li><strong>Approval wait:</strong> ${esc(g.approvalWait)}</li>
         <li><strong>Account needed:</strong> ${esc(g.accountNeeded)}</li>
         <li><strong>Cost to register:</strong> ${esc(g.cost)}</li>
@@ -177,9 +179,9 @@ function showDetail(g, isGenerated) {
     <ul>${g.timeline.map(t => `<li><strong>${esc(t.stage)}:</strong> ${esc(t.wait)} - ${esc(t.note)}</li>`).join('')}</ul>
     <h3>Approval checklist card</h3>
     <div class="checklist">
-      ${g.checklist.map(c => `<label><input type="checkbox"> <span><strong>${esc(c.item)}</strong> - ${esc(c.status)} - ${esc(c.who)}</span></label>`).join('')}
+      ${g.checklist.map((c, i) => `<label><input type="checkbox" data-check-idx="${i}"> <span><strong>${esc(c.item)}</strong> - ${esc(c.status)} - ${esc(c.who)}</span></label>`).join('')}
     </div>
-    <p class="small">Check items as you complete them. This checklist is a local browser check only, it does not submit anything to the provider.</p>
+    <p class="small">Check items as you complete them. This checklist is saved in this browser only, it does not submit anything to the provider.</p>
     <h3>Blockers and fixes</h3>
     <ul>${g.blockers.map(b => `<li><strong>${esc(b.blocker)}:</strong> ${esc(b.fix)}</li>`).join('')}</ul>
     <h3>What an agent can do, and where you take over</h3>
@@ -189,6 +191,21 @@ function showDetail(g, isGenerated) {
     <h3>Next step</h3>
     <ul><li><strong>${esc(g.nextStep)}</strong></li></ul>
   `;
+  try {
+    const key = 'checklist-' + String(g.id || 'guide');
+    const saved = JSON.parse(localStorage.getItem(key) || '[]');
+    el.querySelectorAll('input[data-check-idx]').forEach(cb => {
+      const idx = Number(cb.getAttribute('data-check-idx'));
+      if (saved.includes(idx)) cb.checked = true;
+      cb.addEventListener('change', () => {
+        try {
+          const cur = JSON.parse(localStorage.getItem(key) || '[]');
+          const next = cb.checked ? Array.from(new Set([...cur, idx])) : cur.filter(x => x !== idx);
+          localStorage.setItem(key, JSON.stringify(next));
+        } catch (e) {}
+      });
+    });
+  } catch (e) {}
   document.getElementById('shareBtn').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(location.href); alert('Share link copied.'); } catch (e) { alert(location.href); }
   });

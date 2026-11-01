@@ -313,3 +313,33 @@ Gate criteria, checked honestly:
 - GitHub and production deploy the same code: pass after the final push below, see deployment and commit.
 
 Gate verdict: pass on safety, with limited coverage. No developer is confidently sent down a wrong path in the full guides, which is the stated definition of success. Coverage is the limitation: 7 full guides in 12, 5 in 12 with no usable guide, 2 of those being honest abstentions with zero coverage, 1 being a fetch limitation, 1 being a draft with correct direction but validation failures, and 1 being a draft with unknown auth. That must not be presented as excellent factual performance. It is a defensible submission-ready MVP on safety, not a complete 12 in 12.
+
+## Final hardening, 2026-10-31 evening, main adversarial set, 31 providers
+
+Deployment dpl_7NVAHZVfeCv4NZYe6jZEH7vkzjJW, with three-state guides, product grouping fix, URL punctuation fix, scope examples fix, and auth gate downgrade. Asana and ClickUp first ran on the previous deployment before the alias switched, and were retested on the new deployment: Asana partial oauth, ClickUp partial oauth, both with correct provider sources.
+
+Main set, 31 providers, previously untested: Asana, ClickUp, Pipedrive, Todoist, Miro, Webflow, Framer, Canva, Grammarly, Toggl Track, Clockify, Harvest, Bonsai, HoneyBook, Workday, ServiceNow, Snowflake, Railway, Render, Fly.io, PlanetScale, Neon, Clerk, Stytch, WorkOS, Cohere, Mistral, DeepSeek, PayPal, Razorpay, Midjourney.
+
+New-code outcome: 2 full, 18 partial, 11 draft, 0 errors. Full: Canva oauth Medium, Railway oauth Medium, both direction correct, Railway OAuth confirmed in official docs as Login with Railway for third-party apps, with API tokens as the own-account alternative. Partial, direction correct: Asana, ClickUp, Pipedrive, Todoist, Miro, Webflow, Framer, Grammarly, Harvest, Snowflake, Fly.io key_token, PlanetScale, Neon, Clerk, Stytch, PayPal, Razorpay api_key, Mistral api_key. Draft, abstention, not wrong direction: Toggl Track 0 sources, Clockify 1 source unknown, Bonsai 1 source unknown, HoneyBook 0 sources, Workday 3 sources unknown, ServiceNow 0 sources, Render 0 sources, WorkOS oauth draft, Cohere 3 sources unknown, DeepSeek 0 sources, Midjourney 0 sources. WorkOS is nuanced, it is an auth provider, so its OAuth is sign-in and platform token, not third-party API OAuth, and its guide is draft, not full, so it is not presented as verified.
+
+Metrics, main set: critical errors 0, source retrieval 25 of 31, useful coverage 20 of 31 for actionable provider-specific guides, abstention 11 of 31, median latency 4,010 ms, range 116 to 10,144 ms. Structural harness total 465 of 558, not a factual rate, and it counts console Unknown and partial state as failures, which are honest under the new rules.
+
+## Final hardening, holdout set, 10 providers, no fixes based on holdout
+
+Deployment dpl_8eeW7474mtLa6rX65gWTaTHC4Cjo, same engine code as the main set plus start-now and implementation-time fields and the Google library correction. No engine code was changed based on holdout results.
+
+Holdout providers: Replicate, Hugging Face, Paddle, Paystack, Dubsado, Acuity Scheduling, Turso, PropelAuth, Character AI, Mercury.
+
+Outcome: 0 full, 3 partial, 7 draft, 0 errors, structural total 134 of 180, not a factual rate. Partial, direction and provider correct: Paddle api_key, PropelAuth key_token, Mercury api_key with docs.mercury.com sources, bank interpretation, not planet. Draft: Replicate 0 sources, Hugging Face 0 sources, Paystack 0 sources, Dubsado 0 sources, Acuity Scheduling 0 sources, Turso 6 sources unknown, Character AI 0 sources. Character AI drafting is correct, it has no public API. Acuity drafting is parent-domain abstention, docs under Squarespace. Replicate, Hugging Face, Paystack, and Dubsado with 0 sources are retrieval failures, and they are the main holdout weakness.
+
+Metrics, holdout: critical errors 0, source retrieval 4 of 10, useful coverage 3 of 10, abstention 7 of 10. Combined main plus holdout, 41 providers: 2 full, 21 partial, 18 draft, 0 errors, 0 known critical errors, useful coverage 23 of 41, source retrieval 29 of 41.
+
+Acceptance targets, honestly: zero known critical errors, met in both samples. At least 90 percent factual precision on asserted claims, not proven at claim level, because claim-level audit was direction and provider level for the actionable guides, not every step, scope, and endpoint. Useful next actions for the great majority, not met, combined useful coverage is 23 of 41, not a great majority, and holdout coverage is only 3 of 10. No false mandatory approval or registration, no wrong-provider or wrong-product recommendations, no invalid OAuth endpoints or clearly fabricated scopes were found in the actionable guides. These failures are reported, not hidden, and no score was invented to cover them.
+
+## Library audit correction, final hardening
+
+Google library guide verification status corrected from 2 or more official sources to single official source, because only one source URL is listed in its guide. All other 15 library guides matched their listed sources. All 16 guides open, all per-guide files present.
+
+## Example guides, final hardening
+
+GitHub, straightforward public OAuth, Easy, no approval stage for basic scopes, no sign-in test. Shopify, private versus public, Medium, custom apps do not need App Store review, public apps for listing do, no sign-in test, written for a developer building an app, not a merchant creating a custom app in their own admin. Google, conditional approval, Medium to Hard, brand 2 to 3 business days, sensitive around 10 business days, restricted several weeks plus annual security assessment, ranges not guarantees, no sign-in test. Claude, API key only, Easy, no OAuth app registration, no OAuth approval stage, no sign-in test.

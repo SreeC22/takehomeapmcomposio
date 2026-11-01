@@ -36,6 +36,9 @@ const cases = [
   { cat: 'Portal URL as console', passage: 'https://figma.com/developers/apps', keywords: [], expected: 'portal_accepted', old: 'portal_accepted', check: (r) => r },
   { cat: 'Malformed scope', passage: 'private.pem', keywords: [], expected: 'invalid', old: 'invalid', check: (r) => r },
   { cat: 'Product boundary', passage: 'https://example.com/docs/segment/oauth vs https://example.com/docs/api/oauth', keywords: [], expected: 'different_products', old: 'different_products', check: (r) => r },
+  { cat: 'Product grouping, doc sections are not products', passage: 'https://www.airwallex.com/docs/partner-api/authentication/oauth2 vs https://www.airwallex.com/docs/developer-tools/partner-connections/oauth-scopes', keywords: [], expected: 'same_product', old: 'different_products', check: (r) => r },
+  { cat: 'Product grouping, real products still separate', passage: 'https://developer.atlassian.com/cloud/jira/platform/scopes vs https://developer.atlassian.com/cloud/confluence/scopes', keywords: [], expected: 'different_products', old: 'different_products', check: (r) => r },
+  { cat: 'URL trailing punctuation', passage: 'https://example.com/docs/oauth:', keywords: [], expected: 'https://example.com/docs/oauth', old: 'https://example.com/docs/oauth:', check: (r) => r },
 ];
 let newPass = 0, oldPass = 0;
 for (const c of cases) {
@@ -44,6 +47,9 @@ for (const c of cases) {
   else if (c.cat === 'Docs URL as console' || c.cat === 'Portal URL as console') { const sc = m.consoleScore(c.passage); newVal = c.cat.startsWith('Docs') ? (sc < 0 ? 'docs_rejected' : 'docs_accepted') : (sc >= 3 ? 'portal_accepted' : 'portal_rejected'); pass = newVal === c.expected; const osc = oldConsoleScore(c.passage); oldVal = c.cat.startsWith('Docs') ? (osc < 0 ? 'docs_rejected' : 'docs_accepted') : (osc >= 3 ? 'portal_accepted' : 'portal_rejected'); oldP = oldVal === c.expected; }
   else if (c.cat === 'Malformed scope') { newVal = m.validateScope(c.passage) ? 'valid' : 'invalid'; pass = newVal === c.expected; oldVal = 'invalid'; oldP = true; }
   else if (c.cat === 'Product boundary') { const a = m.productPath('https://example.com/docs/segment/oauth'); const b = m.productPath('https://example.com/docs/api/oauth'); newVal = a !== b ? 'different_products' : 'same_product'; pass = newVal === c.expected; oldVal = newVal; oldP = true; }
+  else if (c.cat === 'Product grouping, doc sections are not products') { const a = m.productPath('https://www.airwallex.com/docs/partner-api/authentication/oauth2'); const b = m.productPath('https://www.airwallex.com/docs/developer-tools/partner-connections/oauth-scopes'); newVal = a !== b ? 'different_products' : 'same_product'; pass = newVal === c.expected; oldVal = 'different_products'; oldP = false; }
+  else if (c.cat === 'Product grouping, real products still separate') { const a = m.productPath('https://developer.atlassian.com/cloud/jira/platform/scopes'); const b = m.productPath('https://developer.atlassian.com/cloud/confluence/scopes'); newVal = a !== b ? 'different_products' : 'same_product'; pass = newVal === c.expected; oldVal = newVal; oldP = true; }
+  else if (c.cat === 'URL trailing punctuation') { const u = c.passage.replace(/[.,;:!?)\]}'\"]+$/, ''); newVal = u; pass = newVal === c.expected; oldVal = c.passage; oldP = false; }
   else { const r = m.classifyPassage(c.passage, c.keywords); newVal = r.status; pass = newVal === c.expected; oldVal = c.old; oldP = oldVal === c.expected; }
   if (pass) newPass++; if (oldP) oldPass++;
   console.log((pass ? 'PASS' : 'FAIL') + ' new | ' + (oldP ? 'PASS' : 'FAIL') + ' old | ' + c.cat + ' | expected ' + c.expected + ' | new ' + newVal + ' | old ' + oldVal);

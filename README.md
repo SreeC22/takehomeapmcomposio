@@ -1,126 +1,98 @@
 # OAuth Setup Guides
 
-A working website that helps developers building AI agents understand how to set up an OAuth app and get it approved for a platform, with a step by step guide, review timeline, and approval checklist.
-
 Live site: https://takehomeapmcomposio-sreekaree-chityalas-projects.vercel.app/
-Source: https://github.com/SreeC22/takehomeapmcomposio (private, grant access at submission time if reviewers need it)
+Repo: https://github.com/SreeC22/takehomeapmcomposio
 
-## Live use
+## Problem and target developer
 
-Open `index.html` for the library, or deploy this folder to Vercel. Search is one merged box: type an app name and press Get guide. If it is in the library, its guide opens directly. If not, it researches live and generates a full guide, once. No login is needed to run it, and no secrets are in this repo.
+A developer building an AI agent wants users to connect an external app. Before launch, they may need to create an OAuth application, configure redirect URIs and scopes, obtain provider approval, and handle unfamiliar requirements such as restricted scopes, business verification, admin consent, or marketplace review.
 
-Live research uses the universal engine in `api/research.js`, deterministic, no LLM, no paid model. It is a multi-stage investigation, not a single keyword search: provider discovery, then independent tracks for authentication, registration, permissions, distribution, approval, and blockers, each with sources and passages where found. It uses two parallel targeted Tavily searches first when TAVILY_API_KEY is set in Vercel, plus one adaptive follow-up search only for missing tracks, links found inside official docs, site navigation, sitemap, generic OAuth patterns, and one backup search, with early stopping when evidence requirements are satisfied and a search budget of 3 Tavily calls and about 12 pages per request. Structured facts include authentication type, console URL, registration requirements, endpoints, scopes, distribution, approval, costs, and blockers. A requirement engine marks each requirement required, optional, conditional, not applicable, or unknown, with condition and evidence. Guides are built from evidence, variable length, not a fixed six steps: API-key, service-account, and personal-token paths do not get OAuth steps, and review is a conditional step for public distribution, not a universal requirement. A quality gate checks provider identity, console relevance, endpoint validity, scope validity, mandatory requirements backed by evidence, approval backed by review evidence, and contradictions, and reports completeness, evidence coverage, source authority, and factual confidence separately. If research fails, the guide is a draft, labeled draft and Unverified, not a full guide. It caches successful guides for 24 hours per Vercel instance, with a force refresh option, and it rate limits per instance at 5 searches per minute and 20 per hour per IP, returning 429 over the limit. Tavily free tier is 1,000 credits per month, so abuse can only burn that credit pool, not a card. No hardcoded provider directory is used. The evaluation harness is `scripts/eval.js`, run with `node scripts/eval.js` for all 20 providers, or with provider names as arguments for a subset. It checks provider host match, auth classification, console not an API reference page, scopes not credential tokens, approval separated as conditional or unknown, evidence coverage, no invented fixed timeline, guide actionability, and latency, and it reports failures, not just passes.
+This product helps that developer understand the real setup and approval path, make progress on it, and share the result, without being sent down a wrong integration path by a confident but unsupported answer.
 
-To deploy on Vercel:
-1. Import this repo in Vercel.
-2. Use the default static site settings, with no build command.
-3. Open the deployed link in an incognito window and test search, a guide, and an unfamiliar app.
-4. Optional, recommended: set TAVILY_API_KEY in Vercel, Production, Sensitive, then redeploy, so live research uses Tavily first. Without it, the endpoint falls back to site navigation and one backup search.
+## Product approach and focused scope
 
-## What is inside
+Searchable library plus live research. A developer searches for an app, opens a guide, or submits an unfamiliar app and watches an agent investigate it live and generate a shareable guide.
 
-- `index.html`, `style.css`, `app.js`: the searchable library, guide cards, guide detail view, one merged search box that opens library guides or researches unfamiliar apps live, quick guide view with collapsed evidence, and shareable generated guides.
-- `api/research.js`: serverless live research endpoint. It searches for official developer and OAuth docs, fetches candidate pages in parallel batches, extracts registration, redirect, scope, endpoint, and review claims, and returns a full guide plus a research log and timings.
-- `readme.html`: rendered README for the deployed site, so reviewers do not depend on a raw .md link.
-- `guides.json`: the full guide index, in the same schema used for the human cards and the agent JSON. It is minified, because a single upload argument cannot exceed about 128 KB, and the pretty printed file passed that limit. The site reads minified JSON the same way.
-- `guides/<id>.json`: one machine readable guide per platform, for example `guides/github.json`.
-- `llms.txt`: a plain text index for agents and crawlers.
-- `VERIFICATION-LOG.md`: what was checked, what was corrected, and what could not be verified.
-- `SUBMISSION-NOTES.md`: paste-ready notes for the file upload submission.
+Scope is deliberately focused: OAuth app setup and approval guidance, not a general API client, not a managed auth product, and not a 100-app library. A few excellent, evidence-backed guides are better than many incomplete ones. The library has 16 full guides. Live generation covers apps outside the library.
 
-## Guides included
+## Features demonstrated
 
-16 full guides, 0 summaries, checked against docs on 2026-10-31 as noted in each guide. Full means completeness, all sections present. It does not mean verified. Verification is shown separately in each guide, as verificationStatus, and in the guide detail view. No guide claims High confidence, and no guide claims a sign-in, app creation, or provider approval was completed. Notion and Discord each have a single official source. Meta relies on third-party sources only, with its official timeline not confirmed. Airtable is partially verified, official page plus secondary sources, timeline Unknown.
+- Searchable guide library, 16 full guides, no summaries.
+- Live research for unfamiliar apps, with a merged search box. A library match opens with no API call. An unfamiliar app researches live and generates a full, partial, or draft guide, once, with a Refresh live research button.
+- Per-app guide pages: difficulty and why, setup time, engineering implementation time, approval wait, account needed, cost, console, authentication type, can-I-start-now, step by step guide, review timeline, approval checklist, blockers and fixes, agent versus human responsibilities, next step, sources, and research log.
+- Three honest research outcomes, shown as badges and verification notes, separate from completeness:
+  - Full: a verified path, supported by relevant official sources.
+  - Partial: partially verified, useful information confirmed, some requirements still uncertain.
+  - Draft: unsupported or ambiguous, provider or workflow could not be reliably established. No fictional OAuth instructions are shown as verified.
+- Verification is separate from completeness. No guide claims a sign-in, app creation, or provider approval was completed, because none was. No guide claims High confidence.
+- Shareable guides: generated guide data is encoded in the URL hash and saved in localStorage, so a shared link opens the same guide, with its steps, sources, verification status, and next step intact. Guide JSON can be copied for agent use.
+- Checklist progress is saved in the browser only. It does not submit anything to a provider.
+- Caching is per Vercel instance, in memory, 24 hours for successful full guides only. A cached banner is not shown as newly researched. Force refresh bypasses the cache.
+- Rate limiting: 5 searches per minute and 20 per hour per IP per instance, returning 429. Tavily is capped at 200 calls per day per instance, with a budget of 3 calls per research request.
 
-- GitHub, Easy
-- Slack, Medium
-- Google, Medium to Hard
-- Meta, Hard, Low to Medium confidence, timeline not confirmed from an official Meta page
-- Microsoft, Medium
-- Notion, Easy to Medium
-- Salesforce, Medium to Hard
-- HubSpot, Medium
-- Shopify, Medium
-- Zoom, Medium
-- Discord, Easy to Medium
-- LinkedIn, Medium to Hard
-- Airtable, Medium
-- Claude, Easy, not an OAuth app, API key only
-- ChatGPT, Hard, Sign in with ChatGPT, commercial access is a limited trial
-- Composio, Medium, auth config, not a provider OAuth app
+## Technical architecture and agent research flow
 
-## Key decisions
+Plain HTML, CSS, and JavaScript on the frontend, with a Vercel serverless function at /api/research. No paid AI model, no LLM inference in the research path. The engine is deterministic evidence extraction, not semantic understanding, and uncertain claims are marked Unknown, not guessed.
 
-1. Same guide schema for every platform, so difficulty and time are comparable.
-2. Setup time is reported separately from approval wait time, because that is the question developers actually ask.
-3. Step by step guide, with a separate review timeline and a separate approval checklist, so a developer can see the gate before they submit.
-4. Human cards and agent JSON come from the same data, so an agent can call `guides.json` or `guides/<id>.json` and get the same guide a human reads.
-5. Live research returns an evidence-built guide with a research log, sources, timings, confidence, separate verificationStatus, per-track evidence, requirements, and a quality gate, not a static template and not a summary. Claims that cannot be verified from a fetched page are marked Unknown, not invented. It does not submit an OAuth app to any provider. If the research endpoint itself fails, the browser fallback is a draft, labeled draft and Unverified, not a full guide. A guide with no usable official evidence is a draft, not a full guide, and that is shown separately from completeness.
-6. Generated guides are shareable. The guide data is encoded in the share link and also saved in the browser, so a copied link survives refresh and sharing. Generated steps are clear actions, not raw fragments: register, set redirect, choose scopes, build authorize and token flow, test and review, submit for review, each with an evidence quote from fetched docs where one was found, and authorize and token endpoints listed separately.
-7. Managed or custom is the first decision in every guide. Check Composio managed apps first, and go custom only for own branding, custom scopes, dedicated quota, faster polling, a custom instance, or enterprise branding.
-8. Agent vs human steps are explicit on every guide, because an agent cannot complete business verification, domain verification, or provider review for a developer.
-9. Quick guide view, not long bullets. Steps show a short action, Who and Time chips, and a short Watch out line. Docs evidence is collapsed under Evidence from docs, so it is preserved but does not slow scanning. Step URLs are cleaned of trailing punctuation before linking, so a comma after a URL does not become part of the link and does not 404.
-10. Focused slice, not 100 thin guides. Sixteen full guides that can be checked beat a hundred guessed guides. The assignment goal is 100, this submission demonstrates the library and the live generation flow that can expand it.
+Research flow, visible in the execution log:
+1. Parse the input, preserving the exact domain when a website is given. IP inputs are rejected. No .com is assumed.
+2. Provider discovery: two parallel Tavily searches, one for auth and registration, one for review and approval, plus one adaptive follow-up for missing tracks only.
+3. Retrieval: parallel batches of up to 4 pages, provider-host only, community and forum hosts and paths excluded, document cache, follow-links, site navigation fallback, and a DuckDuckGo Lite backup, only when evidence is still insufficient. Embedded JSON data files are excluded.
+4. Structured facts: scopes only from permission-description pages, endpoints only as full URLs on provider hosts, with OAuth-only token filtering, console scoring that rejects documentation pages as portals, and product grouping that ignores generic doc sections.
+5. Requirement engine: a requirement is mandatory only when its cited passage, in its sentence, explicitly supports it, with linked negation and modal proximity. Optional, conditional, and not-applicable language overrides a generic template.
+6. Auth systems distinguished: third-party OAuth, provider sign-in OAuth, registration-free OAuth, API key, personal token, service account, MCP authentication, enterprise SSO, and external identity provider for sign-in. These are not interchangeable.
+7. Independent validation gate: step prose is re-checked against raw fetched text, not against the generator's own requirement objects. A removed required step makes the guide a draft or partial, not full.
+8. Three-state outcome: full only when auth is known, sources are 2 or more, confidence is Medium, key decisions are known, and no validation failure exists. Otherwise partial when some details are confirmed, draft when unsupported or ambiguous.
+9. Quality gate: a critical contradiction, wrong auth direction, unsupported mandatory registration or approval, malformed scope, metadata evidence, or a step citing a URL not in endpoints or sources makes the guide a draft or partial, never full.
 
-## Live research, honest version
+## Three varied example providers and why they were selected
 
-The merged search calls `api/research.js`. That endpoint searches for official developer and OAuth docs, fetches candidate pages in parallel, and extracts claims only where pages mention OAuth, client ID, redirect, or scopes. It stops once registration, redirect, scopes, and endpoint evidence are collected, and it returns a full guide, a research log with timestamps and failures, sources, timings, and confidence. Extraction is rule-based, not a language model, so quality varies by site, and failures are logged instead of hidden. A generated guide must be checked against official docs before use. Do not treat a generated guide as verified unless its sources confirm the claims.
+- GitHub, straightforward public OAuth application. Easy, standard OAuth app registration, callback URL, minimum scopes, test with your own account. Demonstrates the baseline path with no approval stage for basic scopes.
+- Shopify, private versus public requirements. Medium, Partner account and dev store, minimum scopes, install and test in a dev store. Custom apps for a single store do not need App Store review. Public apps for listing do. Demonstrates why private and public are different paths, not one template.
+- Google, conditional approval with restricted permissions. Medium to Hard, consent screen, scope classification, Testing mode, verification submission. Brand verification typically 2 to 3 business days, sensitive scope verification around 10 business days, restricted scope verification several weeks plus an annual security assessment. All ranges, not guarantees. Demonstrates conditional approval, scope tiers, and why a launch date cannot be promised.
+- Claude, alternative authentication method. Easy, API key only, no OAuth app registration, no OAuth approval stage. Demonstrates that the correct answer is sometimes not OAuth at all, and that inventing an OAuth flow would be wrong.
 
-Measured live on 2026-10-31, uncached server times, all under 5 seconds: Miro 230ms, Asana 506ms, Trello 783ms, Zapier 151ms, ClickUp 842ms, Pipedrive 2,911ms. Cached guides return in about 0ms server time. Fetching latency still varies by provider and instance, and in-memory rate limiting and cache are per instance, not global.
+Each example was checked against official documentation on 2026-10-31. No sign-in, app creation, or provider approval was completed for any of them. Corrections made during the audit: Google's verification status was corrected from 2 or more sources to single official source, because only one source URL is listed in its guide. Shopify's guide is written for a developer building an app, not a merchant creating a custom app in their own admin, which is a different path with no Partner account required.
 
-## Style
+## How to run locally
 
-Inter, loaded from Google Fonts, matching Composio. Uniform white background, with pure blue #0000FF as the main accent for buttons, category tags, hero stats, and section headings. No decorative symbols or emoji clutter, plain functional typography.
+This is a static site plus one serverless function. No build step is required.
 
-## Agents supported
+- Serve the project root with any static server, for example: npx serve .
+- For live research locally, run the Vercel function with the Vercel CLI, for example: vercel dev, with the environment variables below set.
+- Open the site, search for a library app, or submit an unfamiliar app name or website.
 
-Claude Code, OpenAI Codex, Cursor, GitHub Copilot, Gemini CLI, OpenClaw, OpenCode, Cline, and Grok Build can all read the same guide JSON with no install or plugin from this library, and follow the same steps, timeline, and checklist as a human. This is not a claim of a native Composio plugin or skill install from this library. LinkedIn is a platform in the library, not an agent.
+## Required environment variables, without values
 
-## Limitations
+- TAVILY_API_KEY: Tavily search API key, used for provider discovery. Without it, research falls back to site navigation only, and most unfamiliar apps will draft.
+- No other secret is required. No provider client secrets, tokens, or passwords are stored in this repo, and none should be added.
 
-- No account sign-in, app creation, or provider approval was completed for these guides.
-- Google and Meta timelines are ranges from guidance found in search results on 2026-10-31, not guarantees for a specific app. Meta timeline in particular was not confirmed from an official Meta page in this check, and is marked as such in the guide.
-- Airtable approval and distribution timeline was not confirmed from official Airtable pages in this check, and is marked Unknown in the guide.
-- ChatGPT commercial access is a limited trial. Approval wait is Unknown, do not promise a date.
-- Claude has no third party OAuth app registration in official docs checked. Its guide is an API key guide, not an OAuth flow.
-- Composio itself has no approval. Provider approval, where required, is separate and varies by provider.
-- Live research extraction is heuristic. It can miss JavaScript rendered official pages, and it can return Low confidence with Unknowns when no official page can be verified. That is a failure to show, not a guide to use. Pipedrive sources can include a community forum page, which is disclosed as a community source, not an official docs page.
-- Token endpoint links are API endpoints, not readable docs pages. They are labeled token endpoint, not official docs, so they do not pretend to be docs.
-- Provider consoles, scope names, and review rules change. Check the official docs linked in each guide before a launch decision.
-- No credentials, tokens, or client secrets are included anywhere in this repo.
+## Key product and engineering decisions
 
-## Verification
+- Prefer an incomplete accurate guide over a complete misleading one. Unknown is a result, not a gap to fill.
+- Verification is separate from completeness. Full means a verified path, not that a sign-in was tested.
+- Auth direction first. Before deciding a path, determine who is the client, who owns the resource, who is the identity provider, and what the resulting credential accesses.
+- Scopes are examples, not a required default. A guide lists documented scope examples and tells the developer to request only the scopes their feature uses.
+- Timelines are separated: estimated hands-on setup time, estimated engineering implementation time, published provider approval wait when documented, and unknown wait when not documented. Estimates are labeled as estimates.
+- No provider-specific hardcoded exceptions. Fixes are generic engine rules, so they apply to unfamiliar providers.
+- No paid AI dependency. The deterministic rule engine is transparent about its limitation: it is not semantic understanding, and complex passages it cannot interpret are marked Unknown.
 
-See `VERIFICATION-LOG.md` for the sample checked, corrections made, and items that could not be verified. See `SUBMISSION-NOTES.md` for the full round by round record, including the developer trust check, the full guides only upgrade, and the live generation upgrade.
+## What was tested
 
+- Fixed-document regression, scripts/fixed-doc-eval.js: 17 of 17 with the final logic, 12 of 17 with the pre-round logic, on identical captured passages. Improvements: negated start-from-scratch, token endpoint categorization, docs URL rejected as console, doc sections not treated as products, trailing punctuation stripped from cited URLs.
+- Main adversarial set, 31 previously untested providers, production endpoint, structural harness plus independent classification against official docs: 2 full, 18 partial, 11 draft, 0 errors, 0 known critical errors in the final audited main sample. Source retrieval succeeded for 25 of 31. Median latency 4,010 ms.
+- Holdout set, 10 providers not used while implementing fixes, production endpoint, no code changes based on holdout results: 0 full, 3 partial, 7 draft, 0 errors, structural total 134 of 180, not a factual rate. Actionable guides: Paddle api_key, PropelAuth key_token, Mercury api_key, all direction and provider correct, all partial, not full. Drafts: Replicate, Hugging Face, Paystack, Dubsado, Acuity Scheduling, Turso, Character AI. Source retrieval succeeded for 4 of 10. Useful coverage 3 of 10, abstention 7 of 10, 0 known critical errors in the holdout sample. Character AI drafting is correct abstention, it has no public API. Acuity drafting is parent-domain abstention, its docs live under Squarespace. Replicate, Hugging Face, Paystack, and Dubsado drafting with 0 sources are retrieval failures, not factual errors, and they are the main holdout weakness. Combined main plus holdout: 41 providers, 2 full, 21 partial, 18 draft, 0 errors, 0 known critical errors, useful coverage 23 of 41, source retrieval 29 of 41.
+- Library audit, 2026-10-31: all 16 guides open, all per-guide files present, verification statuses checked against listed sources. One correction made, Google, see above.
+- Production checks: home page 200, guides.json 200, Figma live research full OAuth Medium with start-now and implementation time fields, shared guide encoding round-trip, checklist persistence in the browser only.
 
-## Final priority, factual accuracy
+## Known limitations
 
-A requirement is marked required, optional, conditional, or not applicable only when the sentence about that exact action, in its section, explicitly supports it, with negation and modal words linked to that action. Example and suggestion sentences do not establish requirements. Auth systems are distinguished: third-party OAuth, sign-in OAuth, registration-free OAuth, API key, personal token, service account, MCP, and SSO are recorded separately. Every requirement, auth system, and endpoint is an atomic claim with passage, section, source URL, classification, condition, and verified flag. The final consistency checker makes a guide a draft, not full, on a critical contradiction, a wrong provider, an API page as console, a malformed scope or endpoint, metadata evidence, or a required step without a verb-bearing passage. No paid or local language model is used in this serverless function. Semantic verification is deterministic, with modelUsed false in the guide, and uncertain claims are marked Unknown. See SUBMISSION-NOTES.md for evaluation numbers and remaining limitations.
-
-## Final engineering push, 2026-10-31 evening
-
-No UI redesign, no new features, no provider-specific rules.
-
-What changed in api/research.js:
-- Auth relationships: every detected method now carries client, resource owner, identity provider, authorization target, action enabled, and direction. Third-party API OAuth, sign-in OAuth, registration-free OAuth, API key, personal token, service account, MCP, enterprise SSO, and external identity provider sign-in are recorded separately and rendered in guide detail. An external identity provider passage (for example, a provider product that lets users sign in with another service) is not used as evidence that external apps can connect through OAuth to this provider.
-- Registration guard: "create an application" is only treated as OAuth registration when the passage, its section, or its source URL is a developer or OAuth context. A no-code app creation passage is discarded for registration, not assumed to be OAuth.
-- Claim-level entailment: claims now carry subject, action, object, product (from the source URL path), auth context, passage, URL, section, condition, contradictory passage, and verification outcome (verified, unsupported, contradicted). A claim is verified only when its passage entails it.
-- Product boundaries: scopes are only extracted from pages whose URL path contains scope, permission, or oauth, or whose section heading contains scope or permission. Scopes are grouped by source page and product path in the guide, and if scopes come from multiple product pages the merged scope step is replaced with a per-product list and a warning not to request them together.
-- Token endpoints: a token URL is only accepted as an OAuth token endpoint when its path contains oauth or authorize. A plain API token URL is rejected, not presented as an OAuth exchange endpoint.
-- Console separation: a documentation article is not a registration console. Console scoring now requires an apps, console, dashboard, settings, or account segment or host, and rejects docs and reference pages without one. Console Unknown is honest, not a failure to hide.
-- Independent validation gate: after steps are built, the gate re-checks step prose against raw fetched text, not against the generator's requirement objects. It removes a registration step when fresh text says registration is not required, removes an OAuth step when only sign-in or SSO evidence exists, removes non-OAuth token URLs from step prose, and replaces a merged scope list with a per-product list. A removed required step makes the guide a draft.
-- Fixed negation: "You do not need to start from scratch to create your app" is now unknown, not required and not not_applicable, because its negation modifies starting from scratch, not creating an app. Negated modal words do not count as requirements.
-- Source parsing: .json data files are excluded from fetching, in addition to the existing script, style, navigation, and code block filters.
-- No paid model, no local model in the serverless function. The method remains deterministic sentence semantics, and the guide says so. It is not presented as semantic understanding.
-
-Evaluation A, fixed-document regression, scripts/fixed-doc-eval.js, using the actual exported production functions: new 14/14, old 11/14. The three improvements are the negated start-from-scratch case, token endpoint categorization, and docs URL as console. All other fixed cases already passed before this round.
-Evaluation B is reported in SUBMISSION-NOTES.md, with independent checks, not structural checklist points alone.
-
-## Crash fix, after Evaluation B
-
-Airwallex and Atlassian returned 500 FUNCTION_INVOCATION_FAILED on production, reproducibly. Vercel gave no further detail that could be read, so no specific root cause is claimed. The fix is systemic: a catch-all handler wrapper returns a draft guide instead of a 500, and pages over 500KB are truncated before parsing. See SUBMISSION-NOTES.md for the full Evaluation B classification.
-
-## Retest after root cause fix
-
-Airwallex draft OAuth, Atlassian draft unknown, GoCardless draft unknown with 0 sources, Figma full OAuth Medium with no validation failures, all on production dpl_Htj89qQCSo3r3wwEcmABWNzNu3ZC. No crashes. Release gate passes on safety with limited coverage, see SUBMISSION-NOTES.md.
+- No guide has ever been tested with a provider sign-in, app creation, or provider approval. All verification is documentation-based.
+- The rule engine is deterministic, not semantic. Complex negation, exceptions, and conditional requirements that do not follow linked patterns are marked Unknown.
+- Cache and rate limiting are per Vercel instance, in memory, not global. A cached guide on one instance is not cached on another.
+- Static fetch cannot read JS-rendered docs sites well. Some providers, such as Trello and GoCardless in earlier runs, draft because no fetchable official pages were returned.
+- Provider docs under a parent domain that does not contain the product name, such as Braintree under developer.paypal.com or Bitbucket under developer.atlassian.com, tend to draft under the strict identity rule. That is honest abstention, but useful coverage is zero for those providers.
+- Console Unknown is common by design. A documentation page is never presented as a registration portal, even when that makes the guide less convenient.
+- Browser rendering of the newest engine fields was not tested in a live browser session in the final round. API responses containing those fields were verified.
+- Rate limiting was not retested in the final round, so it is not claimed as re-verified.
+- The repository is private. Reviewers need access granted, or the source package supplied with the submission, which includes the full project, notes, PDF, and eval scripts.

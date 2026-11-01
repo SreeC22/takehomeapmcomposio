@@ -47,3 +47,12 @@ Fixes on 2026-10-31, from reviewer critique:
 - Root cause of the 500s: `contradictions` used before declaration, in the multi-product scope grouping block. Only providers with scopes from multiple product pages crashed. Fixed by declaring it before that block. Catch-all handler wrapper and 500KB page truncation remain in place.
 - Retest, production dpl_Htj89qQCSo3r3wwEcmABWNzNu3ZC: Airwallex draft oauth, Atlassian draft unknown, GoCardless draft unknown 0 sources, Figma full oauth Medium, no validation failures. No crashes.
 - Release gate: pass on safety, limited coverage, see SUBMISSION-NOTES.md for the full gate check and its caveats. Browser rendering of the new engine sections is unverified, rate limiting was not retested in this round.
+
+## Final hardening, 2026-10-31 evening
+
+- Fixed-document regression: new 17/17, old 12/17, with product grouping and URL punctuation cases added.
+- Main adversarial set, 31 providers: 2 full, 18 partial, 11 draft, 0 errors, 0 known critical errors, source retrieval 25 of 31, median latency 4,010 ms.
+- Holdout set, 10 providers, no fixes based on holdout: 0 full, 3 partial, 7 draft, 0 errors, 0 known critical errors, source retrieval 4 of 10, useful coverage 3 of 10. Retrieval failures for Replicate, Hugging Face, Paystack, and Dubsado are reported as failures, not hidden.
+- Library audit: Google verification status corrected to single official source. All 16 guides open.
+- Example guides checked: GitHub, Shopify, Google, Claude, no sign-in test for any, see SUBMISSION-NOTES.md.
+- Acceptance targets: zero critical errors met, 90 percent claim-level precision not proven, great-majority useful coverage not met, combined 23 of 41. Reported plainly.

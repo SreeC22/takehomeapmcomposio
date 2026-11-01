@@ -400,7 +400,7 @@ async function researchHandler(req, res) {
     const pgScopes = extractScopes(pg.text).filter(x => scopes.includes(x));
     if (pgScopes.length) scopeSources.push({ url: pg.url, product: productPath(pg.url), scopes: pgScopes });
   }
-  const scopeProductPaths = Array.from(new Set(scopeSources.map(x => x.product)));
+  const scopeProductPaths = Array.from(new Set(scopeSources.map(x => x.product).filter(x => x && x !== 'main')));
   const scopesFromMultipleProducts = scopeProductPaths.length > 1;
   if (scopesFromMultipleProducts) contradictions.push('Scopes were found on multiple product pages (' + scopeProductPaths.join(', ') + '), not one product. They are listed per source below and must not be requested together without checking which product the feature uses.');
 
@@ -628,7 +628,7 @@ async function researchHandler(req, res) {
     if (registerMeaning.status !== 'not_applicable') addStep('Register the app', consolePick ? 'What: create a new OAuth app in the developer portal at ' + consolePick + '. Where: that portal, sign in as a developer. Why: registration creates the client ID and secret used for OAuth.' + (registerSnippet ? ' Evidence from docs: ' + cleanSnippet(registerSnippet) : '') : 'What: find the official developer portal in sources below and create a new OAuth app there. Where: official portal, not an API reference page. Why: no registration URL scored high enough to be used as the portal link, so do not use an API reference page as the registration URL.', 'human', '20 minutes', 'If the portal is not official, stop and mark the guide as unverified.', reqStatus('Register an OAuth app'), registerSnippet, reqCondition('Register an OAuth app'));
     else addStep('Registration is not required, per docs', 'What: do not register an OAuth app, because fetched docs say registration is not required for this path. Where: official docs in sources below. Why: ' + registerMeaning.condition, 'human', 'Unknown', 'Do not create an app that docs say is not required.', 'not_applicable', registerSnippet, registerMeaning.condition);
     addStep('Set the redirect URI', 'What: add the exact redirect URI from your code, including host, path, and https, in app settings. Where: app settings in the portal. Why: the provider only redirects to registered URIs.' + (redirectSnippet ? ' Evidence from docs: ' + cleanSnippet(redirectSnippet) : ' No redirect rule was found in fetched pages, so copy it from your code and check it against official docs.'), 'human', '10 minutes', 'A redirect mismatch is the most common first failure.', reqStatus('Redirect URI'), redirectSnippet, reqCondition('Redirect URI'));
-    if (scopes.length) addStep('Choose scopes, minimum only', 'What: request only these scopes, and only the ones your feature uses: ' + scopes.join(', ') + '. Where: app settings and authorize request. Why: broad scopes can trigger extra review and risk. Do not request a broad scope without a stated use case for that scope.', 'agent', '20 minutes', 'A single sensitive scope can change the whole timeline.', reqStatus('Scopes'), scopeSnippet, reqCondition('Scopes'));
+    if (scopes.length) addStep('Choose scopes, minimum only', 'What: documented scope examples found in official docs, not a required list for your use case: ' + (scopes.length > 8 ? scopes.slice(0, 8).join(', ') + ', plus ' + (scopes.length - 8) + ' more documented examples, see sources' : scopes.join(', ')) + '. Request only the scopes your feature actually uses, and check the official scopes page for your feature first. Where: app settings and authorize request. Why: broad scopes can trigger extra review and risk. Do not request a broad scope without a stated use case for that scope, and do not request every discovered scope as a default.', 'agent', '20 minutes', 'A single sensitive scope can change the whole timeline.', reqStatus('Scopes'), scopeSnippet, reqCondition('Scopes'));
     else addStep('Find the scope list', 'What: open the first source below, find its scopes or permissions page, and list every scope your feature needs. Where: official docs. Why: no valid scope tokens were extracted in this run, so do not guess a scope list.', 'agent', '20 minutes', 'Do not guess scopes.', 'unknown', '');
     if (endpoints.length) addStep('Build the authorize and token flow', 'What: send the user to the authorize endpoint' + (authorizeEndpoints.length ? ': ' + authorizeEndpoints.join(', ') : '') + ', then exchange the code at the token endpoint' + (tokenEndpoints.length ? ': ' + tokenEndpoints.join(', ') : '') + '. Where: your backend. Why: this is how a user token is issued. Store tokens securely, never in client code.', 'agent', '30 minutes', 'Store client secrets securely. If a secret is exposed, rotate it.', 'unknown', '');
     else addStep('Find the authorize and token endpoints', 'What: find the authorize endpoint and the token endpoint in official docs first, then build the flow. Where: official docs. Why: no authorize or token endpoints were found in fetched pages.', 'agent', '30 minutes', 'Do not guess endpoints.', 'unknown', '');
@@ -711,7 +711,7 @@ async function researchHandler(req, res) {
       const mainD = String(st.detail || '').split('Evidence from docs:')[0];
       const urls = mainD.match(/https:\/\/[^\s,;]+/g) || [];
       for (const u of urls) {
-        const cu = u.replace(/[\.,)\]]+$/, '');
+        const cu = u.replace(/[.,;:!?)\]}'\"]+$/, '');
         if (cu.includes('token') && !cu.includes('oauth') && !cu.includes('authorize')) {
           st.detail = st.detail.replace(cu, '[token endpoint removed, it was not an OAuth token endpoint]');
           independentCorrections.push('Independent gate removed a non-OAuth token URL from step "' + st.title + '".');
@@ -741,6 +741,8 @@ async function researchHandler(req, res) {
   let broadScopeWarning = false;
   if (providerIdentityAmbiguous) validationFailures.push('Provider identity ambiguous: multiple same-name providers with equal evidence, not merged, so no full guide can be trusted.');
   if (noOAuthSnippet && authType === 'oauth') validationFailures.push('Source says OAuth is not supported or API key only, but the guide classified auth as OAuth.');
+  if (authType === 'oauth' && authSystems.find(x => x.system === 'third_party_oauth') && !authSystems.find(x => x.system === 'third_party_oauth').found) validationFailures.push('Auth classified as third-party OAuth, but no third-party OAuth system was found in evidence, only sign-in, SSO, or token evidence, so the guide cannot stay full.');
+  if (authType === 'unknown') validationFailures.push('Auth type is unknown, so no full guide can be trusted, even if research tracks are complete.');
   if (consoleUrl !== 'Unknown' && (/\/api-reference\//.test(consoleUrl) || /\/api\//.test(consoleUrl) || /\/reference\//.test(consoleUrl))) { validationFailures.push('Console URL is an API documentation page, not a developer portal.'); consoleUrl = 'Unknown'; }
   for (const r of requirements) {
     if (r.status !== 'unknown' && (!r.evidence || !r.evidenceUrl || !sources.includes(r.evidenceUrl))) {
@@ -754,7 +756,7 @@ async function researchHandler(req, res) {
     if (s.requirement === 'required' && (!s.evidence || !/\b(create|register|add|set|configure|submit|request|generate|include|must|required|optional|need|needs|use|log|sign|open|navigate|choose|select|provide|enter|review|approval)\b/i.test(s.evidence))) validationFailures.push('Step ' + s.title + ' is marked required without a verb-bearing passage that supports it.');
     const mainDetail = String(s.detail || '').split('Evidence from docs:')[0];
     const urlsInDetail = mainDetail.match(/https:\/\/[^\s,;]+/g) || [];
-    for (const u of urlsInDetail) { const cleanU = u.replace(/[\.,)\]]+$/, ''); if (cleanU.includes('{') || cleanU.includes('}')) continue; if (authType === 'oauth' && !endpoints.includes(cleanU) && !sources.includes(cleanU) && cleanU !== consolePick) validationFailures.push('Step ' + s.title + ' cites a URL not in endpoints or sources: ' + cleanU); }
+    for (const u of urlsInDetail) { const cleanU = u.replace(/[.,;:!?)\]}'\"]+$/, ''); if (cleanU.includes('{') || cleanU.includes('}')) continue; if (authType === 'oauth' && !endpoints.includes(cleanU) && !sources.includes(cleanU) && cleanU !== consolePick) validationFailures.push('Step ' + s.title + ' cites a URL not in endpoints or sources: ' + cleanU); }
     if (authType !== 'oauth' && /authorize endpoint/i.test(s.detail) && !/do not present/i.test(s.detail)) validationFailures.push('Step ' + s.title + ' recommends an OAuth authorize endpoint while auth is ' + authType + '.');
     if (approvalMeaning.status === 'not_applicable' && /submit for review/i.test(s.detail) && !/only if/i.test(s.detail)) validationFailures.push('Step ' + s.title + ' tells the developer to submit for review while docs say review is not required.');
     if (/Register/i.test(s.title) && registerMeaning.status === 'not_applicable' && !/not required/i.test(s.detail)) validationFailures.push('Step ' + s.title + ' tells the developer to register while docs say registration is not required.');
@@ -778,6 +780,25 @@ async function researchHandler(req, res) {
   qualityGate.factualConfidence = confidence;
   qualityGate.factualVerification = validationFailures.length ? 'unverified' : (keyDecisionsUnknown >= 2 ? 'partial' : 'docs checked, not sign-in tested');
   qualityGate.claimsVerified = claims.filter(c => c.verified).length + ' of ' + claims.length + ' claims verified by a passage';
+  // Three-state outcome, final hardening: a guide is full only when it
+  // is a verified path, partial when some details are confirmed but key
+  // information is missing or validation found non-critical issues, and
+  // draft when it is unsupported or ambiguous. A partial guide must never
+  // be presented as full, even if its research tracks are complete.
+  {
+    const criticalValidation = validationFailures.some(f => /Auth classified|Provider identity|Source says OAuth|Auth type is unknown/i.test(f));
+    if (researchFailed) { guideType = 'draft'; }
+    else if (validationFailures.length) {
+      guideType = (criticalValidation || sources.length === 0) ? 'draft' : 'partial';
+      if (guideType === 'partial') verificationStatus = 'Partially verified, validation issues, see quality gate, no sign-in test';
+      else verificationStatus = 'Unverified, validation failed, see quality gate';
+    } else if (authType === 'unknown' || sources.length < 2 || confidence !== 'Medium' || keyDecisionsUnknown >= 2) {
+      guideType = sources.length > 0 ? 'partial' : 'draft';
+      if (guideType === 'partial') verificationStatus = 'Partially verified, some details confirmed, key information missing, no sign-in test';
+      else verificationStatus = 'Unverified, no official source fetched, no sign-in test';
+    } else { guideType = 'full'; }
+    qualityGate.completeness = guideType;
+  }
   // Timeline, checklist, blockers built from requirements and steps.
   const timeline = [
     { stage: 'Registration and credentials', wait: 'Estimate: 30 minutes to 1 hour for a first app, not a published provider time', note: 'Create the app or credentials, record client ID or key, store secrets server side.' },
@@ -813,6 +834,9 @@ async function researchHandler(req, res) {
     name: app,
     category: 'Generated, from live research',
     difficulty, difficultyWhy, setupTime, approvalWait,
+    implementationTime: sources.length && authType !== 'unknown' ? 'Estimate: 2 to 4 hours for a first working integration, not a published provider time, based on steps found in sources, plus review time if required' : 'Unknown, implementation steps were not fully found in fetched pages',
+    startNow: guideType === 'full' ? 'Yes, with a developer account, follow the steps in order.' : guideType === 'partial' ? 'Yes, for the confirmed steps, but check the missing items and blockers first.' : 'No, not from this guide alone. Use the next research action below, then start.',
+
     accountNeeded: sources.length ? 'Provider developer account, see first source' : 'Unknown, check the provider developer docs',
     cost: pricingSnippet ? 'Check pricing in official docs, see evidence in blockers' : 'Unknown, check provider pricing in official docs',
     consoleName: consolePick ? 'Official developer portal, see sources' : 'Unknown, find the official developer console first',
@@ -826,7 +850,7 @@ async function researchHandler(req, res) {
     requirements,
     qualityGate,
     managedAppNote: 'Check first whether a managed app already covers this platform. If it does, you may not need your own app. Managed support for this specific provider was not confirmed in this research run, check the Composio toolkit list before building.',
-    nextStep: validationFailures.length ? 'Validation failed: ' + validationFailures.join(' ') + ' Do not use this as a full guide. Check official docs manually.' : researchFailed ? (sources.length === 0 ? 'Provider could not be identified from search results, and no official docs were fetched. Do not guess a domain. Provide the official website or developer docs URL, then research again, and do not use this draft as a verified guide.' : 'Research did not find usable official docs. Use the findings below, check the official portal manually, and do not use this draft as a verified guide.') : (consolePick ? 'Open the developer portal, confirm the authentication model, then follow the steps in order.' : 'Open the first source below, confirm the authentication model and registration portal, then follow the steps in order.'),
+    nextStep: validationFailures.length ? 'Validation failed: ' + validationFailures.join(' ') + ' Do not use this as a full guide. Check official docs manually.' + (sources.length ? ' Start here: ' + sources[0] : '') : researchFailed ? (sources.length === 0 ? 'Provider could not be identified from search results, and no official docs were fetched. Do not guess a domain. Provide the official website or developer docs URL, then research again, and do not use this draft as a verified guide.' : 'Research did not find usable official docs. Use the findings below, check the official portal manually, and do not use this draft as a verified guide. Start here: ' + sources[0]) : (consolePick ? 'Open the developer portal at ' + consolePick + ', confirm the authentication model, then follow the steps in order.' : (sources.length ? 'Open ' + sources[0] + ', confirm the authentication model and registration portal, then follow the steps in order.' : 'Open the first source below, confirm the authentication model and registration portal, then follow the steps in order.')),
     steps, timeline, checklist, blockers,
     agentCan: ['Search for official docs', 'Fetch candidate pages', 'Extract scopes, endpoints, and review evidence with sources', 'Draft checklists and timelines from evidence'],
     humanMust: approvalMeaning.status === 'not_applicable' ? ['Confirm the official portal', 'Sign in to the provider console', 'Verify scopes and review requirements', 'Confirm no review is required in official docs'] : ['Confirm the official portal', 'Sign in to the provider console', 'Verify scopes and review requirements', 'Submit for review and reply to reviewers only if docs say public distribution requires it'],

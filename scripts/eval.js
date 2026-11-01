@@ -63,7 +63,7 @@ async function main() {
     const allEvidence = [...reqs.map(r => r.evidence || ''), ...(g.steps || []).map(s => s.evidence || '')];
     const evidenceMetadataClean = !allEvidence.some(e => /cookie|copyright|all rights reserved|newsletter/i.test(e));
     const validationFailed = (g.qualityGate && g.qualityGate.checksFailed || []).some(x => /Validation failed/i.test(x));
-    const validationGateHonest = validationFailed ? g.guideType === 'draft' : true;
+    const validationGateHonest = validationFailed ? (g.guideType === 'draft' || g.guideType === 'partial') : true;
     const consoleIsApiRef = /\/api-reference\/|\/reference\//.test(g.consoleUrl || '');
     const consoleValid = g.consoleUrl === 'Unknown' ? false : !consoleIsApiRef;
     const endpointsValid = (g.evidenceSummary && g.evidenceSummary.tracks) ? true : false;
