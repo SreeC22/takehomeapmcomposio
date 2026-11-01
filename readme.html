@@ -40,6 +40,11 @@
 <p>The merged search calls api/research.js. That endpoint searches for official developer and OAuth docs, fetches candidate pages in parallel, and extracts claims only where pages mention OAuth, client ID, redirect, or scopes. It returns a full guide, a research log with timestamps and failures, sources, timings, and confidence. Extraction is rule-based, not a language model, so quality varies by site, and failures are logged instead of hidden. A generated guide must be checked against official docs before use.</p>
 <h2>Style</h2>
 <p>Inter, matching Composio, uniform white background, pure blue #0000FF as the main accent.</p>
+<h2>Latest developer-first improvements</h2>
+<p><strong>Start with the managed-versus-custom decision:</strong> each guide checks the provider's public Composio toolkit documentation. If managed OAuth is explicitly available, you may not need your own provider OAuth app. If unavailable, follow the custom setup path. If unverified, the result remains Unknown with an official source link.</p>
+<p><strong>Actionable next step:</strong> unfamiliar-app research identifies relevant registration documentation, presents the next step near the top, and separates estimated hands-on work from provider review waiting.</p>
+<p><strong>What the agent actually attempted:</strong> live source discovery, evidence extraction, classification and an optional read-only public developer-portal HEAD check. It never signs in, registers apps, exchanges user tokens or submits provider approval.</p>
+<p><strong>Share and hand off:</strong> copy a compact compressed guide URL or an agent-ready implementation brief. Checklist progress stays only in this browser and is not proof that provider tasks were completed.</p>
 <h2>Limitations</h2>
 <ul>
 <li>No account sign-in, app creation, or provider approval was completed for these guides.</li>
