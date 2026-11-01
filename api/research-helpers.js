@@ -151,7 +151,7 @@ function extractEndpoints(text, slug, domainGuess) {
     try {
       const pp = new URL(u); const path = pp.pathname.toLowerCase(); const host = pp.hostname.toLowerCase();
       if (/yourdomain|your-domain|yourcompany|localhost|127\.0\.0\.1|\{/.test(u)) continue;
-      if (domainGuess && baseDomain(host) !== String(domainGuess).toLowerCase()) continue;
+      if (domainGuess && baseDomain(host) !== baseDomain(String(domainGuess))) continue;
       if (path.includes('/docs/') || path.includes('/reference/') || path.endsWith('.md') || path.endsWith('.png') || path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.svg') || path.endsWith('.gif') || path.includes('/attachments') || host.includes('attachments')) continue;
       if (path.includes('token') && !path.includes('oauth') && !path.includes('authorize')) continue;
       if (!isProviderHost(host, slug, domainGuess)) continue;
