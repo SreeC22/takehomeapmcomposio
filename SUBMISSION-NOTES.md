@@ -343,3 +343,12 @@ Google library guide verification status corrected from 2 or more official sourc
 ## Example guides, final hardening
 
 GitHub, straightforward public OAuth, Easy, no approval stage for basic scopes, no sign-in test. Shopify, private versus public, Medium, custom apps do not need App Store review, public apps for listing do, no sign-in test, written for a developer building an app, not a merchant creating a custom app in their own admin. Google, conditional approval, Medium to Hard, brand 2 to 3 business days, sensitive around 10 business days, restricted several weeks plus annual security assessment, ranges not guarantees, no sign-in test. Claude, API key only, Easy, no OAuth app registration, no OAuth approval stage, no sign-in test.
+
+## Browser reviewer test, 2026-10-31 evening, and GitHub source correction
+
+Live browser test, no sign-in, no provider account: home page rendered, GitHub search opened its guide with difficulty Easy, Full, setup 30 to 60 minutes, approval none for standard registration, 5 steps, 6 checklist items, 2 sources, and a concrete next step. Share link #guide=github opened the same guide in a new tab. First source opened official GitHub Docs, not a 404.
+
+Findings fixed or explained:
+- GitHub second source was discontinued Enterprise 2.16 docs, discontinued January 22, 2020. Replaced with current scopes page, https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps, verified live before the change. No old Enterprise URL remains in guides.json or guides/github.json.
+- Card count: home says 16 library guides, browser profile showed 22 cards, because that browser profile had 6 saved generated guides in localStorage from earlier tests, including a nonsense test entry. Library count is correct at 16. A fresh reviewer browser shows 16 library cards plus any guides they generate themselves. This is localStorage persistence, not a library data error.
+- Minor quirks, not fixed in this pass, no redesign: back navigation left the guide detail rendered while the URL returned to root, the search message still said press Get guide after the guide was already open, and share confirmation is a browser alert, not an inline toast, so it did not show in the page snapshot. Share link itself worked.
