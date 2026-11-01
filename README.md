@@ -1,110 +1,114 @@
 # OAuth Setup Guides
 
-**Know what it takes to connect an app—before you build the integration.**
+**From “Can our agent connect this app?” to “Here's the path to launch.”**
 
-A working take-home for **Composio's APM Integrations assignment**. Developers and agent builders can find a provider, understand the path to a usable OAuth connection, and leave with a shareable checklist grounded in real documentation.
+A searchable, source-backed guide library that helps developers set up provider OAuth apps, understand approval requirements, and know what to do next. Built for the **Composio APM Integrations take-home assignment**.
 
-**[Launch the live experience](https://takehomeapmcomposio-sreekaree-chityalas-projects.vercel.app/)** · [Browse the guide data](guides.json) · [See the verification log](VERIFICATION-LOG.md)
+**[Explore the live product](https://takehomeapmcomposio-sreekaree-chityalas-projects.vercel.app/)** · [View the 16-guide library](guides.json) · [Verification notes](VERIFICATION-LOG.md)
 
-> **Built scope:** 16 curated examples + on-demand research for unfamiliar apps. The 100-app library is the longer-term goal, not a claim about this take-home.
+---
 
-## Why this exists
+## The problem
 
-A developer building an AI agent wants their **users** to connect an external service. That can require a *provider OAuth app*—a developer-owned client with redirect URLs, scopes, credentials, and sometimes review or approval. But creating one is not always necessary: **Composio-managed OAuth may already cover the provider.**
+When an AI agent needs access to a user's external account, the developer may need to register an OAuth client with the provider. That process is rarely just “get a client ID.” It can involve account eligibility, redirect URIs, scopes, private testing, app verification, marketplace submission, and waiting for approval.
 
-The product answers five questions in order:
+**The key product insight:** the best next step is sometimes **not to create an OAuth app at all**. Composio may offer managed authentication, or the provider may use a different authentication model.
 
-1. **Do I need my own OAuth app?** Managed vs. bring-your-own vs. not yet confirmed.
-2. **Where do I start?** The real developer portal or official registration instructions.
-3. **What will it take?** Prerequisites, permissions, redirects, difficulty, hands-on time, and approval wait.
-4. **What blocks launch?** Review requirements, pricing or account restrictions, and unknowns.
-5. **What can the agent do—and where must I take over?** Source-backed investigation and a concrete human handoff.
+This experience answers four questions in one place:
 
-## Try the experience — reviewer walkthrough
+| Developer question | Product answer |
+| --- | --- |
+| **Do I need to create an app?** | Check Composio-managed OAuth, developer-owned OAuth, or an unconfirmed alternative |
+| **What do I do next?** | Link to the developer portal or actual setup documentation, with ordered steps |
+| **How hard will this be?** | Difficulty, hands-on estimates, approval wait, requirements, and likely blockers |
+| **What can the agent handle?** | Research and prepared artifacts, with an explicit handoff for sign-in, credentials, testing, and approval |
 
-| Demo | Why it matters | What to look at |
+The result is a **shareable guide someone can act on without the author explaining it**.
+
+## Try it: a 2-minute reviewer walkthrough
+
+**Start with three different launch paths:**
+
+| App | Setup challenge | What to inspect |
 | --- | --- | --- |
-| **[GitHub](https://takehomeapmcomposio-sreekaree-chityalas-projects.vercel.app/#guide=github)** | A relatively straightforward OAuth app | Managed-vs-custom decision, client registration, scopes, standard consent |
-| **[Google](https://takehomeapmcomposio-sreekaree-chityalas-projects.vercel.app/#guide=google)** | A more demanding verification path | Sensitive/restricted scopes, consent setup, possible review delays |
-| **[Shopify](https://takehomeapmcomposio-sreekaree-chityalas-projects.vercel.app/#guide=shopify)** | Distribution changes the approval path | Development/custom use vs. public App Store distribution |
-| **An unfamiliar app** | Proves this is more than a static library | Enter **Attio**, **Cal.com**, or **Miro** in the homepage search and select **Get guide** |
+| **[GitHub](https://takehomeapmcomposio-sreekaree-chityalas-projects.vercel.app/#guide=github)** | Straightforward OAuth registration | Managed vs. custom OAuth, required settings, consent |
+| **[Google](https://takehomeapmcomposio-sreekaree-chityalas-projects.vercel.app/#guide=google)** | Sensitive and restricted scopes | Consent configuration, verification requirements, review uncertainty |
+| **[Shopify](https://takehomeapmcomposio-sreekaree-chityalas-projects.vercel.app/#guide=shopify)** | Distribution-dependent approval | Testing/custom use vs. App Store review |
 
-**Suggested live demo:** Open GitHub → compare managed and custom OAuth → inspect Google's review requirements → search **Attio** → inspect the official sources and missing claims → copy its **share link** and **agent setup brief**.
+**Then test live generation:**
 
-For a counterexample, try **Baserow**. If the research cannot establish third-party OAuth, it returns **Draft / Unknown** instead of manufacturing an OAuth procedure. This is intentional.
+1. Open the [app](https://takehomeapmcomposio-sreekaree-chityalas-projects.vercel.app/), type **Attio** (or paste an unfamiliar provider website), and click **Get guide**.
+2. Inspect the generated **next action**, cited sources, difficulty, missing requirements, and research trail.
+3. Try **Copy share link** or **Copy agent setup brief** to hand the work to someone else.
 
-## What you get
+**Try an edge case:** search **Baserow**. When research cannot confirm third-party OAuth, the result stays **Draft / Unknown** rather than inventing an OAuth setup.
 
-Each guide brings together:
+**Delivered scope:** 16 curated guides, plus live generation for apps outside the library. The assignment calls for a focused demonstration—not 100 completed guides.
 
-| Before implementing | While making progress |
+## Product decisions
+
+### 1. Decide whether a custom OAuth app is necessary
+
+The first step checks the provider's public Composio toolkit documentation and reports:
+
+- **Managed available:** Composio documents managed OAuth for the toolkit (e.g., GitHub, Attio).
+- **Bring your own:** Composio documents that managed OAuth is unavailable (e.g., Pipedrive).
+- **Unknown:** public documentation does not establish availability; the guide points to the official source.
+
+**Why:** developers shouldn't spend days on registration and approval when they can use a managed connection. This lookup is based on **public documentation**, not an authenticated toolkit inventory.
+
+### 2. Separate facts, estimates, and unknowns
+
+A source-backed requirement is different from a planning assumption. Guides separate:
+
+- **Provider-documented facts:** registration rules, scopes, redirects, review triggers, with source links.
+- **Planning estimates:** hands-on setup and implementation effort—not provider SLAs.
+- **Unverified details:** missing portals, timelines, approval conditions, or conflicting evidence.
+
+Guide status means **Full** (documentarily complete), **Partial** (usable evidence with gaps), or **Draft** (critical authentication/evidence questions unresolved). **Full does not mean an OAuth connection has been tested.**
+
+### 3. Let automation prepare the work, not invent completion
+
+The live research workflow searches provider documentation, fetches relevant pages, extracts requirements, validates claims, and prepares a checklist and handoff. Where a trustworthy portal link is found, it may perform a **read-only HTTP reachability check**.
+
+It records what was attempted and what remains for a human: account access, OAuth client creation, secret management, actual user consent/token testing, and review submission.
+
+The investigation is **deterministic and source-driven**, not an LLM-powered browser agent. This is intentional: unsupported claims are marked Unknown rather than generated as instructions.
+
+## How it works
+
+**Input → official documentation search → evidence extraction → validation → actionable guide**
+
+| Layer | Implementation |
 | --- | --- |
-| Managed OAuth availability (when documented) | A verified portal URL or official registration document |
-| Difficulty, hands-on effort, approval wait or **Unknown** | Step-by-step actions, dependencies, checklists and common blockers |
-| Required vs. conditional vs. unverified claims | Links to original sources and explanations of uncertainty |
-| A decision about the authentication path | Agent research log, work attempted, and human takeover |
-| — | **Copy share link**, **Copy agent setup brief**, and structured JSON |
+| Interface | Vanilla JavaScript, HTML, CSS; searchable guides and shareable results |
+| Curated library | [`guides.json`](guides.json) and [`guides/`](guides/) |
+| Live discovery | [`api/research.js`](api/research.js), Tavily search, provider-page retrieval |
+| Evidence validation | [`api/research-helpers.js`](api/research-helpers.js); guards against false scopes, wrong OAuth endpoints, unrelated SSO, and unsupported review claims |
+| Managed OAuth check | [`api/managed-auth.js`](api/managed-auth.js), based on public Composio toolkit pages |
+| Deployment | Vercel serverless API + static frontend; no application database |
 
-The **same guide data** powers the web UI and the agent-readable files in [`guides/`](guides/) and [`guides.json`](guides.json).
+Guides provide steps, blockers, approval notes, linked sources, research history, human-vs-agent responsibilities, and a copyable share snapshot. The same guide schema is available as JSON for agents.
 
-### Why the managed-OAuth check comes first
+## What I verified and corrected
 
-If Composio already provides managed OAuth, a developer may be able to connect users **without registering and waiting for approval on a new provider app**. The app checks each provider's *public Composio toolkit documentation*:
+I checked sample instructions against provider documentation and exercised the live generation flow. The most consequential findings:
 
-- **Managed available** — documented for that toolkit (for example, GitHub and Attio).
-- **Bring your own** — managed OAuth explicitly unavailable (for example, Pipedrive).
-- **Unknown** — not confirmed from public documentation; the guide links to the evidence rather than guessing.
-
-This does **not** query an authenticated Composio toolkit inventory.
-
-## How live research works
-
-```text
-App name / website
-       ↓
-Identify provider + locate official developer documentation
-       ↓
-Fetch pages; extract OAuth, registration, scopes, redirects, review
-       ↓
-Filter unrelated SSO/admin docs and validate source-backed claims
-       ↓
-Full / Partial / Draft guide + next action + research trail
-       ↓
-Developer follows guide; agent can use exported setup brief
-```
-
-- **Implementation:** vanilla JavaScript frontend, Vercel serverless endpoints and a small, checked-in guide library. No app database.
-- **Discovery:** [`api/research.js`](api/research.js) uses **Tavily** for search, then fetches and analyzes provider pages.
-- **Evidence rules:** [`api/research-helpers.js`](api/research-helpers.js) filters metadata mistaken for scopes, mismatched OAuth endpoint domains, unrelated SSO flows and unsupported approval claims.
-- **Managed coverage:** [`api/managed-auth.js`](api/managed-auth.js) checks public Composio toolkit documentation.
-- **Share:** generated guides can be packaged into a compact, compressed URL fragment; the agent brief is copyable text.
-
-**Agent boundary:** this is a **deterministic investigation workflow**, not an LLM reasoning agent or an authenticated browser agent. It genuinely searches and retrieves documentation, prepares the guide, and may make a **read-only HTTP reachability check** on a documented developer portal. It **does not** sign in, create an OAuth client, exchange live user tokens, or submit an approval request. The interface separates completed research from these human-owned actions.
-
-### Evidence and guide status
-
-- **Full:** complete enough from retrieved documentation; **not** a passed real OAuth test.
-- **Partial:** some usable facts, but important registration, scope, or approval details remain unconfirmed.
-- **Draft:** identity/authentication ambiguous, insufficient documentation, or failed validation.
-
-Estimated setup/engineering time is explicitly a **planning estimate**, not a provider-published SLA. An unknown review wait is displayed as **Unknown**.
-
-## What we checked, corrected, and couldn't verify
-
-| Example | What the evidence taught us |
+| Finding | Change made |
 | --- | --- |
-| **GitHub / Google / Shopify** | Reviewed varied setup and approval patterns using provider documentation; real provider sign-in and app approval were **not** performed. |
-| **Slack, Google, Meta** | Corrected public-distribution wording, softened timeline ranges, and removed unjustified confidence about approval wait. |
-| **Notion / Attio / Intercom** | Fixed misclassified authentication direction and fabricated permission tokens originating from documentation metadata. |
-| **Baserow** | Separated GitHub SSO *into Baserow* from third-party OAuth *to the Baserow API*; unresolved access is labeled Draft. |
-| **Cal.com / unfamiliar apps** | Captured official OAuth docs, portal and review evidence where available; missing endpoints, approval time or portal remain unverified. |
-| **Dynamic registration** | Corrected an earlier interpretation: **dynamic client registration still registers a client**; it does not automatically mean that registration can be skipped. |
+| A provider's **SSO** documentation can mention OAuth without enabling third-party API connections | Separate SSO/login flows from developer-owned provider OAuth; Baserow is marked Draft when the path cannot be confirmed |
+| Docs metadata and unrelated permission pages can look like OAuth **scopes** | Validate scope context and reject metadata-derived or unsupported permissions |
+| “App review” can refer only to **marketplace listing**, not connecting users | Keep private testing, production OAuth access, and public listing decisions distinct |
+| **Dynamic client registration** was mistaken for no registration | Treat it as a real registration mechanism with a different setup path |
+| Approval timelines are often inconsistent or absent | Use documented ranges where supported; otherwise show Unknown instead of a promise |
 
-Fresh production API checks for **Attio, Cal.com, Pipedrive, PostHog, Miro, and Baserow** returned guides, but the outputs were **Partial or Draft**, not end-to-end verified procedures. The [verification log](VERIFICATION-LOG.md) and [research/evaluation notes](SUBMISSION-NOTES.md) contain the supporting checks, changes, and remaining unknowns.
+**Live smoke checks:** GitHub/Google/Shopify guide paths, managed-OAuth decisions, and fresh searches for **Attio, Cal.com, Pipedrive, PostHog, Miro, and Baserow**. These unfamiliar-app responses were **Partial or Draft**—not end-to-end verified integrations.
+
+The [verification log](VERIFICATION-LOG.md) and [research notes](SUBMISSION-NOTES.md) record supporting evidence, corrections, and known gaps. Share/handoff functionality has also been tested in a JavaScript harness; complete cross-device browser QA has not been performed.
 
 ## Run locally
 
-**Prerequisites:** Node.js 20+; Vercel CLI for serverless research; a **Tavily API key** for live lookup of unfamiliar providers.
+**Requirements:** Node.js 20+, Vercel CLI, and a Tavily API key for live unfamiliar-app search.
 
 ```bash
 git clone https://github.com/SreeC22/takehomeapmcomposio.git
@@ -113,15 +117,15 @@ export TAVILY_API_KEY="your_tavily_key"
 npx vercel dev
 ```
 
-The CLI may prompt you to sign in and link/create a Vercel project. Open the localhost address it provides. Keep the key in your **server environment**, not in client-side code or Git. Local `.env` files are ignored by [`.gitignore`](.gitignore).
+The Vercel CLI may ask you to sign in or link a project. Open the local URL it displays. Keep the Tavily key **server-side**; do not commit credentials or local `.env` files.
 
-To view only the **16 curated library guides** without the live research API:
+For a static preview of the 16 curated guides without live research:
 
 ```bash
 npx serve .
 ```
 
-To run the no-provider-account regression checks:
+Run regressions without provider credentials:
 
 ```bash
 node scripts/trust-regression.js
@@ -131,12 +135,12 @@ node scripts/assignment-readiness-regression.js
 
 ## Scope and limitations
 
-- This is a **focused working slice**, not 100 completed OAuth guides.
-- The research can miss gated, JavaScript-rendered, newly changed, or unusually structured documentation. Some unfamiliar apps will be **Partial/Draft**.
-- **No OAuth account setup, real-user consent, token exchange, or provider review was executed.** A public portal HEAD response is not evidence of successful login.
-- A documented **Full** guide means documentary completeness, **not** production readiness. Human verification is still necessary.
-- Managed-auth status is based on **public toolkit pages**, not authenticated Composio availability. Inconclusive results remain Unknown.
-- Shared generated guides use self-contained URL fragments rather than server-hosted permanent records; links can be long. Full visual cross-device QA has not been completed.
-- Research relies on a server-side Tavily key, network availability, and per-instance rate limits/cache.
+- **No provider OAuth app was registered, user consent flow completed, token exchanged, or approval submitted.** Documentation checks and public portal HTTP probes do not prove integration readiness.
+- Generated guidance depends on available documentation and may miss gated, JavaScript-rendered, or newly changed details. **Partial/Draft guides require human verification.**
+- Managed-OAuth status is based on public toolkit pages. Unconfirmed provider support stays **Unknown**.
+- Shared generated guides are embedded in compressed URL fragments, not stored in a persistent backend; links may be long.
+- Live research depends on Tavily, network access, and per-instance rate limits/cache. The 100-provider goal is future scope.
 
-**Product principle:** **make the next step obvious, and make uncertainty visible.**
+---
+
+**Design principle:** *Make the next step clear. Make the evidence visible. Never hide the uncertainty.*
