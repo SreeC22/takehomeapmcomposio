@@ -488,7 +488,7 @@ async function researchHandler(req, res) {
   if (externalIdpName) authRelationships.push({ method: 'external_idp_for_signin', client: 'provider product', resourceOwner: 'end user', identityProvider: externalIdpName, authorizationTarget: 'provider product login', actionEnabled: 'sign users into the provider product using ' + externalIdpName, direction: 'sign-in to provider product using an external identity provider, NOT third-party API access to this provider', useCase: 'sign-in to provider product using an external identity provider, NOT third-party API access to this provider', evidence: '', evidenceUrl: '' });
   if (authType === 'oauth' && !oauthStrong && (signInSnippet || ssoSnippet)) authType = 'sign_in_oauth';
 
-  if (authType === 'oauth' && authorizeEndpoints.length === 0 && tokenEndpoints.length === 0 && apiScopes.length === 0) {
+  if (authType === 'oauth' && !oauthStrong && authorizeEndpoints.length === 0 && tokenEndpoints.length === 0 && apiScopes.length === 0) {
     authType = 'sign_in_oauth';
   }
   if (regFreeSnippet) {
@@ -500,7 +500,7 @@ async function researchHandler(req, res) {
   if (finalTr.hasApiKey && finalTr.hasOAuth && !oauthStrong) contradictions.push('Docs mention both OAuth and API keys, but neither path is strong. The simplest supported path cannot be chosen from fetched pages alone.');
   if (/no review required|no approval required/i.test(allText) && finalTr.hasApproval) contradictions.push('Docs contain both review language and no review language. Approval is therefore treated as conditional, not as a universal requirement.');
   const consoleCandidates = sources.map(u => ({ url: u, score: consoleScore(u) })).sort((a, b) => b.score - a.score);
-  const bodyUrls = Array.from(String(allText || '').matchAll(/https:\/\/[^\s"'<>]+/g)).map(m => m[0].replace(/[.,;:!?)\]}'"]+$/, ''));
+  const bodyUrls = Array.from(String(allText || '').matchAll(/https:\/\/[^\s"'<>]+/g)).map(m => m[0].split(/[`;,\\)\]}]/)[0].replace(/[.,:!?)\]}'"]+$/, ''));
   for (const bu of bodyUrls) {
     try {
       const buu = new URL(bu);
@@ -509,7 +509,7 @@ async function researchHandler(req, res) {
       if (baseDomain(buHost) !== baseDomain(domainGuess || canonicalProviderDomain || '')) continue;
       if (/yourdomain|example\.(com|org|net)|your-domain|yourcompany|localhost|127\.0\.0\.1|\{/.test(bu)) continue;
       const buSegs = buu.pathname.toLowerCase().split('/').filter(Boolean);
-      const buPortal = buSegs.some(s => ['apps', 'console', 'dashboard', 'settings', 'account'].includes(s)) || buHost.startsWith('app.') || buHost.startsWith('console.') || buHost.startsWith('dashboard.') || buHost.startsWith('portal.');
+      const buPortal = buSegs.some(s => ['apps', 'console', 'dashboard', 'settings', 'account', 'developers', 'developer', 'developer-hub'].includes(s)) || buHost.startsWith('console.') || buHost.startsWith('dashboard.') || buHost.startsWith('portal.') || buHost.startsWith('build.');
       if (!buPortal) continue;
       const sc = consoleScore(bu);
       if (sc >= 3 && !consoleCandidates.some(c => canonicalUrl(c.url) === canonicalUrl(bu))) consoleCandidates.push({ url: bu, score: sc });
