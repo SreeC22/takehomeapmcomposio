@@ -346,6 +346,25 @@ async function researchHandler(req, res) {
       canonicalProviderDomain = scored[0].bd;
     }
   }
+  // If we have genuine provider-domain documentation, third-party setup
+  // tutorials and GitHub issue threads cannot corroborate the provider's
+  // API requirements or trigger false same-name/provider conflicts.
+  const firstPartyPages = pages.filter(p => {
+    try { return isProviderHost(new URL(p.url).hostname.toLowerCase(), slug, domainGuess); }
+    catch (e) { return false; }
+  });
+  if (firstPartyPages.length) {
+    const dropped = pages.length - firstPartyPages.length;
+    if (dropped) {
+      pages.splice(0, pages.length, ...firstPartyPages);
+      const retained = new Set(firstPartyPages.map(p => canonicalUrl(p.url)));
+      for (let i = sources.length - 1; i >= 0; i--)
+        if (!retained.has(canonicalUrl(sources[i]))) sources.splice(i, 1);
+      keptParentDomains = [];
+      logPush('source_authority', '', 'official_only',
+        'Excluded ' + dropped + ' third-party page(s) from factual claims because first-party documentation was available.');
+    }
+  }
   const tExtraction0 = Date.now();
   const finalTr = trackState();
   const allText = finalTr.text;
