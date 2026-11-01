@@ -325,14 +325,14 @@ async function researchHandler(req, res) {
     if (scored.length && !dominantSlugOk) {
       providerIdentityAmbiguous = true;
       logPush('provider_identity', '', 'ambiguous', 'Dominant fetched domain ' + scored[0].bd + ' does not contain provider name ' + slug + '. Identity not verified, guides must not merge unrelated providers.');
-    } else if (scored.length > 1 && Math.abs(scored[0].evidence - scored[1].evidence) <= 1 && Math.abs(scored[0].plist.length - scored[1].plist.length) <= 1 && scored[0].mentions > 0 && scored[1].mentions > 0) {
+    } else if (scored.length > 1 && baseDomain(scored[0].bd) !== baseDomain(scored[1].bd) && isProviderHost(scored[0].bd, slug, domainGuess) && isProviderHost(scored[1].bd, slug, domainGuess) && Math.abs(scored[0].evidence - scored[1].evidence) <= 1 && Math.abs(scored[0].plist.length - scored[1].plist.length) <= 1 && scored[0].mentions > 0 && scored[1].mentions > 0) {
       providerIdentityAmbiguous = true;
       logPush('provider_identity', '', 'ambiguous', 'Same-name providers found on multiple domains with equal evidence: ' + scored.map(x => x.bd).join(', ') + '. No dominant provider, guides must not merge them.');
     } else if (scored.length > 1) {
       const keep = scored[0];
       canonicalProviderDomain = keep.bd;
       const parentPages = [];
-      for (const cl of scored.slice(1)) for (const pg of cl.plist) { try { if (productMention(pg) && candidateHosts.has(new URL(pg.url).hostname.toLowerCase())) parentPages.push(pg); } catch (e) {} }
+      for (const cl of scored.slice(1)) for (const pg of cl.plist) { try { if (baseDomain(new URL(pg.url).hostname) === baseDomain(keep.bd) || (productMention(pg) && candidateHosts.has(new URL(pg.url).hostname.toLowerCase()))) parentPages.push(pg); } catch (e) {} }
       const keepPages = [...keep.plist, ...parentPages];
       const parentDomains = Array.from(new Set(parentPages.map(pg => { try { return new URL(pg.url).hostname.toLowerCase().replace(/^www\./, ''); } catch (e) { return ''; } }).filter(Boolean)));
       discardedProviderDomains = scored.slice(1).map(x => x.bd).filter(bd => !parentDomains.includes(bd));
@@ -375,7 +375,7 @@ async function researchHandler(req, res) {
   const mcpSnippet = findSnippet(allText, ['model context protocol', 'mcp server', 'mcp authentication']);
   const ssoSnippet = findSnippet(allText, ['single sign-on', 'sso', 'saml']);
   const oauth21Snippet = findSnippet(allText, ['oauth 2.1', 'oauth2.1']);
-  const regFreeSnippet = findSnippet(allText, ['dynamic client registration', 'no registration required', 'registration-free', 'client id metadata', 'metadata document', 'do not need to pre-register', 'without pre-registering', 'do not need to register']);
+  const regFreeSnippet = findSnippet(customerOAuthText, ['dynamic client registration', 'no registration required', 'registration-free', 'client id metadata', 'metadata document', 'do not need to pre-register', 'without pre-registering', 'do not need to register']);
   const adminConsentSnippet = findSnippet(allText, ['admin consent']);
   const privateSnippet = findSnippet(allText, ['private app', 'private integration', 'internal app', 'do not need review', 'no review required']);
   const privacySnippet = findSnippet(allText, ['privacy policy']);
@@ -426,8 +426,28 @@ async function researchHandler(req, res) {
   const privateMeaning = classifyPassage(privateSnippet, ['private', 'internal', 'review']);
   const privacyMeaning = classifyPassage(privacySnippet, ['privacy policy']);
   const pricingMeaning = classifyPassage(pricingSnippet, ['pricing', 'plan', 'tier', 'enterprise']);
+  // Classify the developer's use case (connecting their users), not any
+  // occurrence of OAuth in a provider's site. SSO, admin tokens, Workers,
+  // and unrelated identity-provider instructions cannot establish OAuth
+  // access to the provider API.
+  const customerOAuthPages = pages.filter(pg => {
+    let path = '';
+    let host = '';
+    try { const u = new URL(pg.url); path = u.pathname.toLowerCase(); host = u.hostname.toLowerCase(); } catch (e) { return false; }
+    if (!isProviderHost(host, slug, domainGuess) && !keptParentDomains.includes(host)) return false;
+    if (/(?:sso|single.sign.on|sign.in.with|identity.provider|workers|\/admin\/|\/mcp\/|\/sdk\/)/i.test(path)) return false;
+    if (!/(?:oauth|authorization|authentication|public.connections?)/.test(path)) return false;
+    const txt = String(pg.text || '');
+    if (!/\boauth\b|oauth2|oauth 2\.0|authorization code/i.test(txt)) return false;
+    return /(?:public\s+(?:apps?|connections?|integrations?)|third.party\s+(?:apps?|integrations?|developers?)|on behalf of|users?\s+(?:can\s+)?authoriz|authoriz\w*\s+(?:the\s+)?users?|connect\s+(?:an?\s+)?app\s+through\s+oauth|oauth\s+(?:client|application|flow)|client\s+id.{0,100}redirect)/i.test(txt);
+  });
+  const customerOAuthText = customerOAuthPages.map(p => p.text).join('\n');
+  const customerOAuthEvidence = findSnippet(customerOAuthText, [
+    'public app', 'public connection', 'connect an app through oauth',
+    'on behalf of', 'oauth client', 'authorization code', 'setting up oauth'
+  ]);
   let authType = 'unknown';
-  const oauthStrong = finalTr.hasOAuth && ((authorizeEndpoints.length > 0 || tokenEndpoints.length > 0) || (finalTr.hasClient && scopes.length > 0));
+  const oauthStrong = customerOAuthPages.length > 0 && !!customerOAuthEvidence;
   const apiKeyStrong = finalTr.hasApiKey && !oauthStrong;
   const keyTokenStrong = !oauthStrong && finalTr.endpointPaths && finalTr.endpointPaths.some(x => x.includes('authorize')) && /key/i.test(allText) && /token/i.test(allText);
   if (oauthStrong) authType = 'oauth';
@@ -442,7 +462,7 @@ async function researchHandler(req, res) {
     const ev = evidenceText ? cleanSnippet(evidenceText) : '';
     authSystems.push({ system, found, evidence: ev, evidenceUrl: sourceFor(evidenceText), verified: !!(found && ev && sourceFor(evidenceText)) });
   }
-  authSystem('third_party_oauth', oauthStrong && (authorizeEndpoints.length > 0 || tokenEndpoints.length > 0 || apiScopes.length > 0), registerSnippet || '');
+  authSystem('third_party_oauth', oauthStrong, customerOAuthEvidence || '');
   authSystem('sign_in_oauth', !!signInSnippet, signInSnippet);
   authSystem('registration_free_oauth', !!regFreeSnippet, regFreeSnippet);
   authSystem('api_key', finalTr.hasApiKey, apiKeySnippet);
@@ -456,7 +476,7 @@ async function researchHandler(req, res) {
     const ev = evidenceText ? cleanSnippet(evidenceText) : '';
     authRelationships.push({ method: system, client, resourceOwner, identityProvider: idp, authorizationTarget: target, actionEnabled, direction, useCase: direction, evidence: ev, evidenceUrl: sourceFor(evidenceText) });
   }
-  relFor('third_party_oauth', 'developer application', 'end user', app, 'provider API', 'access end user data through the provider API', 'third-party API access', registerSnippet);
+  relFor('third_party_oauth', 'developer application', 'end user', app, 'provider API', 'access end user data through the provider API', 'third-party API access', customerOAuthEvidence);
   relFor('sign_in_oauth', 'developer application', 'end user', app, 'user identity', 'let a user sign in to the developer application', 'sign-in to developer app, not API access', signInSnippet);
   relFor('registration_free_oauth', 'developer application', 'end user', app, 'provider API', 'access provider API without pre-registering an app', 'third-party API access without pre-registration', regFreeSnippet);
   relFor('api_key', 'developer application or own account', 'developer or account owner', 'none, key based', 'provider API', 'access provider API as the key owner', 'own-account API access', apiKeySnippet);
@@ -486,7 +506,7 @@ async function researchHandler(req, res) {
       const buu = new URL(bu);
       const buHost = buu.hostname.toLowerCase();
       if (!isProviderHost(buHost, slug, domainGuess)) continue;
-      if (baseDomain(buHost) !== (domainGuess || '').toLowerCase()) continue;
+      if (baseDomain(buHost) !== baseDomain(domainGuess || canonicalProviderDomain || '')) continue;
       if (/yourdomain|example\.(com|org|net)|your-domain|yourcompany|localhost|127\.0\.0\.1|\{/.test(bu)) continue;
       const buSegs = buu.pathname.toLowerCase().split('/').filter(Boolean);
       const buPortal = buSegs.some(s => ['apps', 'console', 'dashboard', 'settings', 'account'].includes(s)) || buHost.startsWith('app.') || buHost.startsWith('console.') || buHost.startsWith('dashboard.') || buHost.startsWith('portal.');
