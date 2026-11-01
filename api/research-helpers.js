@@ -365,27 +365,43 @@ function classifyPassage(snippetText, keywords) {
     for (const sc of extractUpperSnakeScopes(sectionText)) if (!out.includes(sc)) out.push(sc);
     return out.filter(validateScope);
   }
+  // Only API permission names with explicit permission-like syntax are safe
+  // to show. A token found in a docs theme is NOT an OAuth scope.
+  function isPermissionToken(value) {
+    if (!validateScope(value)) return false;
+    if (/^[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+$/.test(value))
+      return /_(?:READ|WRITE|CREATE|DELETE|UPDATE|LIST|VIEW|MANAGE|ADMIN)$/.test(value);
+    return /(?:[:.](?:read|write|create|delete|update|list|view|manage|admin|readonly|read_only)|^(?:read|write|delete|manage):[a-z0-9_-]+)$/.test(value);
+  }
   function extractScopesFromPages(pages) {
     const out = [];
+    const unrelatedAuthPaths = /\/(?:admin|workers|mcp|sdk|sso|single-sign-on)(?:\/|$)/i;
     for (const pg of pages) {
       const path = (() => { try { return new URL(pg.url).pathname.toLowerCase(); } catch (e) { return ''; } })();
-      // Scope context is narrow, on purpose. A role or permissions guide
-      // is not an OAuth scope list, and an SSO page is not either, even
-      // when its path contains permission or oauth. Only a section whose
-      // heading is about scopes, or a page whose path is about scopes,
-      // may supply scopes. Anything else is dropped completely, never
-      // shown as a scope example in a partial guide.
+      // Separate administrative, MCP, SDK and sign-in permission systems
+      // cannot supply scopes for a customer-facing third-party OAuth app.
+      if (unrelatedAuthPaths.test(path)) continue;
       const sections = String(pg.text || '').split(/(?=SECTION: )/);
-      let pageScopes = [];
       for (const sec of sections) {
-        const headMatch = sec.match(/^SECTION: ([^\n]*)/);
-        const heading = headMatch ? headMatch[1] : '';
-        if (/scope/i.test(heading)) pageScopes.push(...extractScopesFromScopeText(sec));
+        const heading = (sec.match(/^SECTION: ([^\n]*)/) || [,''])[1];
+        if (!/\b(?:scopes?|permissions?)\b/i.test(heading) &&
+            !/\/(?:scopes|permissions)(?:[./]|$)/i.test(path)) continue;
+        const lines = sec.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line || /^SECTION:/.test(line)) continue;
+          // Embedded navigation, theme configuration and asset names
+          // are never machine-readable API permissions.
+          if (/[{}]/.test(line) || /(?:\.mdx?|\.tsx?|\.ico|\.css|\.js|\.com\b|\.mintlify\.)/i.test(line)) continue;
+          const candidates = extractScopesFromScopeText(line).filter(isPermissionToken);
+          if (!candidates.length) continue;
+          const near = [lines[i-1] || '', line, lines[i+1] || ''].join(' ');
+          if (!/\b(?:scope|permission|access|authorize|allow|read|write|create|update|delete|manage|list|view|grant)\b|(?:_READ|_WRITE|_CREATE|_DELETE|_UPDATE|_MANAGE)\b/i.test(near)) continue;
+          for (const candidate of candidates) if (!out.includes(candidate)) out.push(candidate);
+        }
       }
-      if (!pageScopes.length && path.includes('scope')) pageScopes = extractScopesFromScopeText(pg.text);
-      for (const sc of pageScopes) if (!out.includes(sc)) out.push(sc);
     }
-    return out;
+    return out.slice(0, 60);
   }
 
 function extractNextDataText(body) {
