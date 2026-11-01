@@ -360,6 +360,26 @@ async function researchHandler(req, res) {
     for (const p of pages) if (p.text.includes(clean.slice(0, 40))) return p.url;
     return '';
   }
+  // Classify the developer's use case (connecting their users), not any
+  // occurrence of OAuth in a provider's site. SSO, admin tokens, Workers,
+  // and unrelated identity-provider instructions cannot establish OAuth
+  // access to the provider API.
+  const customerOAuthPages = pages.filter(pg => {
+    let path = '';
+    let host = '';
+    try { const u = new URL(pg.url); path = u.pathname.toLowerCase(); host = u.hostname.toLowerCase(); } catch (e) { return false; }
+    if (!isProviderHost(host, slug, domainGuess) && !keptParentDomains.includes(host)) return false;
+    if (/(?:sso|single.sign.on|sign.in.with|identity.provider|workers|\/admin\/|\/mcp\/|\/sdk\/)/i.test(path)) return false;
+    if (!/(?:oauth|authorization|authentication|public.connections?)/.test(path)) return false;
+    const txt = String(pg.text || '');
+    if (!/\boauth\b|oauth2|oauth 2\.0|authorization code/i.test(txt)) return false;
+    return /(?:public\s+(?:apps?|connections?|integrations?)|third.party\s+(?:apps?|integrations?|developers?)|on behalf of|users?\s+(?:can\s+)?authoriz|authoriz\w*\s+(?:the\s+)?users?|connect\s+(?:an?\s+)?app\s+through\s+oauth|oauth\s+(?:client|application|flow)|client\s+id.{0,100}redirect)/i.test(txt);
+  });
+  const customerOAuthText = customerOAuthPages.map(p => p.text).join('\n');
+  const customerOAuthEvidence = findSnippet(customerOAuthText, [
+    'public app', 'public connection', 'connect an app through oauth',
+    'on behalf of', 'oauth client', 'authorization code', 'setting up oauth'
+  ]);
   let registerSnippet = findSnippet(allText, ['register an oauth', 'register a new oauth', 'create an oauth app', 'create an oauth client', 'create a new app', 'register your app', 'register an application', 'create your app', 'create a developer app', 'create an application', 'registration is not required']);
   const redirectSnippet = findSnippet(allText, ['redirect uri', 'redirect url', 'callback url']);
   let approvalSnippet = findSnippet(allText, ['app review', 'app approval', 'submit for review', 'marketplace review', 'security review', 'admin consent', 'business verification', 'publisher verification']);
@@ -426,26 +446,6 @@ async function researchHandler(req, res) {
   const privateMeaning = classifyPassage(privateSnippet, ['private', 'internal', 'review']);
   const privacyMeaning = classifyPassage(privacySnippet, ['privacy policy']);
   const pricingMeaning = classifyPassage(pricingSnippet, ['pricing', 'plan', 'tier', 'enterprise']);
-  // Classify the developer's use case (connecting their users), not any
-  // occurrence of OAuth in a provider's site. SSO, admin tokens, Workers,
-  // and unrelated identity-provider instructions cannot establish OAuth
-  // access to the provider API.
-  const customerOAuthPages = pages.filter(pg => {
-    let path = '';
-    let host = '';
-    try { const u = new URL(pg.url); path = u.pathname.toLowerCase(); host = u.hostname.toLowerCase(); } catch (e) { return false; }
-    if (!isProviderHost(host, slug, domainGuess) && !keptParentDomains.includes(host)) return false;
-    if (/(?:sso|single.sign.on|sign.in.with|identity.provider|workers|\/admin\/|\/mcp\/|\/sdk\/)/i.test(path)) return false;
-    if (!/(?:oauth|authorization|authentication|public.connections?)/.test(path)) return false;
-    const txt = String(pg.text || '');
-    if (!/\boauth\b|oauth2|oauth 2\.0|authorization code/i.test(txt)) return false;
-    return /(?:public\s+(?:apps?|connections?|integrations?)|third.party\s+(?:apps?|integrations?|developers?)|on behalf of|users?\s+(?:can\s+)?authoriz|authoriz\w*\s+(?:the\s+)?users?|connect\s+(?:an?\s+)?app\s+through\s+oauth|oauth\s+(?:client|application|flow)|client\s+id.{0,100}redirect)/i.test(txt);
-  });
-  const customerOAuthText = customerOAuthPages.map(p => p.text).join('\n');
-  const customerOAuthEvidence = findSnippet(customerOAuthText, [
-    'public app', 'public connection', 'connect an app through oauth',
-    'on behalf of', 'oauth client', 'authorization code', 'setting up oauth'
-  ]);
   let authType = 'unknown';
   const oauthStrong = customerOAuthPages.length > 0 && !!customerOAuthEvidence;
   const apiKeyStrong = finalTr.hasApiKey && !oauthStrong;
